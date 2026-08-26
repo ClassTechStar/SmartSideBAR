@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "power": {
+    "launcher": "side",
+    "sleep": "10min",
+    "powerOnAt": "07:50"
+  },
+  "ime": {
+    "slot1": "Microsoft Pinyin",
+    "slot2": "US",
+    "fallbackSwap": true
+  },
+  "capture": {
+    "hotkey": "Ctrl+Shift+A",
+    "format": "PNG",
+    "dir": "{Pictures}/Sidekick"
+  },
+  "recorder": {
+    "fps": 15,
+    "bitrate": "2M",
+    "mic": false,
+    "dir": "{Videos}/Sidekick"
+  },
+  "usb": {
+    "enabled": true,
+    "ignoreTypes": ["phone", "carplay"]
+  },
+  "printer": {
+    "pollIntervalSec": 10
+  },
+  "display": {
+    "sidebarMonitor": "primary",
+    "sidebarSide": "right",
+    "fitWindowsToWorkArea": true
+  },
+  "links": [
+    { "id": "l1", "name": "希沃白板", "url": "https://www.seewo.com", "enabled": true },
+    { "id": "l2", "name": "微课平台", "url": "", "enabled": false }
+  ],
+  "reminders": [],
+  "oobe": {
+    "completed": false,
+    "completedAt": null,
+    "skipped": false,
+    "role": null,
+    "lastStepIndex": 0,
+    "prefs": { "ime": true, "usb": true, "shot": true, "recorder": false, "printer": true },
+    "env": { "screen": { "w": 1920, "h": 1080, "scale": 1, "touch": true }, "printerCount": 0, "imeOk": true, "os": "win32" }
+  },
+  "policy": { "disabledModules": [] }
+}

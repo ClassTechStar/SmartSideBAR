@@ -1,0 +1,44 @@
+{
+  "name": "smartsidebar",
+  "version": "2.0.0",
+  "description": "希沃侧边快捷键工具 - 常驻教学大屏侧边的快捷操作与设备提醒中心",
+  "main": "out/main/index.js",
+  "author": "Seewo Sidekick Team",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts,.vue",
+    "win": "npm run build && electron-builder --win",
+    "verify-build": "npm run typecheck && npm run test && npm run build && npm run win"
+  },
+  "dependencies": {
+    "electron-log": "^5.0.1",
+    "electron-updater": "^6.1.7",
+    "sharp": "^0.35.3",
+    "vue": "^3.4.0",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vue/test-utils": "^2.4.0",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.0",
+    "electron-vite": "^2.3.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.25.0",
+    "happy-dom": "^14.0.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vitest": "^1.5.0",
+    "vue-tsc": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
