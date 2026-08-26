@@ -246,4 +246,4 @@ SmartSideBAR/
 
 ---
 
-<p align="center">Made with ❤️ for teachers</p>
+<p align="center">Made with ❤️ for teachers and students</p>
