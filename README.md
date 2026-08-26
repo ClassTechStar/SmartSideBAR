@@ -5,7 +5,7 @@
   <p>
     <a href="#features"><img src="https://img.shields.io/badge/功能-9大模块-blue" alt="Features"></a>
     <a href="#tech-stack"><img src="https://img.shields.io/badge/技术栈-Electron%20+%20Vue%203-green" alt="Tech Stack"></a>
-    <a href="#license"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="License"></a>
+    <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
   </p>
 </div>
 
@@ -242,7 +242,7 @@ SmartSideBAR/
 
 ## 许可证
 
-[MIT](LICENSE) © 2026 ClassTechStar
+[Apache-2.0](LICENSE) © 2026 ClassTechStar
 
 ---
 
