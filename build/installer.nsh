@@ -4,7 +4,7 @@
 !macro customInstall
   ; 写入注册表项,供其他程序检测
   WriteRegStr HKLM "SOFTWARE\SeewoSidekick" "InstallPath" "$INSTDIR"
-  WriteRegStr HKLM "SOFTWARE\SeewoSidekick" "Version" "2.0.0"
+  WriteRegStr HKLM "SOFTWARE\SeewoSidekick" "Version" "1.1.0"
   
   ; 创建 ProgramData 配置目录
   CreateDirectory "$PROGRAMDATA\SeewoSidekick"
