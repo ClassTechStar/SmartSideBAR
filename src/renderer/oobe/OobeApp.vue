@@ -79,7 +79,14 @@
 
     <!-- 导航按钮 -->
     <div class="oobe-nav">
-      <button v-if="currentStep > 0" class="btn-secondary" @click="prevStep">上一步</button>
+      <!-- 保留上一步的布局槽位，避免首步时其余按钮横向跳动 -->
+      <button
+        class="btn-secondary"
+        :class="{ 'nav-placeholder': currentStep === 0 }"
+        :disabled="currentStep === 0"
+        :aria-hidden="currentStep === 0"
+        @click="prevStep"
+      >上一步</button>
       <button v-if="currentStep < 5" class="btn-primary" @click="nextStep">下一步</button>
       <button v-if="currentStep === 5" class="btn-primary" @click="finish">开始使用</button>
       <button class="btn-skip" @click="skip">跳过</button>
@@ -336,6 +343,7 @@ onMounted(async () => {
   border-radius: 12px;
   background: #ccc;
   position: relative;
+  padding: 0;
   transition: background var(--anim);
 }
 
@@ -345,14 +353,14 @@ onMounted(async () => {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: white;
   transition: transform var(--anim);
 }
 
-.toggle.on .toggle-knob { transform: translateX(20px); }
+.toggle.on .toggle-knob { transform: translateX(24px); }
 
 .oobe-nav {
   display: flex;
@@ -375,6 +383,11 @@ onMounted(async () => {
 
 .btn-secondary { background: var(--bg-hover); color: var(--text); }
 .btn-secondary:hover { background: var(--border); }
+
+.nav-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .btn-skip { background: transparent; color: var(--text-secondary); }
 .btn-skip:hover { color: var(--text); }
