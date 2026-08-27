@@ -1,6 +1,6 @@
 {
   "name": "smartsidebar",
-  "version": "2.0.0",
+  "version": "1.1.0",
   "description": "希沃侧边快捷键工具 - 常驻教学大屏侧边的快捷操作与设备提醒中心",
   "main": "out/main/index.js",
   "author": "Seewo Sidekick Team",
