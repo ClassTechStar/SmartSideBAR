@@ -1,0 +1,353 @@
+/* ==========================================================
+ * SmartSideBAR v1.1 液态玻璃 UI 更新补丁（rdev/liquid-glass-react 配方）
+ * 本补丁已包含在官方 v1.1 构建产物 out/ 中；
+ * 若从旧版源码自行构建，请将本文件内容追加到构建后的主 CSS 末尾。
+ * ========================================================== */
+
+
+/* ==================================================================
+ * v4：侧边栏/轨道/面板容器彻底去底 —— 方形最后据点根除
+ * rail 与 panel 挂 lg-glass/lg-thin/lg-rim 造成的灰条与展开大白板，
+ * 一律透明化，只保留各图标项自身的圆形玻璃（对齐 rdev 漂浮式美学）
+ * ================================================================== */
+.sidebar[data-v-92633577],
+.rail[data-v-92633577],
+.rail.docked[data-v-92633577],
+.rail-inner[data-v-92633577],
+.rail-inner.docked[data-v-92633577],
+.panel[data-v-92633577],
+.panel.expanded[data-v-92633577] {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+}
+/* 容器上的 rim / liquid / ::before 伪层全部关闭 */
+.rail.lg-glass[data-v-92633577],
+.panel.lg-glass[data-v-92633577] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.rail.lg-rim::after,
+.panel.lg-rim::after,
+.rail.lg-thin::after,
+.panel.lg-thin::after {
+  display: none !important;
+  content: none !important;
+}
+.rail::before,
+.rail::after,
+.panel::before,
+.panel::after {
+  display: none !important;
+  content: none !important;
+}
+/* 轨道图标项：圆角方形 → 正圆 */
+.rail-item[data-v-92633577] {
+  border-radius: 50% !important;
+}
+.rail-item[data-v-92633577]:hover {
+  border-radius: 50% !important;
+}
+/* IME 角标：方形蓝块 → 圆形小徽章 */
+.badge-cn[data-v-92633577],
+.badge-en[data-v-92633577] {
+  min-width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ==================================================================
+ * v5：用户反馈修复包
+ *  1) 黑背景下侧边栏隐形 → 中性暗玻璃底 + 图标反白
+ *  2) 停靠把手箭头过粗 → 字重 400 对齐图标线条
+ *  3) 悬浮球左上角蓝徽章/白色镜头芯 → 重绘为深色玻璃球
+ *  4) 设置开关被裁切 → 行可换行 + 输入弹性宽
+ *  5) 快捷链接「添加链接」按钮玻璃下不可见 → 实底玻璃
+ * ================================================================== */
+
+/* ---------- 1. 侧边栏轨道：任何壁纸下均可辨 ---------- */
+.rail[data-v-92633577],
+.rail.docked[data-v-92633577] {
+  background: rgba(30, 32, 38, 0.42) !important;
+  backdrop-filter: blur(22px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 10px 30px rgba(0, 0, 0, 0.16) !important;
+}
+/* 图标反白：暗玻璃底上的清晰对比 */
+.rail-icon[data-v-92633577] {
+  filter: invert(1) brightness(1.3) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) !important;
+}
+.rail-item[data-v-92633577]:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+.rail-item.active[data-v-92633577] {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+/* 顶部中/英徽章去蓝：中性玻璃底 */
+.badge-cn[data-v-92633577] {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #2a2f38 !important;
+  font-size: 10px !important;
+}
+.badge-en[data-v-92633577] {
+  background: rgba(20, 22, 26, 0.55) !important;
+  color: #fff !important;
+  font-size: 10px !important;
+}
+
+/* ---------- 2. 停靠把手箭头：字重对齐图标线条 ---------- */
+.dock-arrow[data-v-92633577] {
+  font-weight: 400 !important;
+  font-size: 20px !important;
+  color: rgba(30, 34, 40, 0.8) !important;
+}
+
+/* ---------- 3. 悬浮球重绘：深色玻璃球 ---------- */
+.fb-ime-badge[data-v-2363d101] {
+  display: none !important;
+}
+.fb-orb[data-v-2363d101] {
+  background:
+    radial-gradient(120% 100% at 30% 20%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.04) 34%,
+      transparent 58%),
+    linear-gradient(150deg,
+      rgba(64, 68, 76, 0.94) 0%,
+      rgba(38, 41, 47, 0.96) 55%,
+      rgba(22, 24, 28, 0.97) 100%) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.35),
+    0 18px 44px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ---------- 4. 设置/外观开关防裁切 ---------- */
+.settings-body[data-v-9515a432] {
+  overflow-x: hidden !important;
+}
+.setting-row[data-v-9515a432],
+.toggle-row[data-v-dacf426a],
+.row[data-v-a00b727e] {
+  flex-wrap: wrap !important;
+  row-gap: 8px !important;
+}
+.setting-row[data-v-9515a432] > span:first-child,
+.toggle-row[data-v-dacf426a] > span:first-child,
+.row[data-v-a00b727e] > .label[data-v-a00b727e] {
+  flex: 1 1 110px !important;
+  min-width: 0 !important;
+}
+.text-input[data-v-9515a432],
+select[data-v-9515a432],
+.text-input[data-v-a00b727e],
+select[data-v-a00b727e] {
+  width: auto !important;
+  min-width: 130px !important;
+  max-width: 100% !important;
+}
+.toggle[data-v-9515a432],
+.toggle[data-v-dacf426a],
+.lg-switch {
+  flex-shrink: 0 !important;
+}
+
+/* ---------- 5. 快捷链接「添加链接」按钮：实底可见 ---------- */
+.btn-add[data-v-1cb37a4b] {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1.5px dashed rgba(43, 68, 120, 0.4) !important;
+  color: #2a2f38 !important;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.1) !important;
+}
+.btn-add[data-v-1cb37a4b]:hover {
+  background: #ffffff !important;
+  border-color: var(--brand, #2b6ee0) !important;
+  color: var(--brand, #2b6ee0) !important;
+}
+
+/* ==================================================================
+ * v6：侧边栏回归「浅灰玻璃胶囊」（用户钦定版式样）
+ *  - 高不透明度浅灰胶囊：深色/纯黑/浅色壁纸下均清晰可见
+ *  - 图标恢复深色（撤销 v5 反白）
+ *  - 悬浮球/开关/添加按钮维持 v5 修复不变
+ * ================================================================== */
+.rail[data-v-92633577],
+.rail.docked[data-v-92633577],
+.rail.lg-glass[data-v-92633577] {
+  background: rgba(240, 242, 246, 0.86) !important;
+  backdrop-filter: blur(28px) saturate(1.25) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.25) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 14px 38px rgba(15, 23, 42, 0.18) !important;
+}
+.rail-icon[data-v-92633577] {
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.18)) !important;
+}
+.rail-item[data-v-92633577]:hover {
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+.rail-item.active[data-v-92633577] {
+  background: rgba(15, 23, 42, 0.13) !important;
+}
+/* 中/英角标在浅胶囊上的清晰度 */
+.badge-cn[data-v-92633577] {
+  box-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.2),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08) !important;
+}
+/* 停靠把手圆钮：浅胶囊上的白色玻璃提亮 */
+.dock-toggle[data-v-92633577],
+.dock-toggle.docked[data-v-92633577] {
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(255, 255, 255, 0.45) 100%) !important;
+  box-shadow:
+    0 6px 18px rgba(15, 23, 42, 0.14),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.07) !important;
+}
+.dock-toggle[data-v-92633577]::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* ==================================================================
+ * v7：液态玻璃质感全面回归（照抄 liquid-glass-react 视觉配方）
+ *  - 配方来源 rdev/liquid-glass-react：斜向 tint 渐变玻璃体 + backdrop
+ *    blur/saturate + mask 掏空边光环 + 顶部镜面高光 + 0 12px 40px 投影
+ *  - 参数对齐用户 config：blur 21 / saturate 2.2 / radius 28
+ *  - 收起 rail 与展开 panel 都是玻璃体；悬浮球恢复透明玻璃球
+ *  - 保留 v5 修复（开关防裁/添加按钮/去蓝徽章）与 v6 深色图标
+ * ================================================================== */
+
+/* ---------- 1. 侧边栏轨道：玻璃胶囊（撤销 v6 实心灰） ---------- */
+.rail[data-v-92633577],
+.rail.docked[data-v-92633577],
+.rail.lg-glass[data-v-92633577] {
+  position: relative !important;
+  isolation: isolate !important;
+  background:
+    radial-gradient(120% 90% at 18% 0%,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.14) 42%,
+      transparent 68%),
+    linear-gradient(143deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.4) 46%,
+      rgba(255, 255, 255, 0.28) 100%) !important;
+  backdrop-filter: blur(21px) saturate(2.2) !important;
+  -webkit-backdrop-filter: blur(21px) saturate(2.2) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+}
+/* rdev 边光环：padding 1.5px + mask xor 掏空成环，screen 混合提亮 */
+.rail[data-v-92633577]::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 28px !important;
+  z-index: 3 !important;
+  padding: 1.5px !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.28) 18%,
+      rgba(255, 255, 255, 0.08) 40%,
+      rgba(255, 255, 255, 0.16) 62%,
+      rgba(255, 255, 255, 0.6) 100%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  mix-blend-mode: screen !important;
+  pointer-events: none !important;
+}
+
+/* ---------- 2. 展开面板：玻璃体（撤销白色实心观感） ---------- */
+.panel[data-v-92633577],
+.panel.expanded[data-v-92633577] {
+  isolation: isolate !important;
+  background:
+    radial-gradient(120% 70% at 20% 0%,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.12) 45%,
+      transparent 70%),
+    linear-gradient(143deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(255, 255, 255, 0.55) 46%,
+      rgba(255, 255, 255, 0.66) 100%) !important;
+  backdrop-filter: blur(21px) saturate(2.2) !important;
+  -webkit-backdrop-filter: blur(21px) saturate(2.2) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+}
+/* 面板内部主题 token 玻璃化：白实底卡片自动变半透明玻璃卡片 */
+.panel-body[data-v-92633577] {
+  --bg: rgba(255, 255, 255, 0.42);
+  --bg-hover: rgba(255, 255, 255, 0.55);
+  --brand-light: rgba(43, 110, 224, 0.16);
+  --border: rgba(16, 24, 40, 0.1);
+}
+.panel-body[data-v-92633577] .action-btn:hover {
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+.panel-body[data-v-92633577] ::-webkit-scrollbar-thumb {
+  background: rgba(16, 24, 40, 0.18) !important;
+}
+
+/* ---------- 3. 悬浮球：镜头图标圆球（图标铺满并裁切正圆，无圆角方底） ---------- */
+.fb-orb[data-v-2363d101] {
+  isolation: isolate !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: url("./floatball-icon.png") center / cover no-repeat !important;
+  backdrop-filter: blur(21px) saturate(2.2) !important;
+  -webkit-backdrop-filter: blur(21px) saturate(2.2) !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+/* 镜面高光保持关闭：图标为不透明图片，高光层会冲淡图案 */
+.fb-orb[data-v-2363d101]::before {
+  display: none !important;
+  content: none !important;
+}
+/* rdev 边光环：玻璃边缘折射环境光 */
+.fb-orb[data-v-2363d101]::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 50% !important;
+  z-index: 3 !important;
+  padding: 1.5px !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.32) 18%,
+      rgba(255, 255, 255, 0.1) 40%,
+      rgba(255, 255, 255, 0.2) 62%,
+      rgba(255, 255, 255, 0.68) 100%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  mix-blend-mode: screen !important;
+  pointer-events: none !important;
+}
