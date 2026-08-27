@@ -202,6 +202,7 @@ onMounted(loadConfig)
   border-radius: 12px;
   background: #ccc;
   position: relative;
+  padding: 0;
   transition: background var(--anim);
 }
 
@@ -211,14 +212,14 @@ onMounted(loadConfig)
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: white;
   transition: transform var(--anim);
 }
 
-.toggle.on .toggle-knob { transform: translateX(20px); }
+.toggle.on .toggle-knob { transform: translateX(24px); }
 
 .about-info p { margin: 4px 0; }
 .muted { color: var(--text-secondary); font-size: 12px; }
