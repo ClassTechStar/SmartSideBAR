@@ -109,11 +109,6 @@ export interface OobeState {
 
 export interface SidekickConfig {
   version: number
-  power: {
-    launcher: string
-    sleep: string
-    powerOnAt: string
-  }
   ime: {
     slot1: string
     slot2: string
