@@ -58,10 +58,10 @@
 | 13 | 诊断/自检 | `services/diagnostic.ts:262` + 导出包 | SettingsPanel 诊断区 | **80%**（2026-08-31） | ~~7 项检查中 4 项是空 try 块恒返回 ok~~ 已真实化（P1-12）；剩余：`features` 进一步细化（P2-4） |
 | 14 | 白名单策略 | `ConfigService.isModuleDisabled()` (config.ts:140) | SidebarApp railItems + bootstrap 服务启动 | **90%**（2026-08-31） | ~~函数 0 调用、UI 无过滤~~ 已落地（P2-1）：主进程服务启动 + railItems 双重过滤；OOBE prefs/role 映射为禁用项（P2-3） |
 | 15 | 快捷键槽位 | 无 | 无 | **0%** | README 列为 P1；实际仅 `capture.hotkey` 一个，无冲突检测 |
-| 16 | 锁屏 / 电源 | 无 | rail 有 `lock` 图标 → 打开设置面板 | **0%** | `config.power` 三字段（launcher/sleep/powerOnAt）全库 0 引用 |
-| 17 | 自动更新 | 无 | 无 | **0%** | `electron-updater` 已装但 **0 引用**；builder 无 `publish` 配置 |
+| 16 | 锁屏 / 电源 | 无 | rail 有 `lock` 图标 → 打开设置面板 ✅ **2026-08-31 移除**（P2-5）：删除 rail lock 项 + `config.power` 死配置 | **0%** → 移除 | `config.power` 三字段（launcher/sleep/powerOnAt）全库 0 引用 |
+| 17 | 自动更新 | 无 | 无 ✅ **2026-08-31 移除**（P2-6）：删除 `electron-updater` 依赖与 README 声明 | **0%** → 移除 | `electron-updater` 已装但 **0 引用**；builder 无 `publish` 配置 |
 
-**README 功能表 13 项中，3 项完全不存在（快捷键槽位、白名单策略、锁屏/电源），1 项能力被夸大（录屏 WebM→MP4）。**
+**README 功能表 13 项中：白名单策略已落地（P2-1）、锁屏/电源已移除（P2-5）、录屏「转 MP4」表述已更正；仅剩「快捷键槽位」未实现（P2-2）。**
 
 ---
 
@@ -115,8 +115,8 @@
 | D10 | 诊断服务 4 项是空 try 块恒返回 ok（录屏/USB/打印机/输入法）；`features.clipboard/desktopCapturer` 硬编码 `true` ✅ **2026-08-31 修复**（P1-12）：7 项服务检查全部真实探测；`features.clipboard/desktopCapturer/autoLaunch` 真实探测 | diagnostic.ts:171-216,226-228 |
 | D11 | preload `display.windowOrigin` 返回固定 `{x:0,y:0}` ✅ **2026-08-31 修复**：该 API 全库无调用方（display.ts 的 `windowOrigin` 方法同为死代码），一并删除 | preload.ts:84 |
 | D12 | `notification:dismiss` 主进程为空实现 | main.ts:563-565 |
-| D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 ◐ **部分解决**：白名单策略已落地（P2-1/P2-3）；快捷键槽位（P2-2）与锁屏/电源（P2-5）仍待处理 | 见 1.3 表 #14/#15/#16 |
-| D14 | `electron-updater` 0 引用 + builder 无 publish → 「自动更新」不存在 | 全库 grep；electron-builder.yml 无 publish 段 |
+| D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 ◐ **大部分解决**：白名单策略已落地（P2-1/P2-3）；锁屏/电源已移除（P2-5）；仅剩快捷键槽位（P2-2） | 见 1.3 表 #14/#15/#16 |
+| D14 | `electron-updater` 0 引用 + builder 无 publish → 「自动更新」不存在 ✅ **2026-08-31 修复**（P2-6）：移除 electron-updater 依赖与 README 声明，不再承诺自动更新 | 全库 grep；electron-builder.yml 无 publish 段 |
 | D15 | `config.usb.ignoreTypes = ['phone','carplay']` 从不参与过滤 ✅ **2026-08-31 修复**：`UsbService.start()` 读取配置，`filterIgnored()` 应用于初始扫描 / 事件扫描 / 手动刷新全路径 | config.ts:15；usb.ts 无引用 |
 
 ### E. 逻辑缺陷 / 数据一致性
@@ -195,8 +195,8 @@
 | P2-2 | 快捷键槽位（3 个）+ 冲突检测与替代建议 | 新增 `services/hotkey.ts`、`SettingsApp.vue`、`ipc-channels.ts` | 2d | 注册失败时给出可用替代组合；改键即时生效 | P1-6 |
 | P2-3 | OOBE prefs / role 真正生效，模块可见性按角色裁剪 ✅ **2026-08-31 完成**：`finish()` 将未启用功能映射为 `policy.disabledModules`，teacher 角色追加禁用 taskmgr/power | `OobeApp.vue:145-165`、`SidebarApp.vue` | 1.5d | 选「教师」与「管理员」后 rail 项按预设差异显示 | P2-1 |
 | P2-4 | 诊断服务真实化 + 导出包可定位问题 ✅ **已由 P1-12 完成**：7 项服务检查真实探测 + features 真实化；导出包已存在（exportPack 打包 report.json + 日志） | `diagnostic.ts` | 1.5d | 断网/拔打印机/禁用通知等场景下报告状态正确变化 | P1-12 |
-| P2-5 | 锁屏/电源功能落地，或移除 rail 上的 `lock` 图标 | `ipc-channels.ts`、`SidebarApp.vue:106`、`config.ts:11` | 0.5d | 二选一：功能可用，或图标消失且 config.power 删除 | 无 |
-| P2-6 | 自动更新：接入 `electron-updater` + builder `publish`，或移除依赖与 README 声明 | 新增更新模块、`electron-builder.yml`、README | 1d | 检测到新版本并提示；或依赖与文档均已删除 | P1-10 |
+| P2-5 | 锁屏/电源功能落地，或移除 rail 上的 `lock` 图标 ✅ **2026-08-31 完成（移除）**：删除 rail lock 项 + `config.power` 死配置（types/config/main 白名单/OOBE 引用一并清理） | `ipc-channels.ts`、`SidebarApp.vue:106`、`config.ts:11` | 0.5d | 功能可用，或图标消失且 config.power 删除 | 无 |
+| P2-6 | 自动更新：接入 `electron-updater` + builder `publish`，或移除依赖与 README 声明 ✅ **2026-08-31 完成（移除）**：`npm uninstall electron-updater` + 删除 README 技术栈「更新」行 | 新增更新模块、`electron-builder.yml`、README | 1d | 检测到新版本并提示；或依赖与文档均已删除 | P1-10 |
 | P2-7 | 托盘图标 + 退出入口 + `app.setAppUserModelId` ✅ **2026-08-31 完成**：新增 `services/tray.ts`（托盘含「显示侧边栏/打开设置/退出」），`main.ts` 调用 `app.setAppUserModelId` + `TrayService.init()` | `main.ts`、新增 tray 模块 | 1d | 托盘含「打开设置/退出」；通知来源名称正确 | 无 |
 | P2-8 | 性能预算实测与裁剪（空闲内存 ≤220MB、冷启动 ≤3s、包体 ≤110MB） | 全仓 + 构建配置 | 2d | 输出实测数据表；超标项有明确裁剪方案（如按需加载 sharp） | P1-2、P1-3 |
 | P2-9 | 建立核心链路回归清单与手工 E2E 用例（截图/批注/长截图/录屏/USB/提醒） ✅ **2026-08-31 完成**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准） | 新增 `docs/testing.md` | 1d | 覆盖 6 条主链路 × 3 种 DPI × 2 种显示器组合 | P0-4 |
@@ -231,5 +231,6 @@
 | 2026-08-31 | **P1-10 降级提权**：`electron-builder.yml` 改为 `perMachine: false` + `requestedExecutionLevel: asInvoker`（普通用户免 UAC 安装/自启）；`installer.nsh` 用 `UserInfo::GetAccountType` 分支——管理员写 HKLM 检测键 + ProgramData 策略层，普通用户写 HKCU 并跳过 ProgramData（运行时由 DEFAULT_CONFIG + %APPDATA% 兜底）。打包实测通过（NSIS 脚本编译 OK，`perMachine=false` 生效） | P1-10、B5 |
 | 2026-08-31 | **P1-12 修正假检测**：OOBE 环境检测新增「触控能力」真实判定（`maxTouchPoints`/`pointer:coarse`），打印机走 `printer.getStatus()`、USB 走 `usb.scan()`，去掉硬编码「就绪」。诊断服务 `_checkServices` 的录屏/USB/打印机/输入法/长截图 5 项空 try 块改为真实探测（`RecorderService.getStatus()`/`UsbService.getDiagnostics()`/`PrinterService.refresh()+getStatus()`/`ImeService.getState()`/`LongshotService.isRunning()`）；`_checkFeatures` 的 `clipboard/desktopCapturer` 改真实探测、`autoLaunch` 读 `app.getLoginItemSettings()` | P1-12、D8、D10 |
 | 2026-08-31 | **散项收尾（C4/D11/E10/F8）**：删除区域截图临时 PNG 写入（`saveTempImage`/`cleanupTemp` 及 4 处调用，overlay 仅框选坐标、裁剪用内存 img）；删除 `windowOrigin` 死代码（preload 硬编码 + display.ts 方法）；修正 OOBE 完成页文案（「点击屏幕边缘图标」与交互一致）；`config.ts` 补 `migrateConfig()` 迁移钩子，`DEFAULT_CONFIG.version` 有真实 schema 语义 | C4、D11、E10、F4、F8 |
-| 2026-08-31 | **P2-1/P2-3 白名单策略落地 + prefs/role 生效**：主进程 bootstrap 按 `policy.disabledModules` 跳过常驻服务启动；SidebarApp railItems 加 `module` 字段并按 `disabledModules` 过滤；OOBE `finish()` 将未启用功能映射为禁用项、teacher 角色追加禁用 taskmgr/power | P2-1、P2-3、D9、D13 |
+| 2026-08-31 | **P2-1/P2-3 白名单策略落地 + prefs/role 生效**：主进程 bootstrap 按 `policy.disabledModules` 跳过常驻服务启动；SidebarApp railItems 加 `module` 字段并按 `disabledModules` 过滤；OOBE `finish()` 将未启用功能映射为禁用项、teacher 角色追加禁用 taskmgr | P2-1、P2-3、D9、D13 |
 | 2026-08-31 | **P2-9 回归清单**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准）。并标记 P2-4（P1-12 覆盖）/P2-7（托盘已做）/P2-11（箭头已做）为完成 | P2-4、P2-7、P2-9、P2-11 |
+| 2026-08-31 | **P2-5/P2-6 移除死功能**（用户决策）：P2-5 删除 rail `lock` 项与 `config.power` 死配置（types/config/main 白名单/OOBE 引用一并清理）；P2-6 `npm uninstall electron-updater` + 删除 README 技术栈「更新」行。顺手更正 README 录屏「WebM 转 MP4」夸大表述 | P2-5、P2-6、D13、D14、D4 |

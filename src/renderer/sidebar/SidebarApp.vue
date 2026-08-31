@@ -129,7 +129,6 @@ const railItems = computed(() => {
     { id: 'taskmgr', module: 'taskmgr', panel: 'taskmgr', title: '任务管理器', icon: getIconPath('taskmgr'), action: () => openTaskMgr() },
     { id: 'link', module: 'links', panel: 'links', title: '快捷链接', icon: getIconPath('link'), action: () => expandPanel('links') },
     { id: 'bell', module: 'reminder', panel: 'reminder', title: '定时提醒', icon: getIconPath('bell'), action: () => expandPanel('reminder') },
-    { id: 'lock', module: 'power', panel: 'settings', title: '锁屏/电源', icon: getIconPath('lock'), action: () => expandPanel('settings') },
     { id: 'settings', module: 'settings', panel: 'settings', title: '设置', icon: getIconPath('settings'), action: () => expandPanel('settings') }
   ].filter(item => !disabled(item.module))
 })
