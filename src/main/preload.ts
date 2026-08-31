@@ -52,6 +52,7 @@ const sidekickApi = {
     sendComplete: (data: ArrayBuffer, mimeType: string) =>
       ipcRenderer.send(IPC_CHANNELS['recorder:complete'], data, mimeType),
     sendStarted: () => ipcRenderer.send(IPC_CHANNELS['recorder:started']),
+    ready: () => ipcRenderer.send(IPC_CHANNELS['recorder:ready']),
     onPageStart: (cb: (opts: any) => void) => {
       const handler = (_event: any, opts: any) => cb(opts)
       ipcRenderer.on(IPC_CHANNELS['recorder:pageStart'], handler)
@@ -70,6 +71,11 @@ const sidekickApi = {
     sendRegion: (region: any) => ipcRenderer.send(IPC_CHANNELS['overlay:region'], region),
     saveAnnotate: (dataUrl: string) => ipcRenderer.send(IPC_CHANNELS['overlay:saveAnnotate'], dataUrl),
     cancel: () => ipcRenderer.send(IPC_CHANNELS['overlay:cancel']),
+    onScreenshot: (cb: (dataUrl: string) => void) => {
+      const handler = (_event: any, dataUrl: string) => cb(dataUrl)
+      ipcRenderer.on(IPC_CHANNELS['overlay:screenshot'], handler)
+      return () => ipcRenderer.off(IPC_CHANNELS['overlay:screenshot'], handler)
+    },
     onInit: (cb: (init: any) => void) => {
       const handler = (_event: any, init: any) => cb(init)
       ipcRenderer.on(IPC_CHANNELS['overlay:init'], handler)
@@ -104,6 +110,7 @@ const sidekickApi = {
 
   // 电源
   power: {
+    getAutoLaunch: () => ipcRenderer.invoke(IPC_CHANNELS['power:getAutoLaunch']),
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS['power:setAutoLaunch'], enabled)
   },
 
@@ -153,7 +160,7 @@ const sidekickApi = {
   usb: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS['usb:list']),
     scan: () => ipcRenderer.invoke(IPC_CHANNELS['usb:scan']),
-    getDiagnostics: () => ipcRenderer.invoke(IPC_CHANNELS['help:runDiagnostics']),
+    getDiagnostics: () => ipcRenderer.invoke(IPC_CHANNELS['usb:getDiagnostics']),
     onArrived: (cb: (drive: any) => void) => {
       const handler = (_event: any, drive: any) => cb(drive)
       ipcRenderer.on(IPC_CHANNELS['usb:arrived'], handler)
@@ -189,6 +196,19 @@ const sidekickApi = {
   }
 }
 
-// 冻结 API 防止篡改
-Object.freeze(sidekickApi)
+// P0-6/B6: 深度冻结 — 原仅 Object.freeze 为浅冻结, 嵌套对象仍可篡改
+function deepFreeze<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj
+  Object.freeze(obj)
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    const val = (obj as Record<string, unknown>)[key]
+    if (val !== null && typeof val === 'object' && !Object.isFrozen(val)) {
+      deepFreeze(val)
+    }
+  }
+  return obj
+}
+
+// 冻结 API 防止篡改 (深度冻结, 嵌套对象也被冻结)
+deepFreeze(sidekickApi)
 contextBridge.exposeInMainWorld('sidekick', sidekickApi)
