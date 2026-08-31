@@ -86,8 +86,7 @@ const sidekickApi = {
   // 显示
   display: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS['display:list']),
-    sidebarTarget: () => ipcRenderer.invoke(IPC_CHANNELS['display:sidebarTarget']),
-    windowOrigin: () => Promise.resolve({ x: 0, y: 0 })
+    sidebarTarget: () => ipcRenderer.invoke(IPC_CHANNELS['display:sidebarTarget'])
   },
 
   // 配置
