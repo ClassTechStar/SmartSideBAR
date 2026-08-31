@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- P0-6/B4: CSP 纵深防御 — 限制资源加载来源, 阻止注入脚本/样式/外连 -->
+  <!-- dev 下 webSecurity:false 会旁路 CSP; prod 下 file:// 为 'self' -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self';" />
   <title>希沃侧边快捷键工具</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }

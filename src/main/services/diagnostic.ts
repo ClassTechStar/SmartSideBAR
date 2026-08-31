@@ -80,7 +80,7 @@ function readRecentLogs(logsDir: string, maxLines: number = 100): string[] {
 export const DiagnosticService = {
   async runFull(): Promise<DiagResult> {
     const timestamp = new Date().toLocaleString('zh-CN')
-    const version = app.getVersion() || '2.0.0'
+    const version = app.getVersion() || '1.1.0'
 
     // 1. 系统信息
     const system = await this._collectSystem()
