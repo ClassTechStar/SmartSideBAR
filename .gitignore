@@ -5,6 +5,12 @@ node_modules/
 # Build outputs
 out/
 dist/
+build/Release/
+build/appbar.vcxproj
+build/appbar.vcxproj.filters
+build/binding.sln
+build/config.gypi
+*.node
 *.exe
 *.dmg
 *.zip
