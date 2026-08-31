@@ -86,7 +86,9 @@
         :disabled="currentStep === 0"
         :aria-hidden="currentStep === 0"
         @click="prevStep"
-      >上一步</button>
+      >
+上一步
+</button>
       <button v-if="currentStep < 5" class="btn-primary" @click="nextStep">下一步</button>
       <button v-if="currentStep === 5" class="btn-primary" @click="finish">开始使用</button>
       <button class="btn-skip" @click="skip">跳过</button>

@@ -1,6 +1,6 @@
 // services/longshot.ts - 长截图服务 v3 (窗口选择 + 智能滚动拼接)
 
-import { desktopCapturer, clipboard, nativeImage, Notification } from 'electron'
+import { desktopCapturer, clipboard, nativeImage } from 'electron'
 import { spawn, exec } from 'child_process'
 import sharp from 'sharp'
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
@@ -52,6 +52,12 @@ export interface WindowInfo {
   y: number
   width: number
   height: number
+  // P0-7: 窗口所在显示器物理边界 (MonitorFromWindow + GetMonitorInfo)
+  // 用于多显示器场景下匹配正确的 desktopCapturer 源
+  monX: number
+  monY: number
+  monW: number
+  monH: number
 }
 
 export const LongshotService = {
@@ -65,7 +71,10 @@ public class WinAPI {
   [DllImport(\"user32.dll\")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
   [DllImport(\"user32.dll\")] public static extern bool IsWindowVisible(IntPtr hWnd);
   [DllImport(\"user32.dll\")] public static extern bool IsIconic(IntPtr hWnd);
+  [DllImport(\"user32.dll\")] public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+  [DllImport(\"user32.dll\", CharSet=CharSet.Auto)] public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+  [StructLayout(LayoutKind.Sequential)] public struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public int dwFlags; }
 }
 "@
 
@@ -77,6 +86,10 @@ $procs = Get-Process | Where-Object {
 } | ForEach-Object {
   \$rect = New-Object WinAPI+RECT
   [WinAPI]::GetWindowRect(\$_.MainWindowHandle, [ref]\$rect) | Out-Null
+  \$mon = [WinAPI]::MonitorFromWindow(\$_.MainWindowHandle, 2)
+  \$mi = New-Object WinAPI+MONITORINFO
+  \$mi.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf(\$mi)
+  [WinAPI]::GetMonitorInfo(\$mon, [ref]\$mi) | Out-Null
   @{
     pid = \$_.Id
     name = \$_.ProcessName
@@ -86,6 +99,10 @@ $procs = Get-Process | Where-Object {
     y = \$rect.Top
     width = \$rect.Right - \$rect.Left
     height = \$rect.Bottom - \$rect.Top
+    monX = \$mi.rcMonitor.Left
+    monY = \$mi.rcMonitor.Top
+    monW = \$mi.rcMonitor.Right - \$mi.rcMonitor.Left
+    monH = \$mi.rcMonitor.Bottom - \$mi.rcMonitor.Top
   }
 }
 @(\$procs) | ConvertTo-Json -Depth 3
@@ -117,7 +134,11 @@ $procs = Get-Process | Where-Object {
               x: w.x,
               y: w.y,
               width: w.width,
-              height: w.height
+              height: w.height,
+              monX: w.monX || 0,
+              monY: w.monY || 0,
+              monW: w.monW || 0,
+              monH: w.monH || 0
             }))
           resolve({ success: true, windows })
         } catch (e: any) {
@@ -178,6 +199,8 @@ $procs = Get-Process | Where-Object {
 
       let consecutiveSame = 0
       let lastBuf = first.buf
+      // P1-1 (C3 修复): 增量维护累计高度, 去除原 O(n²) 每帧重跑全部 sharp(f).metadata()
+      let totalHeight = first.info.height
 
       for (let i = 1; i < maxFrames; i++) {
         if (longshotStopRequested) { log.info('[Longshot] Stop requested'); break }
@@ -205,12 +228,8 @@ $procs = Get-Process | Where-Object {
 
         frames.push(buf)
         lastBuf = buf
-
-        let totalHeight = 0
-        for (const f of frames) {
-          const m = await sharp(f).metadata()
-          totalHeight += m.height || win.height
-        }
+        // P1-1 (C3 修复): 增量维护累计高度, 原实现每帧对全部已采集帧重跑 sharp(f).metadata()
+        totalHeight += captured.info.height
 
         broadcastProgress({ frameIndex: i, totalHeight, status: 'capturing', title: win.title })
         if (totalHeight >= maxTotalHeight) { log.info('[Longshot] Max height reached'); break }
@@ -270,6 +289,22 @@ $wshell.SendKeys('{PGDN}')
   /** 截取指定窗口区域 */
   async _captureWindow(win: WindowInfo): Promise<{ buf: Buffer; info: { width: number; height: number } } | null> {
     try {
+      // P0-7: 通过窗口所在显示器物理边界 (MonitorFromWindow) 匹配 Electron 显示器
+      // 原实现硬取 sources[0] (主屏), 副屏上的窗口裁到错误区域; 且 DPI!=100% 时叠加缩放误差
+      const { screen } = require('electron')
+      const displays = screen.getAllDisplays()
+
+      // 匹配: 物理尺寸一致 (容差 5px, GetMonitorInfo 与 Electron bounds 均为整数物理映射)
+      let targetDisplay = displays[0]
+      for (const d of displays) {
+        const physW = Math.round(d.bounds.width * d.scaleFactor)
+        const physH = Math.round(d.bounds.height * d.scaleFactor)
+        if (Math.abs(physW - win.monW) < 5 && Math.abs(physH - win.monH) < 5) {
+          targetDisplay = d
+          break
+        }
+      }
+
       const sources = await desktopCapturer.getSources({
         types: ['screen'],
         thumbnailSize: { width: 3840, height: 2160 },
@@ -277,20 +312,32 @@ $wshell.SendKeys('{PGDN}')
       })
       if (!sources?.length) return null
 
-      const img = sources[0].thumbnail
+      // P0-7: 按 display_id 匹配源 (而非硬取 sources[0])
+      const targetId = String(targetDisplay.id)
+      const source = sources.find(s => s.display_id === targetId) || sources[0]
+
+      const img = source.thumbnail
       if (!img || img.isEmpty()) return null
 
       const fullBuf = img.toPNG()
 
       // 获取截图实际尺寸
       const meta = await sharp(fullBuf).metadata()
-      const maxW = meta.width || 3840
-      const maxH = meta.height || 2160
+      const imgW = meta.width || 3840
+      const imgH = meta.height || 2160
 
-      const cropX = Math.max(0, win.x)
-      const cropY = Math.max(0, win.y)
-      const cropW = Math.min(win.width, maxW - cropX)
-      const cropH = Math.min(win.height, maxH - cropY)
+      // P0-7: win.x/win.y 是虚拟桌面物理坐标 (GetWindowRect),
+      // 源图像以该显示器物理原点 (win.monX/monY) 为 (0,0)。
+      // 物理像素 → 图像像素比例 (源图可能被 thumbnailSize 上限等比缩小)
+      const physW = targetDisplay.bounds.width * targetDisplay.scaleFactor
+      const physH = targetDisplay.bounds.height * targetDisplay.scaleFactor
+      const imgScaleX = physW > 0 ? imgW / physW : 1
+      const imgScaleY = physH > 0 ? imgH / physH : 1
+
+      const cropX = Math.max(0, Math.round((win.x - win.monX) * imgScaleX))
+      const cropY = Math.max(0, Math.round((win.y - win.monY) * imgScaleY))
+      const cropW = Math.min(Math.round(win.width * imgScaleX), imgW - cropX)
+      const cropH = Math.min(Math.round(win.height * imgScaleY), imgH - cropY)
 
       if (cropW <= 10 || cropH <= 10) return null
 
