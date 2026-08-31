@@ -1,6 +1,6 @@
 // services/display.ts - 显示服务 (坐标唯一事实源)
 
-import { screen, BrowserWindow } from 'electron'
+import { screen } from 'electron'
 import log from 'electron-log'
 import type { DisplayInfo, Rect, RectPx, SidekickConfig } from '../../shared/types'
 
@@ -92,11 +92,6 @@ export const DisplayService = {
            rect.y >= wa.y &&
            rect.x + rect.width <= wa.x + wa.width &&
            rect.y + rect.height <= wa.y + wa.height
-  },
-
-  windowOrigin(win: BrowserWindow): { x: number; y: number } {
-    const bounds = win.getBounds()
-    return { x: bounds.x, y: bounds.y }
   },
 
   // 计算侧边栏位置 (DIP)

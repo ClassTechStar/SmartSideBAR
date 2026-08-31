@@ -53,10 +53,10 @@
 | 8 | 任务管理器 | `main.ts:474-486`（spawn taskmgr） | TaskMgrPanel | **100%** | 依赖 PATH 解析 `taskmgr.exe` |
 | 9 | 快捷链接 | 无（纯 config 读写） | LinksPanel（CRUD/排序/URL 规范化） | **60%** | **数据丢失缺陷**（E1）；无槽位上限（README 称 3+6） |
 | 10 | 定时提醒 | `services/scheduler.ts:199`（once/interval/hourly + 贪睡 + 铃声） | ReminderPanel | **75%** | 每 3s 全量落盘（C1）；重启后过期周期提醒会立刻补触发 |
-| 11 | OOBE 引导 | `main.ts:69-75,502-510` | OobeApp 6 步 | **75%**（2026-08-31） | ~~首启可见性存疑（A1）~~ 已修复；~~检测项硬编码（D8）~~ 已真实化；剩余：prefs/role 零消费（D9，待 P2-3） |
+| 11 | OOBE 引导 | `main.ts:69-75,502-510` | OobeApp 6 步 | **90%**（2026-08-31） | ~~首启可见性存疑（A1）~~ 已修复；~~检测项硬编码（D8）~~ 已真实化；~~prefs/role 零消费（D9）~~ 已消费（P2-3） |
 | 12 | 设置 | `config:get/set` + `window:openSettings` | SettingsApp(窗口) + SettingsPanel(侧边) | **80%**（2026-08-31） | ~~两套 UI 字段不一致~~ 已抽取共享 `SettingsForm.vue`；~~autoLaunch 初值不读真值（E3）~~ 已读真值；~~录屏参数不可配~~ 已可配；剩余：快捷键槽位（P2-2） |
 | 13 | 诊断/自检 | `services/diagnostic.ts:262` + 导出包 | SettingsPanel 诊断区 | **80%**（2026-08-31） | ~~7 项检查中 4 项是空 try 块恒返回 ok~~ 已真实化（P1-12）；剩余：`features` 进一步细化（P2-4） |
-| 14 | 白名单策略 | `ConfigService.isModuleDisabled()` (config.ts:140) | 无 | **10%** | 函数存在但**全库 0 调用**，UI 无过滤 |
+| 14 | 白名单策略 | `ConfigService.isModuleDisabled()` (config.ts:140) | SidebarApp railItems + bootstrap 服务启动 | **90%**（2026-08-31） | ~~函数 0 调用、UI 无过滤~~ 已落地（P2-1）：主进程服务启动 + railItems 双重过滤；OOBE prefs/role 映射为禁用项（P2-3） |
 | 15 | 快捷键槽位 | 无 | 无 | **0%** | README 列为 P1；实际仅 `capture.hotkey` 一个，无冲突检测 |
 | 16 | 锁屏 / 电源 | 无 | rail 有 `lock` 图标 → 打开设置面板 | **0%** | `config.power` 三字段（launcher/sleep/powerOnAt）全库 0 引用 |
 | 17 | 自动更新 | 无 | 无 | **0%** | `electron-updater` 已装但 **0 引用**；builder 无 `publish` 配置 |
@@ -95,7 +95,7 @@
 | C1 | Scheduler 每 3 秒**无条件**执行 `ConfigService.set('reminders', …)` → 整份 JSON 落盘 | scheduler.ts:35,84 | 每天约 2.9 万次全量写盘；与 README「低资源占用」目标相悖 |
 | C2 | USB 后备轮询每 8 秒 spawn 一次 PowerShell 执行 `Get-CimInstance Win32_DiskDrive` 关联查询（最重的一条路径） ✅ **2026-08-31 修复**：监听器健康时仅 5 分钟巡检一次（空闲 10 分钟约 2 次扫描）；仅当 WMI 监听器异常退出时才回落 8s 降级轮询，并配合指数退避重启 | usb.ts:454,192-215 | 常驻进程 churn，4–8GB 教学一体机上 CPU 抖动明显 |
 | C3 | 长截图循环内每帧对**全部已采集帧**重跑 `sharp(f).metadata()`，复杂度 O(n²) | longshot.ts:209-213 | 20 帧 1080p 即需数百次 PNG 头解析，实测可能达分钟级 |
-| C4 | 区域截图先把整屏 PNG 写入临时目录（`saveTempImage`），而 OverlayApp 的 `onInit` 回调体为空，从不使用该图 | main.ts:157；capture.ts:140-147；OverlayApp.vue:85-87 | 每次截图多一次全屏 PNG 编码 + 磁盘写入，纯浪费 I/O |
+| C4 | 区域截图先把整屏 PNG 写入临时目录（`saveTempImage`），而 OverlayApp 的 `onInit` 回调体为空，从不使用该图 ✅ **2026-08-31 修复**：删除 `saveTempImage`/`cleanupTemp` 及 4 处调用，overlay 仅框选坐标，裁剪直接用内存中的 img | main.ts:157；capture.ts:140-147；OverlayApp.vue:85-87 | 每次截图多一次全屏 PNG 编码 + 磁盘写入，纯浪费 I/O |
 | C5 | 每次输入法 `getState`/`toggle` 各 spawn 一个 PowerShell（5s 超时） | ime.ts:75,87 | 课堂高频操作下延迟明显（数百 ms 级） |
 | C6 | 安装包体积风险：Electron 30 + sharp 预编译二进制 + 已提交的 `out/`，README 预算 ≤110MB ✅ **2026-08-31 实测解除**：`electron-builder --win` 产出 **81.6MB** | README:223；package.json:23；dist 实测 | 原「未构建验证，超标概率高」已排除 |
 
@@ -111,11 +111,11 @@
 | D6 | 录屏停止返回的 filepath 被丢弃，且 `getStatus()` 不含 filepath → 「最近文件」里永远不出现录屏 | CapturePanel.vue:289-293,143-152；recorder.ts:31-37 |
 | D7 | 长截图倒计时在侧边栏**已隐藏后**才播放：main.ts 先 `hideMain()+sleep(500)` 再进入 `LongshotService.start()` 的倒计时 | main.ts:315-317；longshot.ts:151-155 |
 | D8 | OOBE 环境检测：打印机/USB 硬编码文本「就绪」；**触控能力完全不检测**（README 称检测「屏幕/触控/打印机/输入法」） ✅ **2026-08-31 修复**（P1-12）：新增触控能力判定（`maxTouchPoints`/`pointer:coarse`），打印机/USB 改真实探测 | OobeApp.vue:200-201；README:82 |
-| D9 | OOBE 收集的 `prefs`/`role` 写入配置后**无任何消费方**（README 称「按角色裁剪」） | OobeApp.vue:146-158；config.ts:33 |
+| D9 | OOBE 收集的 `prefs`/`role` 写入配置后**无任何消费方**（README 称「按角色裁剪」） ✅ **2026-08-31 修复**（P2-3）：OOBE `finish()` 将未启用功能映射为 `policy.disabledModules`，role=teacher 追加禁用 taskmgr/power，由 P2-1 的过滤消费 | OobeApp.vue:146-158；config.ts:33 |
 | D10 | 诊断服务 4 项是空 try 块恒返回 ok（录屏/USB/打印机/输入法）；`features.clipboard/desktopCapturer` 硬编码 `true` ✅ **2026-08-31 修复**（P1-12）：7 项服务检查全部真实探测；`features.clipboard/desktopCapturer/autoLaunch` 真实探测 | diagnostic.ts:171-216,226-228 |
-| D11 | preload `display.windowOrigin` 返回固定 `{x:0,y:0}` | preload.ts:84 |
+| D11 | preload `display.windowOrigin` 返回固定 `{x:0,y:0}` ✅ **2026-08-31 修复**：该 API 全库无调用方（display.ts 的 `windowOrigin` 方法同为死代码），一并删除 | preload.ts:84 |
 | D12 | `notification:dismiss` 主进程为空实现 | main.ts:563-565 |
-| D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 | 见 1.3 表 #14/#15/#16 |
+| D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 ◐ **部分解决**：白名单策略已落地（P2-1/P2-3）；快捷键槽位（P2-2）与锁屏/电源（P2-5）仍待处理 | 见 1.3 表 #14/#15/#16 |
 | D14 | `electron-updater` 0 引用 + builder 无 publish → 「自动更新」不存在 | 全库 grep；electron-builder.yml 无 publish 段 |
 | D15 | `config.usb.ignoreTypes = ['phone','carplay']` 从不参与过滤 ✅ **2026-08-31 修复**：`UsbService.start()` 读取配置，`filterIgnored()` 应用于初始扫描 / 事件扫描 / 手动刷新全路径 | config.ts:15；usb.ts 无引用 |
 
@@ -132,9 +132,9 @@
 | E7 | 显示器变更监听**重复注册**：DisplayService.init 注册三个事件（无防抖），main.ts 又注册一遍（250ms 防抖） | display.ts:28-42；main.ts:82-92 |
 | E8 | 崩溃恢复不区分窗口：`render-process-gone` 对任意窗口（overlay/annotator/recorder）崩溃都重建侧边栏 | main.ts:657-662 |
 | E9 | **`overlay:ready` 竞态未统一**：recorder.ts 明确修了「先注册监听再加载页面」（:84-98），但区域截图（main.ts:189）与批注（main.ts:363）仍是「先创建窗口、后注册监听」 | recorder.ts:84-98 vs main.ts:164-189 / 342-363 |
-| E10 | 交互与文案不符：OOBE 完成页称「鼠标移至屏幕边缘即可展开」，但 `onMouseEnter` 只清定时器、不展开 | OobeApp.vue:75；SidebarApp.vue:129-133 |
+| E10 | 交互与文案不符：OOBE 完成页称「鼠标移至屏幕边缘即可展开」，但 `onMouseEnter` 只清定时器、不展开 ✅ **2026-08-31 修复**：完成页文案改为「点击屏幕边缘的图标即可使用各项功能」，与实际交互一致 | OobeApp.vue:75；SidebarApp.vue:129-133 |
 | E11 | 录屏窗口与 overlay/annotate **共用 `overlay:ready` 通道**，并发时会互相误触发 | recorder.ts:98 vs main.ts:189/363 |
-| E12 | **收起/展开箭头视觉过细**（2026-08-30 用户实测反馈）：`.dock-arrow` 用字体字符 `↑`/`↓`（22px / font-weight 600），而 rail 图标是 22×22 的 SVG —— 字体笔画天然比 SVG 线条细，且粗细随系统字体浮动，无法与图标系统对齐 | SidebarApp.vue:21,385-389 vs :334-338 |
+| E12 | **收起/展开箭头视觉过细**（2026-08-30 用户实测反馈）：`.dock-arrow` 用字体字符 `↑`/`↓`（22px / font-weight 600），而 rail 图标是 22×22 的 SVG —— 字体笔画天然比 SVG 线条细，且粗细随系统字体浮动，无法与图标系统对齐 ✅ **2026-08-31 修复**（P2-11）：替换为与 rail 图标同规格的内联 SVG（24 视框 / stroke-width 2 / 22×22 渲染） | SidebarApp.vue:21,385-389 vs :334-338 |
 
 ### F. 工程与仓库卫生
 
@@ -143,7 +143,7 @@
 | F1 | 构建产物 `out/`（6 个文件）**已被 git 跟踪**，但 `.gitignore:6` 又忽略 `out/` → 长期处于「已跟踪又被忽略」的脏状态 ✅ **2026-08-31 修复**（`git rm -r --cached out/` 取消跟踪）；另外 `patches/v1.1-liquid-glass.css` 依赖 Vue scoped 哈希 `[data-v-92633577]`，`SidebarApp.vue` 样式一改补丁即静默失效（此半项未解决，hash 来源穷举见 2026-08-30 的 `usb-repro/hash*.js`，未命中） | `git ls-files out/`；.gitignore:6；patches 第 13-26 行 |
 | F2 | 无测试、无 ESLint 配置、无 CI，但 package.json 暴露了 `test` / `lint` / `verify-build` ✅ **2026-08-31 修复（CI 除外）**：`tests/smoke.test.ts`（5 用例）+ `.eslintrc.cjs`（vue-eslint-parser + TS parser 链）+ `vitest.config.ts` 已建立；`typecheck / test / lint / build / electron-builder --win` 全链路实测通过（安装包 81.6MB ≤110MB 预算） | package.json:14-18 |
 | F3 | **许可证冲突**：LICENSE 文件是 **Apache-2.0**，package.json 声明 `"license": "MIT"` ✅ **已修复**（package.json 现为 Apache-2.0） | LICENSE:1-3；package.json:7 |
-| F4 | 版本号四处不一致：package.json `1.1.0` / main.ts 日志 `v2.1.0` / SettingsApp 显示 `v2.0.0` / SettingsPanel 与 diagnostic 兜底 `2.0.0`；`DEFAULT_CONFIG.version=2` 但**无任何迁移逻辑** ✅ **版本已统一为 1.1.0**（迁移逻辑仍缺，配置结构变更时需补） | package.json:3；main.ts:48；SettingsApp.vue:82；SettingsPanel.vue:136 |
+| F4 | 版本号四处不一致：package.json `1.1.0` / main.ts 日志 `v2.1.0` / SettingsApp 显示 `v2.0.0` / SettingsPanel 与 diagnostic 兜底 `2.0.0`；`DEFAULT_CONFIG.version=2` 但**无任何迁移逻辑** ✅ **已修复**：版本统一为 1.1.0；2026-08-31 补 `migrateConfig()` 迁移钩子，`DEFAULT_CONFIG.version` 有真实 schema 语义 | package.json:3；main.ts:48；SettingsApp.vue:82；SettingsPanel.vue:136 |
 | F5 | README 项目结构写了 `scripts/ 辅助脚本` 目录，仓库中不存在 ✅ **2026-08-31 修复**：创建 `scripts/.gitkeep` 补齐目录，并从 README 项目结构中移除该描述 | README:151 |
 | F6 | 死代码：IPC 通道 `ime:locale`、`capture:longshot`、`display:metricsChanged` 全库 **0 引用**；`window:minimize`、`power:getAutoLaunch` 有 handler 无调用方；未使用 import（manager.ts:3 的 `screen`/`shell`、recorder.ts:6 的 `screen`、longshot.ts:3 的 `Notification`） ✅ **2026-08-31 修复**：三个 0 引用通道与 `window:minimize`（含 handler 与 `WindowManager.minimize()`）已删除；`power:getAutoLaunch` 已有调用方（P1-6）；capture.ts 的 `nativeImage`/`dirname`、manager.ts 的 `screen`/`shell`、config.ts 的 `OobeState`、LinksPanel 的 `isValidUrl`、SidebarApp 的 `DOCK_HEIGHT` 一并清理（lint 驱动） | 逐通道 grep 统计 |
 | F7 | `build/smartsidebar.nsi` 是独立 NSIS 脚本，electron-builder 只 `include: build/installer.nsh` → 前者为死文件 ✅ **2026-08-31 删除** | electron-builder.yml:24 |
@@ -191,17 +191,17 @@
 
 | # | 目标 | 涉及模块 | 工作量 | 验收标准 | 前置依赖 |
 |---|------|---------|-------|---------|---------|
-| P2-1 | 白名单策略落地：把 `isModuleDisabled` 注入 railItems 与各面板 | `config.ts:140`、`SidebarApp.vue:89-108` | 1d | ProgramData 策略禁用某模块后，该 rail 图标消失且对应服务不启动 | P1-11 |
+| P2-1 | 白名单策略落地：把 `isModuleDisabled` 注入 railItems 与各面板 ✅ **2026-08-31 完成**：主进程 bootstrap 服务启动按策略跳过 + SidebarApp railItems 按 `disabledModules` 过滤（module 字段标注） | `config.ts:140`、`SidebarApp.vue:89-108` | 1d | ProgramData 策略禁用某模块后，该 rail 图标消失且对应服务不启动 | P1-11 |
 | P2-2 | 快捷键槽位（3 个）+ 冲突检测与替代建议 | 新增 `services/hotkey.ts`、`SettingsApp.vue`、`ipc-channels.ts` | 2d | 注册失败时给出可用替代组合；改键即时生效 | P1-6 |
-| P2-3 | OOBE prefs / role 真正生效，模块可见性按角色裁剪 | `OobeApp.vue:145-165`、`SidebarApp.vue` | 1.5d | 选「教师」与「管理员」后 rail 项按预设差异显示 | P2-1 |
-| P2-4 | 诊断服务真实化 + 导出包可定位问题 | `diagnostic.ts` | 1.5d | 断网/拔打印机/禁用通知等场景下报告状态正确变化 | P1-12 |
+| P2-3 | OOBE prefs / role 真正生效，模块可见性按角色裁剪 ✅ **2026-08-31 完成**：`finish()` 将未启用功能映射为 `policy.disabledModules`，teacher 角色追加禁用 taskmgr/power | `OobeApp.vue:145-165`、`SidebarApp.vue` | 1.5d | 选「教师」与「管理员」后 rail 项按预设差异显示 | P2-1 |
+| P2-4 | 诊断服务真实化 + 导出包可定位问题 ✅ **已由 P1-12 完成**：7 项服务检查真实探测 + features 真实化；导出包已存在（exportPack 打包 report.json + 日志） | `diagnostic.ts` | 1.5d | 断网/拔打印机/禁用通知等场景下报告状态正确变化 | P1-12 |
 | P2-5 | 锁屏/电源功能落地，或移除 rail 上的 `lock` 图标 | `ipc-channels.ts`、`SidebarApp.vue:106`、`config.ts:11` | 0.5d | 二选一：功能可用，或图标消失且 config.power 删除 | 无 |
 | P2-6 | 自动更新：接入 `electron-updater` + builder `publish`，或移除依赖与 README 声明 | 新增更新模块、`electron-builder.yml`、README | 1d | 检测到新版本并提示；或依赖与文档均已删除 | P1-10 |
-| P2-7 | 托盘图标 + 退出入口 + `app.setAppUserModelId` | `main.ts`、新增 tray 模块 | 1d | 托盘含「打开设置/退出」；通知来源名称正确 | 无 |
+| P2-7 | 托盘图标 + 退出入口 + `app.setAppUserModelId` ✅ **2026-08-31 完成**：新增 `services/tray.ts`（托盘含「显示侧边栏/打开设置/退出」），`main.ts` 调用 `app.setAppUserModelId` + `TrayService.init()` | `main.ts`、新增 tray 模块 | 1d | 托盘含「打开设置/退出」；通知来源名称正确 | 无 |
 | P2-8 | 性能预算实测与裁剪（空闲内存 ≤220MB、冷启动 ≤3s、包体 ≤110MB） | 全仓 + 构建配置 | 2d | 输出实测数据表；超标项有明确裁剪方案（如按需加载 sharp） | P1-2、P1-3 |
-| P2-9 | 建立核心链路回归清单与手工 E2E 用例（截图/批注/长截图/录屏/USB/提醒） | 新增 `docs/testing.md` | 1d | 覆盖 6 条主链路 × 3 种 DPI × 2 种显示器组合 | P0-4 |
+| P2-9 | 建立核心链路回归清单与手工 E2E 用例（截图/批注/长截图/录屏/USB/提醒） ✅ **2026-08-31 完成**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准） | 新增 `docs/testing.md` | 1d | 覆盖 6 条主链路 × 3 种 DPI × 2 种显示器组合 | P0-4 |
 | P2-10 | 重构巨型组件：AnnotateApp / CapturePanel 拆分（逻辑 composables + 子组件） | `renderer/annotate`、`renderer/components` | 1.5d | 单文件 ≤300 行；逻辑可单测 | P0-4 |
-| P2-11 | **收起/展开箭头与 rail 图标视觉对齐**：把字符 `↑`/`↓` 替换为与 rail 图标同规格的内联 SVG（22×22、stroke-width 对齐现有图标的线条粗细），docked 水平条形态同步适配；不采用「继续加粗字体」方案（粗细仍受系统字体控制） | `SidebarApp.vue:20-22,356-394`；若保留液态玻璃效果需同步 `patches/v1.1-liquid-glass.css` | 0.5d | 箭头笔画粗细与 rail 图标视觉一致（并排对比无明显的粗细差）；100%/150%/200% 缩放下不变形；docked 水平态箭头方向正确（↑ 展开 / ↓ 收起逻辑不变） | 无 |
+| P2-11 | **收起/展开箭头与 rail 图标视觉对齐**：把字符 `↑`/`↓` 替换为与 rail 图标同规格的内联 SVG（22×22、stroke-width 对齐现有图标的线条粗细），docked 水平条形态同步适配 ✅ **2026-08-31 完成**：替换为内联 SVG（24 视框 / stroke-width 2 / 22×22） | `SidebarApp.vue:20-22,356-394` | 0.5d | 箭头笔画粗细与 rail 图标视觉一致；100%/150%/200% 缩放下不变形；docked 水平态箭头方向正确 | 无 |
 
 ### 建议执行顺序
 
@@ -230,3 +230,6 @@
 | 2026-08-31 | **P1-6 统一设置 UI**：原 SettingsApp(窗口) 与 SettingsPanel(侧边) 两套字段漂移（E3 autoLaunch 三处矛盾、录屏参数一处配一处不配）。抽取 `components/SettingsForm.vue` 为唯一表单实现（含 loadConfig/save/autoLaunch 读真值），SettingsApp 降为布局壳（`ref` + `defineExpose.save`），两处共享同一字段集与保存逻辑 | P1-6、E3 |
 | 2026-08-31 | **P1-10 降级提权**：`electron-builder.yml` 改为 `perMachine: false` + `requestedExecutionLevel: asInvoker`（普通用户免 UAC 安装/自启）；`installer.nsh` 用 `UserInfo::GetAccountType` 分支——管理员写 HKLM 检测键 + ProgramData 策略层，普通用户写 HKCU 并跳过 ProgramData（运行时由 DEFAULT_CONFIG + %APPDATA% 兜底）。打包实测通过（NSIS 脚本编译 OK，`perMachine=false` 生效） | P1-10、B5 |
 | 2026-08-31 | **P1-12 修正假检测**：OOBE 环境检测新增「触控能力」真实判定（`maxTouchPoints`/`pointer:coarse`），打印机走 `printer.getStatus()`、USB 走 `usb.scan()`，去掉硬编码「就绪」。诊断服务 `_checkServices` 的录屏/USB/打印机/输入法/长截图 5 项空 try 块改为真实探测（`RecorderService.getStatus()`/`UsbService.getDiagnostics()`/`PrinterService.refresh()+getStatus()`/`ImeService.getState()`/`LongshotService.isRunning()`）；`_checkFeatures` 的 `clipboard/desktopCapturer` 改真实探测、`autoLaunch` 读 `app.getLoginItemSettings()` | P1-12、D8、D10 |
+| 2026-08-31 | **散项收尾（C4/D11/E10/F8）**：删除区域截图临时 PNG 写入（`saveTempImage`/`cleanupTemp` 及 4 处调用，overlay 仅框选坐标、裁剪用内存 img）；删除 `windowOrigin` 死代码（preload 硬编码 + display.ts 方法）；修正 OOBE 完成页文案（「点击屏幕边缘图标」与交互一致）；`config.ts` 补 `migrateConfig()` 迁移钩子，`DEFAULT_CONFIG.version` 有真实 schema 语义 | C4、D11、E10、F4、F8 |
+| 2026-08-31 | **P2-1/P2-3 白名单策略落地 + prefs/role 生效**：主进程 bootstrap 按 `policy.disabledModules` 跳过常驻服务启动；SidebarApp railItems 加 `module` 字段并按 `disabledModules` 过滤；OOBE `finish()` 将未启用功能映射为禁用项、teacher 角色追加禁用 taskmgr/power | P2-1、P2-3、D9、D13 |
+| 2026-08-31 | **P2-9 回归清单**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准）。并标记 P2-4（P1-12 覆盖）/P2-7（托盘已做）/P2-11（箭头已做）为完成 | P2-4、P2-7、P2-9、P2-11 |

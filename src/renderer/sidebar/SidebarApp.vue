@@ -77,6 +77,8 @@ const isExpanded = ref(false)
 const isDocked = ref(false)
 const activePanel = ref<string>('')
 const imeMode = ref<'cn' | 'en'>('cn')
+// P2-1: 策略禁用的模块集合 (来自 config.policy.disabledModules)
+const disabledModules = ref<string[]>([])
 let expandTimer: ReturnType<typeof setTimeout> | null = null
 let collapseTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -108,26 +110,29 @@ const panelMap: Record<string, any> = {
   settings: SettingsPanel
 }
 
-const railItems = computed(() => [
-  {
-    id: 'ime', panel: 'ime', title: '输入法切换',
-    icon: getIconPath('ime'),
-    action: () => toggleIme(),
-    badge: imeMode.value === 'cn' ? '中' : 'EN',
-    badgeClass: imeMode.value === 'cn' ? 'badge-cn' : 'badge-en'
-  },
-  { id: 'capture', panel: 'capture', title: '区域截图', icon: getIconPath('capture'), action: () => expandPanel('capture') },
-  { id: 'annotate', panel: 'capture', title: '批注', icon: getIconPath('annotate'), action: () => expandPanel('capture') },
-  { id: 'longshot', panel: 'capture', title: '长截图', icon: getIconPath('longshot'), action: () => expandPanel('capture') },
-  { id: 'record', panel: 'capture', title: '录屏', icon: getIconPath('record'), action: () => expandPanel('capture') },
-  { id: 'usb', panel: 'usb', title: 'USB 监控', icon: getIconPath('usb'), action: () => expandPanel('usb') },
-  { id: 'printer', panel: 'printer', title: '打印机', icon: getIconPath('printer'), action: () => expandPanel('printer') },
-  { id: 'taskmgr', panel: 'taskmgr', title: '任务管理器', icon: getIconPath('taskmgr'), action: () => openTaskMgr() },
-  { id: 'link', panel: 'links', title: '快捷链接', icon: getIconPath('link'), action: () => expandPanel('links') },
-  { id: 'bell', panel: 'reminder', title: '定时提醒', icon: getIconPath('bell'), action: () => expandPanel('reminder') },
-  { id: 'lock', panel: 'settings', title: '锁屏/电源', icon: getIconPath('lock'), action: () => expandPanel('settings') },
-  { id: 'settings', panel: 'settings', title: '设置', icon: getIconPath('settings'), action: () => expandPanel('settings') }
-])
+const railItems = computed(() => {
+  // P2-1: 白名单策略落地 —— 每个 rail item 标注所属模块, 被 policy.disabledModules
+  // 点名的模块从 rail 隐藏 (与主进程服务启动过滤一致)。
+  const disabled = (m: string) => disabledModules.value.includes(m)
+  return [
+    { id: 'ime', module: 'ime', panel: 'ime', title: '输入法切换',
+      icon: getIconPath('ime'),
+      action: () => toggleIme(),
+      badge: imeMode.value === 'cn' ? '中' : 'EN',
+      badgeClass: imeMode.value === 'cn' ? 'badge-cn' : 'badge-en' },
+    { id: 'capture', module: 'capture', panel: 'capture', title: '区域截图', icon: getIconPath('capture'), action: () => expandPanel('capture') },
+    { id: 'annotate', module: 'capture', panel: 'capture', title: '批注', icon: getIconPath('annotate'), action: () => expandPanel('capture') },
+    { id: 'longshot', module: 'capture', panel: 'capture', title: '长截图', icon: getIconPath('longshot'), action: () => expandPanel('capture') },
+    { id: 'record', module: 'capture', panel: 'capture', title: '录屏', icon: getIconPath('record'), action: () => expandPanel('capture') },
+    { id: 'usb', module: 'usb', panel: 'usb', title: 'USB 监控', icon: getIconPath('usb'), action: () => expandPanel('usb') },
+    { id: 'printer', module: 'printer', panel: 'printer', title: '打印机', icon: getIconPath('printer'), action: () => expandPanel('printer') },
+    { id: 'taskmgr', module: 'taskmgr', panel: 'taskmgr', title: '任务管理器', icon: getIconPath('taskmgr'), action: () => openTaskMgr() },
+    { id: 'link', module: 'links', panel: 'links', title: '快捷链接', icon: getIconPath('link'), action: () => expandPanel('links') },
+    { id: 'bell', module: 'reminder', panel: 'reminder', title: '定时提醒', icon: getIconPath('bell'), action: () => expandPanel('reminder') },
+    { id: 'lock', module: 'power', panel: 'settings', title: '锁屏/电源', icon: getIconPath('lock'), action: () => expandPanel('settings') },
+    { id: 'settings', module: 'settings', panel: 'settings', title: '设置', icon: getIconPath('settings'), action: () => expandPanel('settings') }
+  ].filter(item => !disabled(item.module))
+})
 
 // ---- watch: 窗口尺寸同步 --------------------------------------
 watch(isExpanded, async (expanded) => {
@@ -259,6 +264,12 @@ async function openTaskMgr() {
 let imeUnsub: (() => void) | null = null
 
 onMounted(async () => {
+  // P2-1: 读取策略禁用模块, railItems 据此隐藏对应图标
+  try {
+    const cfg = await window.sidekick.config.get()
+    disabledModules.value = cfg?.policy?.disabledModules || []
+  } catch { /* 忽略, 默认不禁用 */ }
+
   try {
     const state = await window.sidekick.ime.getState()
     imeMode.value = state.mode

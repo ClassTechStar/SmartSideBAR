@@ -66,6 +66,18 @@ function deepMerge<T>(base: T, overlay: Partial<T>): T {
   return result
 }
 
+// F8 修复: 让 DEFAULT_CONFIG.version 有真实迁移语义。
+// 老用户 config.json 中 version 落后于当前 schema 版本时, 在此逐步迁移。
+// 当前 schema 无破坏性变更, 仅同步 version 并保留全部用户数据;
+// 未来新增字段重命名/语义变更时, 在此按版本号递增补充迁移规则。
+function migrateConfig(config: SidekickConfig): SidekickConfig {
+  const from = config.version || 0
+  if (from >= DEFAULT_CONFIG.version) return config
+  log.info(`[Config] Migrating config schema v${from} -> v${DEFAULT_CONFIG.version}`)
+  config.version = DEFAULT_CONFIG.version
+  return config
+}
+
 let currentConfig: SidekickConfig | null = null
 
 export const ConfigService = {
@@ -107,6 +119,18 @@ export const ConfigService = {
     // 展开路径变量
     config.capture.dir = expandPath(config.capture.dir)
     config.recorder.dir = expandPath(config.recorder.dir)
+
+    // F8: 配置 schema 迁移 —— 版本落后时迁移并落盘
+    const beforeVersion = config.version
+    config = migrateConfig(config)
+    if (config.version !== beforeVersion) {
+      try {
+        writeFileSync(userPath, JSON.stringify(config, null, 2), 'utf-8')
+        log.info(`[Config] Persisted migrated config (v${config.version})`)
+      } catch (e) {
+        log.warn('[Config] Failed to persist migrated config:', e)
+      }
+    }
 
     currentConfig = config
     return config

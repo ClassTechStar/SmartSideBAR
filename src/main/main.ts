@@ -61,10 +61,18 @@ async function bootstrap() {
     log.info('[BOOT] Display service ready')
 
     // ③ 服务启动
-    await ImeService.start().catch(e => log.warn('[BOOT] ImeService degraded:', e.message))
-    await UsbService.start(config).catch(e => log.warn('[BOOT] UsbService degraded:', e.message))
-    await PrinterService.start(config).catch(e => log.warn('[BOOT] PrinterService degraded:', e.message))
-    await SchedulerService.start().catch(e => log.warn('[BOOT] SchedulerService degraded:', e.message))
+    // P2-1: 白名单策略落地 —— policy.disabledModules 中被点名的模块,
+    // 其常驻服务不启动 (UI 侧由 SidebarApp 同步隐藏对应 rail 图标)。
+    // 合法模块名: ime / usb / printer / reminder (capture/links/taskmgr 为 IPC 触发, 无常驻服务)
+    const disabled = (m: string) => ConfigService.isModuleDisabled(m)
+    if (disabled('ime')) log.info('[BOOT] Module "ime" disabled by policy, skipping ImeService')
+    else await ImeService.start().catch(e => log.warn('[BOOT] ImeService degraded:', e.message))
+    if (disabled('usb')) log.info('[BOOT] Module "usb" disabled by policy, skipping UsbService')
+    else await UsbService.start(config).catch(e => log.warn('[BOOT] UsbService degraded:', e.message))
+    if (disabled('printer')) log.info('[BOOT] Module "printer" disabled by policy, skipping PrinterService')
+    else await PrinterService.start(config).catch(e => log.warn('[BOOT] PrinterService degraded:', e.message))
+    if (disabled('reminder')) log.info('[BOOT] Module "reminder" disabled by policy, skipping SchedulerService')
+    else await SchedulerService.start().catch(e => log.warn('[BOOT] SchedulerService degraded:', e.message))
 
     // ④ 窗口管理
     const mainWin = WindowManager.createSidebar(config)
@@ -198,7 +206,9 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
   }
 
   // 区域截图: 打开 overlay 让用户选择
-  const tmpPath = CaptureService.saveTempImage(img)
+  // C4 修复: 原实现先把整屏 PNG 写入临时目录 (saveTempImage), 但 OverlayApp 的
+  // onInit 回调体为空, screenshotPath 从不被消费 —— 每次截图多一次全屏 PNG 编码 + 磁盘 I/O。
+  // overlay 只负责框选坐标 (DIP), 裁剪直接用内存中的 img, 无需落盘临时文件。
   const target = shot?.target || DisplayService.sidebarTarget()
   const scaleFactor = target.scaleFactor
   // 截图源对应的显示器 workArea (任务栏在上/左时 overlay 原点 ≠ 屏幕原点, 裁剪需补偏移)
@@ -224,7 +234,6 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       log.info('[Overlay] Ready, sending init')
       activeOverlayWin?.webContents.send(IPC_CHANNELS['overlay:init'], {
         mode: 'region',
-        screenshotPath: tmpPath,
         scaleFactor,
         screenWidth: imgSize.width,
         screenHeight: imgSize.height,
@@ -251,7 +260,6 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       log.warn('[Overlay] Window closed externally, aborting capture')
       resolved = true
       cleanup()
-      CaptureService.cleanupTemp(tmpPath)
       activeOverlayWin = null
       WindowManager.showMain()
       resolve({ success: false, error: '选择窗口已关闭' })
@@ -278,7 +286,6 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       }
 
       const filepath = await CaptureService.saveImage(img, physRegion)
-      CaptureService.cleanupTemp(tmpPath)
 
       if (activeOverlayWin && !activeOverlayWin.isDestroyed()) {
         activeOverlayWin.close()
@@ -300,7 +307,6 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       resolved = true
       cleanup()
       log.info('[Overlay] Cancelled')
-      CaptureService.cleanupTemp(tmpPath)
       if (activeOverlayWin && !activeOverlayWin.isDestroyed()) {
         activeOverlayWin.close()
         activeOverlayWin = null
@@ -323,7 +329,6 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       resolved = true
       cleanup()
       log.warn('[Overlay] Timeout')
-      CaptureService.cleanupTemp(tmpPath)
       if (activeOverlayWin && !activeOverlayWin.isDestroyed()) {
         activeOverlayWin.close()
         activeOverlayWin = null
