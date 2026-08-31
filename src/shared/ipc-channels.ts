@@ -5,13 +5,11 @@ export const IPC_CHANNELS = {
   // IME 输入法
   'ime:getState': 'ime:getState',
   'ime:toggle': 'ime:toggle',
-  'ime:locale': 'ime:locale',
   'ime:changed': 'ime:changed',
 
   // 截图
   'capture:region': 'capture:region',
   'capture:annotate': 'capture:annotate',
-  'capture:longshot': 'capture:longshot',
 
   // 长截图
   'longshot:start': 'longshot:start',
@@ -30,6 +28,7 @@ export const IPC_CHANNELS = {
   'recorder:data': 'recorder:data',
   'recorder:complete': 'recorder:complete',
   'recorder:started': 'recorder:started',
+  'recorder:ready': 'recorder:ready',
 
   // 覆盖层 (区域截图 + 批注)
   'overlay:init': 'overlay:init',
@@ -37,12 +36,14 @@ export const IPC_CHANNELS = {
   'overlay:saveAnnotate': 'overlay:saveAnnotate',
   'overlay:cancel': 'overlay:cancel',
   'overlay:ready': 'overlay:ready',
+  'overlay:screenshot': 'overlay:screenshot',
 
   // USB
   'usb:arrived': 'usb:arrived',
   'usb:removed': 'usb:removed',
   'usb:list': 'usb:list',
   'usb:scan': 'usb:scan',
+  'usb:getDiagnostics': 'usb:getDiagnostics',
 
   // 打印机
   'printer:status': 'printer:status',
@@ -55,7 +56,6 @@ export const IPC_CHANNELS = {
 
   // 显示
   'display:list': 'display:list',
-  'display:metricsChanged': 'display:metricsChanged',
   'display:sidebarTarget': 'display:sidebarTarget',
 
   // OOBE
@@ -84,7 +84,6 @@ export const IPC_CHANNELS = {
   // 窗口
   'window:show': 'window:show',
   'window:hide': 'window:hide',
-  'window:minimize': 'window:minimize',
   'window:resize': 'window:resize',
   'window:openSettings': 'window:openSettings',
   'window:dock': 'window:dock',
