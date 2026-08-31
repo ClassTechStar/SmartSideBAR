@@ -20,9 +20,9 @@ interface Window {
       annotate: (opts: any) => Promise<any>
     }
     longshot: {
-      start: (opts?: any) => Promise<string | null>
+      start: (opts?: any) => Promise<{ success: boolean; filepath?: string; error?: string }>
       stop: () => Promise<void>
-      selectWindow: () => Promise<any[]>
+      selectWindow: () => Promise<{ success: boolean; windows?: any[]; error?: string }>
       onProgress: (cb: (data: any) => void) => () => void
       onCountdown: (cb: (n: number) => void) => () => void
     }
