@@ -13,7 +13,11 @@ asarUnpack:
   - '**/*.node'
 nsis:
   oneClick: true
-  perMachine: true
+  # P1-10: perMachine -> per-user。原组合 (perMachine + requireAdministrator) 使
+  # 常驻课堂工具每次安装/更新都撞 UAC, 开机自启项也挂在提权语境下;
+  # 改为按用户安装 (%LOCALAPPDATA%\Programs), 普通用户无 UAC 即可安装与自启。
+  # ProgramData 策略层由 installer.nsh 按账户类型降级处理 (管理员写入, 普通用户跳过)。
+  perMachine: false
   allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
@@ -29,7 +33,8 @@ win:
   artifactName: ${productName}-安装包-${version}.exe
   publisherName: Seewo Sidekick Team
   verifyUpdateCodeSignature: false
-  requestedExecutionLevel: requireAdministrator
+  # P1-10: requireAdministrator -> asInvoker, 应用本体启动/自启不再要求提权
+  requestedExecutionLevel: asInvoker
   signAndEditExecutable: false
 extraResources:
   - from: resources/app/defaults
