@@ -53,9 +53,9 @@
 | 8 | 任务管理器 | `main.ts:474-486`（spawn taskmgr） | TaskMgrPanel | **100%** | 依赖 PATH 解析 `taskmgr.exe` |
 | 9 | 快捷链接 | 无（纯 config 读写） | LinksPanel（CRUD/排序/URL 规范化） | **60%** | **数据丢失缺陷**（E1）；无槽位上限（README 称 3+6） |
 | 10 | 定时提醒 | `services/scheduler.ts:199`（once/interval/hourly + 贪睡 + 铃声） | ReminderPanel | **75%** | 每 3s 全量落盘（C1）；重启后过期周期提醒会立刻补触发 |
-| 11 | OOBE 引导 | `main.ts:69-75,502-510` | OobeApp 6 步 | **55%** | 首启可见性存疑（A1）；prefs/role 零消费（D9）；检测项硬编码（D8） |
+| 11 | OOBE 引导 | `main.ts:69-75,502-510` | OobeApp 6 步 | **75%**（2026-08-31） | ~~首启可见性存疑（A1）~~ 已修复；~~检测项硬编码（D8）~~ 已真实化；剩余：prefs/role 零消费（D9，待 P2-3） |
 | 12 | 设置 | `config:get/set` + `window:openSettings` | SettingsApp(窗口) + SettingsPanel(侧边) | **80%**（2026-08-31） | ~~两套 UI 字段不一致~~ 已抽取共享 `SettingsForm.vue`；~~autoLaunch 初值不读真值（E3）~~ 已读真值；~~录屏参数不可配~~ 已可配；剩余：快捷键槽位（P2-2） |
-| 13 | 诊断/自检 | `services/diagnostic.ts:262` + 导出包 | SettingsPanel 诊断区 | **50%** | 7 项检查中 4 项是空 try 块恒返回 ok（diagnostic.ts:171-216） |
+| 13 | 诊断/自检 | `services/diagnostic.ts:262` + 导出包 | SettingsPanel 诊断区 | **80%**（2026-08-31） | ~~7 项检查中 4 项是空 try 块恒返回 ok~~ 已真实化（P1-12）；剩余：`features` 进一步细化（P2-4） |
 | 14 | 白名单策略 | `ConfigService.isModuleDisabled()` (config.ts:140) | 无 | **10%** | 函数存在但**全库 0 调用**，UI 无过滤 |
 | 15 | 快捷键槽位 | 无 | 无 | **0%** | README 列为 P1；实际仅 `capture.hotkey` 一个，无冲突检测 |
 | 16 | 锁屏 / 电源 | 无 | rail 有 `lock` 图标 → 打开设置面板 | **0%** | `config.power` 三字段（launcher/sleep/powerOnAt）全库 0 引用 |
@@ -110,9 +110,9 @@
 | D5 | 录屏参数硬编码：`{fps:15}`，mic 从不传；`config.recorder.fps/bitrate/mic` 为死配置 | CapturePanel.vue:278；config.ts:14 |
 | D6 | 录屏停止返回的 filepath 被丢弃，且 `getStatus()` 不含 filepath → 「最近文件」里永远不出现录屏 | CapturePanel.vue:289-293,143-152；recorder.ts:31-37 |
 | D7 | 长截图倒计时在侧边栏**已隐藏后**才播放：main.ts 先 `hideMain()+sleep(500)` 再进入 `LongshotService.start()` 的倒计时 | main.ts:315-317；longshot.ts:151-155 |
-| D8 | OOBE 环境检测：打印机/USB 硬编码文本「就绪」；**触控能力完全不检测**（README 称检测「屏幕/触控/打印机/输入法」） | OobeApp.vue:200-201；README:82 |
+| D8 | OOBE 环境检测：打印机/USB 硬编码文本「就绪」；**触控能力完全不检测**（README 称检测「屏幕/触控/打印机/输入法」） ✅ **2026-08-31 修复**（P1-12）：新增触控能力判定（`maxTouchPoints`/`pointer:coarse`），打印机/USB 改真实探测 | OobeApp.vue:200-201；README:82 |
 | D9 | OOBE 收集的 `prefs`/`role` 写入配置后**无任何消费方**（README 称「按角色裁剪」） | OobeApp.vue:146-158；config.ts:33 |
-| D10 | 诊断服务 4 项是空 try 块恒返回 ok（录屏/USB/打印机/输入法）；`features.clipboard/desktopCapturer` 硬编码 `true` | diagnostic.ts:171-216,226-228 |
+| D10 | 诊断服务 4 项是空 try 块恒返回 ok（录屏/USB/打印机/输入法）；`features.clipboard/desktopCapturer` 硬编码 `true` ✅ **2026-08-31 修复**（P1-12）：7 项服务检查全部真实探测；`features.clipboard/desktopCapturer/autoLaunch` 真实探测 | diagnostic.ts:171-216,226-228 |
 | D11 | preload `display.windowOrigin` 返回固定 `{x:0,y:0}` | preload.ts:84 |
 | D12 | `notification:dismiss` 主进程为空实现 | main.ts:563-565 |
 | D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 | 见 1.3 表 #14/#15/#16 |
@@ -185,7 +185,7 @@
 | P1-9 | 统一 `overlay:ready` 为「先注册监听、再加载页面」，并拆分录屏专用通道 | `main.ts:164-189,342-363`、`recorder.ts:84-98`、`shared/ipc-channels.ts` | 0.5d | 连续 20 次触发截图/批注/录屏，无一次进入 60s/300s 超时分支 | 无 |
 | P1-10 | 降级 `requireAdministrator`，评估最小提权范围 ✅ **2026-08-31 完成**（`perMachine: false` + `requestedExecutionLevel: asInvoker`；`installer.nsh` 账户类型分支写 HKLM/HKCU 与 ProgramData 策略层，普通用户跳过 ProgramData） | `electron-builder.yml:16,32`、`installer.nsh` | 1d | 普通用户可安装并开机自启，无 UAC 弹窗；ProgramData 策略目录权限另行处理 | 无 |
 | P1-11 | 仓库卫生：移除已跟踪的 `out/`、删死文件、统一许可证与版本号、清理死 IPC 通道与未用 import ✅ **2026-08-31 完成**（`out/` 取消跟踪、`smartsidebar.nsi` 删除、4 个死通道 + `WindowManager.minimize()` 删除、lint 驱动清理 8 处死引用；许可证与版本号统一为 Apache-2.0 / 1.1.0；已本地提交 `94bf2a1`） | 全仓 | 0.5d | `git status` 干净；`package.json.license` 与 LICENSE 一致；全仓版本号唯一 | P0-4 |
-| P1-12 | 修正 OOBE 与诊断的「假检测」 | `OobeApp.vue:177-203`、`diagnostic.ts:149-231` | 1.5d | 诊断报告 7 项均基于真实探测；OOBE 检测项含触控能力真实判定 | 无 |
+| P1-12 | 修正 OOBE 与诊断的「假检测」 ✅ **2026-08-31 完成**：OOBE 环境检测项改为真实探测（新增触控能力判定，打印机走 `printer.getStatus()`、USB 走 `usb.scan()`，不再硬编码「就绪」）；诊断服务 7 项全部真实探测（录屏/USB/打印机/输入法/长截图改用各服务真实状态，`features.clipboard/desktopCapturer/autoLaunch` 不再硬编码） | `OobeApp.vue:177-203`、`diagnostic.ts:149-231` | 1.5d | 诊断报告 7 项均基于真实探测；OOBE 检测项含触控能力真实判定 | 无 |
 
 ### P2 — 补齐定位差距（合计 ≈ 12.5 人天）
 
@@ -229,3 +229,4 @@
 | 2026-08-31 | **F5 修复**：README 项目结构列出 `scripts/ 辅助脚本` 目录但仓库中不存在。创建 `scripts/.gitkeep` 补齐目录，并从 README 中移除该描述 | F5、P1-11 |
 | 2026-08-31 | **P1-6 统一设置 UI**：原 SettingsApp(窗口) 与 SettingsPanel(侧边) 两套字段漂移（E3 autoLaunch 三处矛盾、录屏参数一处配一处不配）。抽取 `components/SettingsForm.vue` 为唯一表单实现（含 loadConfig/save/autoLaunch 读真值），SettingsApp 降为布局壳（`ref` + `defineExpose.save`），两处共享同一字段集与保存逻辑 | P1-6、E3 |
 | 2026-08-31 | **P1-10 降级提权**：`electron-builder.yml` 改为 `perMachine: false` + `requestedExecutionLevel: asInvoker`（普通用户免 UAC 安装/自启）；`installer.nsh` 用 `UserInfo::GetAccountType` 分支——管理员写 HKLM 检测键 + ProgramData 策略层，普通用户写 HKCU 并跳过 ProgramData（运行时由 DEFAULT_CONFIG + %APPDATA% 兜底）。打包实测通过（NSIS 脚本编译 OK，`perMachine=false` 生效） | P1-10、B5 |
+| 2026-08-31 | **P1-12 修正假检测**：OOBE 环境检测新增「触控能力」真实判定（`maxTouchPoints`/`pointer:coarse`），打印机走 `printer.getStatus()`、USB 走 `usb.scan()`，去掉硬编码「就绪」。诊断服务 `_checkServices` 的录屏/USB/打印机/输入法/长截图 5 项空 try 块改为真实探测（`RecorderService.getStatus()`/`UsbService.getDiagnostics()`/`PrinterService.refresh()+getStatus()`/`ImeService.getState()`/`LongshotService.isRunning()`）；`_checkFeatures` 的 `clipboard/desktopCapturer` 改真实探测、`autoLaunch` 读 `app.getLoginItemSettings()` | P1-12、D8、D10 |
