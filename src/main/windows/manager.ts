@@ -1,6 +1,6 @@
 // windows/manager.ts - 窗口管理器
 
-import { app, BrowserWindow, screen, shell } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import log from 'electron-log'
 import type { SidekickConfig } from '../../shared/types'
@@ -148,7 +148,7 @@ export const WindowManager = {
     return sidebarWin
   },
 
-  createOobe(parent: BrowserWindow): BrowserWindow {
+  createOobe(): BrowserWindow {
     if (oobeWin && !oobeWin.isDestroyed()) {
       oobeWin.focus()
       return oobeWin
@@ -161,17 +161,19 @@ export const WindowManager = {
     const x = primary.workArea.x + Math.round((primary.workArea.width - width) / 2)
     const y = primary.workArea.y + Math.round((primary.workArea.height - height) / 2)
 
+    // P0-1 修复: 原实现 parent=侧边栏(尚未 show) + modal: true —— Windows 上模态子窗
+    // 挂在隐藏父窗时可见性不可靠(体检 A1), 模态在此也无意义(侧边栏本来就没显示)。
+    // 改为独立置顶窗口; 「用户直接关闭 OOBE」的兜底见 main.ts bootstrap 的 closed 监听。
     oobeWin = new BrowserWindow({
       x,
       y,
       width,
       height,
-      parent,
-      modal: true,
       frame: false,
       resizable: false,
       minimizable: false,
       maximizable: false,
+      alwaysOnTop: true,
       show: true,
       backgroundColor: '#f5f7fa',
       webPreferences: {
@@ -224,12 +226,6 @@ export const WindowManager = {
   hideMain(): void {
     if (sidebarWin && !sidebarWin.isDestroyed()) {
       sidebarWin.hide()
-    }
-  },
-
-  minimize(): void {
-    if (sidebarWin && !sidebarWin.isDestroyed()) {
-      sidebarWin.minimize()
     }
   },
 
@@ -422,11 +418,16 @@ export const WindowManager = {
         x = cfg.workArea.x
       }
 
+      // P0-2 修复: 原实现 (height || workArea.height) * uiScale —— 渲染层固定传 height=0
+      // (SidebarApp.vue watch isExpanded), 0 为 falsy 落到 workArea.height, 而该值已是 DIP,
+      // 再乘 uiScale 即双乘: 4K@100% (workArea.height=2160, uiScale=2) → 4320 DIP 飞出屏幕。
+      // 正确语义: 0 = 铺满 workArea (DIP, 与 createSidebar 一致, 不乘);
+      // >0 = 渲染层 CSS 基准高度 (与 width 同语义, 需乘 uiScale 转 DIP)。
       sidebarWin.setBounds({
         x,
         y: cfg.workArea.y,
         width: railedWidth,
-        height: (height || cfg.workArea.height) * uiScale
+        height: height > 0 ? Math.round(height * uiScale) : cfg.workArea.height
       }, true)
     }
   },

@@ -3,7 +3,7 @@
 
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
-import { app, BrowserWindow, desktopCapturer, ipcMain, screen, Notification } from 'electron'
+import { app, BrowserWindow, desktopCapturer, ipcMain, Notification } from 'electron'
 import log from 'electron-log'
 import { ConfigService } from './config'
 import { WindowManager } from '../windows/manager'
@@ -14,6 +14,7 @@ let isRecording = false
 let isStarting = false // 新增: 启动中状态,防止UI延迟
 let recordStartTime = 0
 let elapsedTimer: NodeJS.Timeout | null = null
+let lastFilepath: string | null = null // P1-7: 录屏结束后回传 filepath 给 UI
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
@@ -28,11 +29,12 @@ export const RecorderService = {
     return isStarting
   },
 
-  getStatus(): { recording: boolean; starting: boolean; elapsed: number } {
+  getStatus(): { recording: boolean; starting: boolean; elapsed: number; filepath: string | null } {
     return {
       recording: isRecording,
       starting: isStarting,
-      elapsed: isRecording ? Math.round((Date.now() - recordStartTime) / 1000) : 0
+      elapsed: isRecording ? Math.round((Date.now() - recordStartTime) / 1000) : 0,
+      filepath: lastFilepath
     }
   },
 
@@ -42,6 +44,7 @@ export const RecorderService = {
     }
 
     isStarting = true
+    lastFilepath = null // P1-7: 清除上次的 filepath, 避免新录屏显示旧文件
     // 立即广播状态变更,UI可显示"启动中..."
     WindowManager.broadcast(IPC_CHANNELS['recorder:statusChanged'], this.getStatus())
 
@@ -95,11 +98,11 @@ export const RecorderService = {
         log.info('[Recorder] Page ready signal received')
         if (pageReadyResolve) pageReadyResolve()
       }
-      ipcMain.on(IPC_CHANNELS['overlay:ready'], readyHandler)
+      ipcMain.on(IPC_CHANNELS['recorder:ready'], readyHandler)
 
       // 设置10秒超时
       const loadTimeout = setTimeout(() => {
-        ipcMain.removeListener(IPC_CHANNELS['overlay:ready'], readyHandler)
+        ipcMain.removeListener(IPC_CHANNELS['recorder:ready'], readyHandler)
         if (pageReadyReject) pageReadyReject(new Error('录屏页面加载超时'))
       }, 10000)
 
@@ -226,6 +229,9 @@ export const RecorderService = {
               timeoutType: 'default'
             }).show()
           }
+
+          // P1-7: 保存 filepath 供 getStatus() 回传给 UI (最近文件列表)
+          lastFilepath = filepath
 
           this.cleanup()
           safeResolve({ success: true, filepath })

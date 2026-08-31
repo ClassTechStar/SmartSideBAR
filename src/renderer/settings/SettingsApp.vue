@@ -55,6 +55,26 @@
         </div>
       </section>
 
+      <!-- P1-7/D5: 录屏参数可配置 (原硬编码 fps=15, mic 不传) -->
+      <section class="settings-section">
+        <h3>录屏</h3>
+        <div class="setting-row">
+          <span>帧率 (fps)</span>
+          <select v-model.number="recorderFps">
+            <option :value="15">15 (省资源)</option>
+            <option :value="24">24 (流畅)</option>
+            <option :value="30">30 (高清)</option>
+            <option :value="60">60 (超清)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <span>录制麦克风</span>
+          <button class="toggle" :class="{ on: recorderMic }" @click="recorderMic = !recorderMic">
+            <span class="toggle-knob"></span>
+          </button>
+        </div>
+      </section>
+
       <!-- USB -->
       <section class="settings-section">
         <h3>USB 监控</h3>
@@ -79,7 +99,7 @@
       <section class="settings-section">
         <h3>关于</h3>
         <div class="about-info">
-          <p>希沃侧边快捷键工具 v2.0.0</p>
+          <p>希沃侧边快捷键工具 v1.1.0</p>
           <p class="muted">Electron + Vue 3</p>
         </div>
       </section>
@@ -101,6 +121,8 @@ const imeSlot2 = ref('US')
 const captureHotkey = ref('Ctrl+Shift+A')
 const captureFormat = ref('PNG')
 const captureDir = ref('')
+const recorderFps = ref(15)
+const recorderMic = ref(false)
 const usbEnabled = ref(true)
 const printerInterval = ref(10)
 
@@ -113,10 +135,19 @@ async function loadConfig() {
     captureHotkey.value = cfg.capture.hotkey
     captureFormat.value = cfg.capture.format
     captureDir.value = cfg.capture.dir
+    // P1-7: 录屏参数从 config 读取
+    recorderFps.value = cfg.recorder?.fps || 15
+    recorderMic.value = cfg.recorder?.mic ?? false
     usbEnabled.value = cfg.usb.enabled
     printerInterval.value = cfg.printer.pollIntervalSec
   } catch (e) {
     console.error('Load config failed:', e)
+  }
+  // P1-6/E3: autoLaunch 读取系统登录项真实状态 (原硬编码 false)
+  try {
+    autoLaunch.value = await window.sidekick.power.getAutoLaunch()
+  } catch (e) {
+    console.error('Get autoLaunch failed:', e)
   }
 }
 
@@ -133,6 +164,9 @@ async function save() {
     await window.sidekick.config.set('capture.hotkey', captureHotkey.value)
     await window.sidekick.config.set('capture.format', captureFormat.value)
     await window.sidekick.config.set('capture.dir', captureDir.value)
+    // P1-7: 保存录屏参数到 config
+    await window.sidekick.config.set('recorder.fps', recorderFps.value)
+    await window.sidekick.config.set('recorder.mic', recorderMic.value)
     await window.sidekick.config.set('usb.enabled', usbEnabled.value)
     await window.sidekick.config.set('printer.pollIntervalSec', printerInterval.value)
     alert('设置已保存')
