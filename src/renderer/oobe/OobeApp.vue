@@ -114,6 +114,7 @@ const steps = [
 
 const envChecklist = ref([
   { key: 'screen', label: '屏幕分辨率', status: 'ok', text: '检测中...' },
+  { key: 'touch', label: '触控能力', status: 'ok', text: '检测中...' },
   { key: 'ime', label: '输入法服务', status: 'ok', text: '检测中...' },
   { key: 'printer', label: '打印机', status: 'ok', text: '检测中...' },
   { key: 'usb', label: 'USB 监控', status: 'ok', text: '检测中...' }
@@ -178,6 +179,7 @@ onMounted(async () => {
 
   // 环境检测
   setTimeout(async () => {
+    // 1. 屏幕分辨率
     try {
       const displays = await window.sidekick.display.list()
       if (displays && displays.length > 0) {
@@ -190,17 +192,58 @@ onMounted(async () => {
       envChecklist.value[0].status = 'warn'
     }
 
+    // 2. 触控能力 (P1-12 真实化)
     try {
-      const ime = await window.sidekick.ime.getState()
-      envChecklist.value[1].text = ime.mode === 'cn' ? '中文' : '英文'
-      envChecklist.value[1].status = 'ok'
+      const hasTouch = 'ontouchstart' in window ||
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+        window.matchMedia('((pointer: coarse)').matches
+      envChecklist.value[1].text = hasTouch ? '支持触控' : '仅鼠标/键盘'
+      envChecklist.value[1].status = hasTouch ? 'ok' : 'warn'
     } catch {
-      envChecklist.value[1].text = '降级模式'
+      envChecklist.value[1].text = '检测失败'
       envChecklist.value[1].status = 'warn'
     }
 
-    envChecklist.value[2].text = '就绪'
-    envChecklist.value[3].text = '就绪'
+    // 3. 输入法服务
+    try {
+      const ime = await window.sidekick.ime.getState()
+      envChecklist.value[2].text = ime.mode === 'cn' ? '中文' : '英文'
+      envChecklist.value[2].status = 'ok'
+    } catch {
+      envChecklist.value[2].text = '降级模式'
+      envChecklist.value[2].status = 'warn'
+    }
+
+    // 4. 打印机 (P1-12 真实化)
+    try {
+      const printers = await window.sidekick.printer.getStatus()
+      if (printers && printers.length > 0) {
+        envChecklist.value[3].text = `已发现 ${printers.length} 台`
+        envChecklist.value[3].status = 'ok'
+      } else {
+        envChecklist.value[3].text = '未检测到打印机'
+        envChecklist.value[3].status = 'warn'
+      }
+    } catch {
+      envChecklist.value[3].text = '检测失败'
+      envChecklist.value[3].status = 'warn'
+    }
+
+    // 5. USB 监控 (P1-12 真实化)
+    try {
+      const usbResult = await window.sidekick.usb.scan()
+      if (usbResult?.success) {
+        const count = usbResult.drives?.length || 0
+        envChecklist.value[4].text = count > 0 ? `已发现 ${count} 个设备` : '当前无 USB 设备'
+        envChecklist.value[4].status = 'ok'
+      } else {
+        envChecklist.value[4].text = '监控通道异常'
+        envChecklist.value[4].status = 'warn'
+      }
+    } catch {
+      envChecklist.value[4].text = '检测失败'
+      envChecklist.value[4].status = 'warn'
+    }
   }, 500)
 })
 </script>
