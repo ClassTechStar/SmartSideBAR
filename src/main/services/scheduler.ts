@@ -48,6 +48,7 @@ export const SchedulerService = {
   tick(): void {
     const now = Date.now()
     const toRemove: string[] = []
+    let changed = false
 
     for (const r of reminders) {
       // 贪睡中 — 跳过
@@ -56,6 +57,7 @@ export const SchedulerService = {
       // 贪睡已过期 — 清除标记
       if (r.snoozedUntil && now >= r.snoozedUntil) {
         r.snoozedUntil = undefined
+        changed = true
       }
 
       if (r.kind === 'once' && now >= r.at) {
@@ -68,20 +70,27 @@ export const SchedulerService = {
       } else if (r.kind === 'interval' && r.repeatMin && now >= r.at) {
         this.fire(r)
         r.at = now + r.repeatMin * 60000
+        changed = true
       } else if (r.kind === 'hourly' && now >= r.at) {
         this.fire(r)
         const nextHour = new Date(now)
         nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
         r.at = nextHour.getTime()
+        changed = true
       }
     }
 
     if (toRemove.length > 0) {
       reminders = reminders.filter(r => !toRemove.includes(r.id))
+      changed = true
       log.info(`[Scheduler] Auto-removed ${toRemove.length} fired once-reminder(s)`)
     }
 
-    ConfigService.set('reminders', reminders)
+    // P1-2 (C1 修复): 仅在提醒集合实际变化时落盘
+    // 原实现每 3s 无条件 ConfigService.set → 每天约 2.9 万次全量 JSON 写盘
+    if (changed) {
+      ConfigService.set('reminders', reminders)
+    }
   },
 
   fire(r: Reminder): void {

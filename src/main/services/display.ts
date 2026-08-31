@@ -24,24 +24,17 @@ export const DisplayService = {
     displays = buildDisplayInfo()
     this.selectTarget(config)
 
-    // 监听显示变化
-    screen.on('display-metrics-changed', () => {
-      log.info('[Display] Metrics changed, updating...')
-      displays = buildDisplayInfo()
-      this.selectTarget(config)
-    })
-
-    screen.on('display-added', () => {
-      displays = buildDisplayInfo()
-      this.selectTarget(config)
-    })
-
-    screen.on('display-removed', () => {
-      displays = buildDisplayInfo()
-      this.selectTarget(config)
-    })
+    // E7 修复: 显示器变更监听统一由 main.ts 的防抖处理器调用 refresh(),
+    // 此处不再重复注册 screen 事件监听器
 
     log.info(`[Display] Initialized with ${displays.length} display(s)`)
+  },
+
+  /** 显示器配置变化时刷新缓存并重新选择目标 (由 main.ts 防抖调用) */
+  refresh(config: SidekickConfig): void {
+    displays = buildDisplayInfo()
+    this.selectTarget(config)
+    log.info(`[Display] Refreshed: ${displays.length} display(s), target=${this.sidebarTarget().id}`)
   },
 
   selectTarget(config: SidekickConfig): void {

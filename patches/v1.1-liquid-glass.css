@@ -105,10 +105,14 @@
   font-size: 10px !important;
 }
 
-/* ---------- 2. 停靠把手箭头：字重对齐图标线条 ---------- */
-.dock-arrow[data-v-92633577] {
-  font-weight: 400 !important;
-  font-size: 20px !important;
+/* ---------- 2. 停靠把手箭头：与 rail 图标同规格的内联 SVG ---------- */
+/* 此处刻意不追加 [data-v-*] 作用域哈希, 原因:
+   plugin-vue 5.2.4 的 scoped id = sha256(relPath + (isProduction ? source : '')),
+   即生产构建下哈希随文件内容变化, 硬编码必然在某次改动后静默失效。
+   本规则全部属性已带 !important, 去掉属性选择器不影响覆盖优先级。 */
+.dock-arrow {
+  width: 22px !important;
+  height: 22px !important;
   color: rgba(30, 34, 40, 0.8) !important;
 }
 

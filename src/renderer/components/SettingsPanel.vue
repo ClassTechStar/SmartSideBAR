@@ -133,18 +133,27 @@
     </div>
 
     <div class="about">
-      <span class="version">v{{ diagResult?.version || '2.0.0' }}</span>
+      <span class="version">v{{ diagResult?.version || '1.1.0' }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
-const autoLaunch = ref(true)
+// P1-6/E3: autoLaunch 初值不再硬编码 true, 改为 onMounted 时读取系统登录项真实状态
+const autoLaunch = ref(false)
 const diagRunning = ref(false)
 const diagResult = ref<any>(null)
 const memoryPercent = ref(0)
+
+onMounted(async () => {
+  try {
+    autoLaunch.value = await window.sidekick.power.getAutoLaunch()
+  } catch (e) {
+    console.error('Get autoLaunch failed:', e)
+  }
+})
 
 function icon(name: string): string {
   return new URL(`../assets/icons/${name}.svg`, import.meta.url).href
@@ -177,7 +186,7 @@ async function runDiagnostics() {
     console.error('Diagnostics failed:', e)
     diagResult.value = {
       timestamp: new Date().toLocaleString('zh-CN'),
-      version: '2.0.0',
+      version: '1.1.0',
       system: {
         os: 'unknown', osVersion: '诊断失败', platform: '', arch: '', electron: '', chrome: '', node: '',
         uptime: 0,

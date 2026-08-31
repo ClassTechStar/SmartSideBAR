@@ -13,7 +13,7 @@ let unsubStop: (() => void) | null = null
 
 onMounted(() => {
   // 通知主进程页面已就绪
-  window.sidekick.overlay.ready()
+  window.sidekick.recorder.ready()
 
   // 监听开始指令
   unsubStart = window.sidekick.recorder.onPageStart(async (opts: any) => {
