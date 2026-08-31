@@ -54,14 +54,14 @@
 | 9 | 快捷链接 | 无（纯 config 读写） | LinksPanel（CRUD/排序/URL 规范化） | **60%** | **数据丢失缺陷**（E1）；无槽位上限（README 称 3+6） |
 | 10 | 定时提醒 | `services/scheduler.ts:199`（once/interval/hourly + 贪睡 + 铃声） | ReminderPanel | **75%** | 每 3s 全量落盘（C1）；重启后过期周期提醒会立刻补触发 |
 | 11 | OOBE 引导 | `main.ts:69-75,502-510` | OobeApp 6 步 | **90%**（2026-08-31） | ~~首启可见性存疑（A1）~~ 已修复；~~检测项硬编码（D8）~~ 已真实化；~~prefs/role 零消费（D9）~~ 已消费（P2-3） |
-| 12 | 设置 | `config:get/set` + `window:openSettings` | SettingsApp(窗口) + SettingsPanel(侧边) | **80%**（2026-08-31） | ~~两套 UI 字段不一致~~ 已抽取共享 `SettingsForm.vue`；~~autoLaunch 初值不读真值（E3）~~ 已读真值；~~录屏参数不可配~~ 已可配；剩余：快捷键槽位（P2-2） |
+| 12 | 设置 | `config:get/set` + `window:openSettings` | SettingsApp(窗口) + SettingsPanel(侧边) | **90%**（2026-08-31） | ~~两套 UI 字段不一致~~ 已抽取共享 `SettingsForm.vue`；~~autoLaunch 初值不读真值（E3）~~ 已读真值；~~录屏参数不可配~~ 已可配；~~快捷键槽位（P2-2）~~ 已实现 |
 | 13 | 诊断/自检 | `services/diagnostic.ts:262` + 导出包 | SettingsPanel 诊断区 | **80%**（2026-08-31） | ~~7 项检查中 4 项是空 try 块恒返回 ok~~ 已真实化（P1-12）；剩余：`features` 进一步细化（P2-4） |
 | 14 | 白名单策略 | `ConfigService.isModuleDisabled()` (config.ts:140) | SidebarApp railItems + bootstrap 服务启动 | **90%**（2026-08-31） | ~~函数 0 调用、UI 无过滤~~ 已落地（P2-1）：主进程服务启动 + railItems 双重过滤；OOBE prefs/role 映射为禁用项（P2-3） |
-| 15 | 快捷键槽位 | 无 | 无 | **0%** | README 列为 P1；实际仅 `capture.hotkey` 一个，无冲突检测 |
+| 15 | 快捷键槽位 | `services/hotkey.ts` | SettingsForm 3 个热键输入 | **90%**（2026-08-31） | ~~仅 capture.hotkey 一个、无冲突检测~~ 已实现（P2-2）：3 槽位 + 注册失败替代建议；剩余：真机验证冲突场景 |
 | 16 | 锁屏 / 电源 | 无 | rail 有 `lock` 图标 → 打开设置面板 ✅ **2026-08-31 移除**（P2-5）：删除 rail lock 项 + `config.power` 死配置 | **0%** → 移除 | `config.power` 三字段（launcher/sleep/powerOnAt）全库 0 引用 |
 | 17 | 自动更新 | 无 | 无 ✅ **2026-08-31 移除**（P2-6）：删除 `electron-updater` 依赖与 README 声明 | **0%** → 移除 | `electron-updater` 已装但 **0 引用**；builder 无 `publish` 配置 |
 
-**README 功能表 13 项中：白名单策略已落地（P2-1）、锁屏/电源已移除（P2-5）、录屏「转 MP4」表述已更正；仅剩「快捷键槽位」未实现（P2-2）。**
+**README 功能表 13 项中：白名单策略已落地（P2-1）、锁屏/电源已移除（P2-5）、录屏「转 MP4」表述已更正、快捷键槽位已实现（P2-2）。**
 
 ---
 
@@ -111,11 +111,11 @@
 | D6 | 录屏停止返回的 filepath 被丢弃，且 `getStatus()` 不含 filepath → 「最近文件」里永远不出现录屏 | CapturePanel.vue:289-293,143-152；recorder.ts:31-37 |
 | D7 | 长截图倒计时在侧边栏**已隐藏后**才播放：main.ts 先 `hideMain()+sleep(500)` 再进入 `LongshotService.start()` 的倒计时 | main.ts:315-317；longshot.ts:151-155 |
 | D8 | OOBE 环境检测：打印机/USB 硬编码文本「就绪」；**触控能力完全不检测**（README 称检测「屏幕/触控/打印机/输入法」） ✅ **2026-08-31 修复**（P1-12）：新增触控能力判定（`maxTouchPoints`/`pointer:coarse`），打印机/USB 改真实探测 | OobeApp.vue:200-201；README:82 |
-| D9 | OOBE 收集的 `prefs`/`role` 写入配置后**无任何消费方**（README 称「按角色裁剪」） ✅ **2026-08-31 修复**（P2-3）：OOBE `finish()` 将未启用功能映射为 `policy.disabledModules`，role=teacher 追加禁用 taskmgr/power，由 P2-1 的过滤消费 | OobeApp.vue:146-158；config.ts:33 |
+| D9 | OOBE 收集的 `prefs`/`role` 写入配置后**无任何消费方**（README 称「按角色裁剪」） ✅ **2026-08-31 修复**（P2-3）：OOBE `finish()` 将未启用功能映射为 `policy.disabledModules`，role=teacher 追加禁用 taskmgr，由 P2-1 的过滤消费 | OobeApp.vue:146-158；config.ts:33 |
 | D10 | 诊断服务 4 项是空 try 块恒返回 ok（录屏/USB/打印机/输入法）；`features.clipboard/desktopCapturer` 硬编码 `true` ✅ **2026-08-31 修复**（P1-12）：7 项服务检查全部真实探测；`features.clipboard/desktopCapturer/autoLaunch` 真实探测 | diagnostic.ts:171-216,226-228 |
 | D11 | preload `display.windowOrigin` 返回固定 `{x:0,y:0}` ✅ **2026-08-31 修复**：该 API 全库无调用方（display.ts 的 `windowOrigin` 方法同为死代码），一并删除 | preload.ts:84 |
 | D12 | `notification:dismiss` 主进程为空实现 | main.ts:563-565 |
-| D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 ◐ **大部分解决**：白名单策略已落地（P2-1/P2-3）；锁屏/电源已移除（P2-5）；仅剩快捷键槽位（P2-2） | 见 1.3 表 #14/#15/#16 |
+| D13 | README 的「快捷键槽位 3 个 + 冲突检测」「白名单策略」「锁屏/电源」——代码均无实现 ✅ **2026-08-31 全部解决**：白名单策略已落地（P2-1/P2-3）；锁屏/电源已移除（P2-5）；快捷键槽位已实现（P2-2） | 见 1.3 表 #14/#15/#16 |
 | D14 | `electron-updater` 0 引用 + builder 无 publish → 「自动更新」不存在 ✅ **2026-08-31 修复**（P2-6）：移除 electron-updater 依赖与 README 声明，不再承诺自动更新 | 全库 grep；electron-builder.yml 无 publish 段 |
 | D15 | `config.usb.ignoreTypes = ['phone','carplay']` 从不参与过滤 ✅ **2026-08-31 修复**：`UsbService.start()` 读取配置，`filterIgnored()` 应用于初始扫描 / 事件扫描 / 手动刷新全路径 | config.ts:15；usb.ts 无引用 |
 
@@ -192,8 +192,8 @@
 | # | 目标 | 涉及模块 | 工作量 | 验收标准 | 前置依赖 |
 |---|------|---------|-------|---------|---------|
 | P2-1 | 白名单策略落地：把 `isModuleDisabled` 注入 railItems 与各面板 ✅ **2026-08-31 完成**：主进程 bootstrap 服务启动按策略跳过 + SidebarApp railItems 按 `disabledModules` 过滤（module 字段标注） | `config.ts:140`、`SidebarApp.vue:89-108` | 1d | ProgramData 策略禁用某模块后，该 rail 图标消失且对应服务不启动 | P1-11 |
-| P2-2 | 快捷键槽位（3 个）+ 冲突检测与替代建议 | 新增 `services/hotkey.ts`、`SettingsApp.vue`、`ipc-channels.ts` | 2d | 注册失败时给出可用替代组合；改键即时生效 | P1-6 |
-| P2-3 | OOBE prefs / role 真正生效，模块可见性按角色裁剪 ✅ **2026-08-31 完成**：`finish()` 将未启用功能映射为 `policy.disabledModules`，teacher 角色追加禁用 taskmgr/power | `OobeApp.vue:145-165`、`SidebarApp.vue` | 1.5d | 选「教师」与「管理员」后 rail 项按预设差异显示 | P2-1 |
+| P2-2 | 快捷键槽位（3 个）+ 冲突检测与替代建议 ✅ **2026-08-31 完成**：新增 `services/hotkey.ts`（HotkeyService 管理 3 槽位 + 注册失败返回替代建议）；截图/批注/长截图抽为独立函数供热键复用；设置表单加 3 个热键输入；`hotkey:getState` 通道暴露槽位状态 | 新增 `services/hotkey.ts`、`SettingsForm.vue`、`ipc-channels.ts` | 2d | 注册失败时给出可用替代组合；改键即时生效 | P1-6 |
+| P2-3 | OOBE prefs / role 真正生效，模块可见性按角色裁剪 ✅ **2026-08-31 完成**：`finish()` 将未启用功能映射为 `policy.disabledModules`，teacher 角色追加禁用 taskmgr | `OobeApp.vue:145-165`、`SidebarApp.vue` | 1.5d | 选「教师」与「管理员」后 rail 项按预设差异显示 | P2-1 |
 | P2-4 | 诊断服务真实化 + 导出包可定位问题 ✅ **已由 P1-12 完成**：7 项服务检查真实探测 + features 真实化；导出包已存在（exportPack 打包 report.json + 日志） | `diagnostic.ts` | 1.5d | 断网/拔打印机/禁用通知等场景下报告状态正确变化 | P1-12 |
 | P2-5 | 锁屏/电源功能落地，或移除 rail 上的 `lock` 图标 ✅ **2026-08-31 完成（移除）**：删除 rail lock 项 + `config.power` 死配置（types/config/main 白名单/OOBE 引用一并清理） | `ipc-channels.ts`、`SidebarApp.vue:106`、`config.ts:11` | 0.5d | 功能可用，或图标消失且 config.power 删除 | 无 |
 | P2-6 | 自动更新：接入 `electron-updater` + builder `publish`，或移除依赖与 README 声明 ✅ **2026-08-31 完成（移除）**：`npm uninstall electron-updater` + 删除 README 技术栈「更新」行 | 新增更新模块、`electron-builder.yml`、README | 1d | 检测到新版本并提示；或依赖与文档均已删除 | P1-10 |
@@ -234,3 +234,4 @@
 | 2026-08-31 | **P2-1/P2-3 白名单策略落地 + prefs/role 生效**：主进程 bootstrap 按 `policy.disabledModules` 跳过常驻服务启动；SidebarApp railItems 加 `module` 字段并按 `disabledModules` 过滤；OOBE `finish()` 将未启用功能映射为禁用项、teacher 角色追加禁用 taskmgr | P2-1、P2-3、D9、D13 |
 | 2026-08-31 | **P2-9 回归清单**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准）。并标记 P2-4（P1-12 覆盖）/P2-7（托盘已做）/P2-11（箭头已做）为完成 | P2-4、P2-7、P2-9、P2-11 |
 | 2026-08-31 | **P2-5/P2-6 移除死功能**（用户决策）：P2-5 删除 rail `lock` 项与 `config.power` 死配置（types/config/main 白名单/OOBE 引用一并清理）；P2-6 `npm uninstall electron-updater` + 删除 README 技术栈「更新」行。顺手更正 README 录屏「WebM 转 MP4」夸大表述 | P2-5、P2-6、D13、D14、D4 |
+| 2026-08-31 | **P2-2 快捷键槽位**：新增 `services/hotkey.ts`（HotkeyService 管理 3 槽位 + 注册失败返回替代建议）；截图/批注/长截图抽为 `runRegionCapture`/`runAnnotate`/`runLongshot` 独立函数供热键复用；`capture.annotateHotkey`/`capture.longshotHotkey` 配置 + 设置表单 3 个热键输入 + `hotkey:getState` 通道 | P2-2、D13 |
