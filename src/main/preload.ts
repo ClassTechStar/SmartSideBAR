@@ -113,6 +113,11 @@ const sidekickApi = {
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(IPC_CHANNELS['power:setAutoLaunch'], enabled)
   },
 
+  // 快捷键槽位 (P2-2)
+  hotkey: {
+    getState: () => ipcRenderer.invoke(IPC_CHANNELS['hotkey:getState'])
+  },
+
   // 系统操作
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke(IPC_CHANNELS['shell:openExternal'], url),

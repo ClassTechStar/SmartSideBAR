@@ -116,6 +116,8 @@ export interface SidekickConfig {
   }
   capture: {
     hotkey: string
+    annotateHotkey: string
+    longshotHotkey: string
     format: string
     dir: string
   }
