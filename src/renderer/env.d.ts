@@ -64,6 +64,9 @@ interface Window {
       getAutoLaunch: () => Promise<boolean>
       setAutoLaunch: (enabled: boolean) => Promise<boolean>
     }
+    hotkey: {
+      getState: () => Promise<Array<{ id: string; accelerator: string }>>
+    }
     shell: {
       openExternal: (url: string) => Promise<void>
       openPath: (path: string) => Promise<boolean>
