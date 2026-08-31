@@ -54,7 +54,7 @@
 | 9 | 快捷链接 | 无（纯 config 读写） | LinksPanel（CRUD/排序/URL 规范化） | **60%** | **数据丢失缺陷**（E1）；无槽位上限（README 称 3+6） |
 | 10 | 定时提醒 | `services/scheduler.ts:199`（once/interval/hourly + 贪睡 + 铃声） | ReminderPanel | **75%** | 每 3s 全量落盘（C1）；重启后过期周期提醒会立刻补触发 |
 | 11 | OOBE 引导 | `main.ts:69-75,502-510` | OobeApp 6 步 | **55%** | 首启可见性存疑（A1）；prefs/role 零消费（D9）；检测项硬编码（D8） |
-| 12 | 设置 | `config:get/set` + `window:openSettings` | SettingsApp(窗口) + SettingsPanel(侧边) | **50%** | **两套 UI 字段不一致**；autoLaunch 初值不读真值（E3）；录屏参数不可配 |
+| 12 | 设置 | `config:get/set` + `window:openSettings` | SettingsApp(窗口) + SettingsPanel(侧边) | **80%**（2026-08-31） | ~~两套 UI 字段不一致~~ 已抽取共享 `SettingsForm.vue`；~~autoLaunch 初值不读真值（E3）~~ 已读真值；~~录屏参数不可配~~ 已可配；剩余：快捷键槽位（P2-2） |
 | 13 | 诊断/自检 | `services/diagnostic.ts:262` + 导出包 | SettingsPanel 诊断区 | **50%** | 7 项检查中 4 项是空 try 块恒返回 ok（diagnostic.ts:171-216） |
 | 14 | 白名单策略 | `ConfigService.isModuleDisabled()` (config.ts:140) | 无 | **10%** | 函数存在但**全库 0 调用**，UI 无过滤 |
 | 15 | 快捷键槽位 | 无 | 无 | **0%** | README 列为 P1；实际仅 `capture.hotkey` 一个，无冲突检测 |
@@ -85,7 +85,7 @@
 | B2 | `shell:openExternal` 接受任意 URL 无白名单；`shell:openPath` 接受任意路径 | main.ts:489-499 | 渲染层一旦被注入即可拉起任意程序/协议 |
 | B3 | `ConfigService.set` 支持任意点分路径写入（`key.split('.')` 后逐级赋值），键名无白名单 | config.ts:120-127 | 可写入非预期配置字段乃至原型链路径 |
 | B4 | index.html 无 CSP meta；dev 下 `webSecurity: !isDev` 关闭同源策略；所有窗口 `sandbox: false` | index.html:1-18；manager.ts:124 | 纵深防御缺失 |
-| B5 | `requestedExecutionLevel: requireAdministrator` + `perMachine: true` | electron-builder.yml:16,32 | 常驻课堂工具每次启动都提权；开机自启撞 UAC；与未来自动更新（需静默）冲突 |
+| B5 | `requestedExecutionLevel: requireAdministrator` + `perMachine: true` ✅ **2026-08-31 修复**（P1-10）：`perMachine: false` + `requestedExecutionLevel: asInvoker`；`installer.nsh` 按账户类型分支——管理员写 HKLM + ProgramData 策略层，普通用户写 HKCU 并跳过 ProgramData（运行时由 DEFAULT_CONFIG + %APPDATA% 兜底） | electron-builder.yml:16,32 | 常驻课堂工具每次启动都提权；开机自启撞 UAC；与未来自动更新（需静默）冲突 |
 | B6 | `Object.freeze(sidekickApi)` 仅**浅冻结**，嵌套对象仍可篡改 | preload.ts:193 | README 声称「冻结 API 防止篡改」，实际可绕过 |
 
 ### C. 性能 / 资源
@@ -125,7 +125,7 @@
 |----|------|------|
 | E1 | **链接数据丢失**：`loadLinks` 只加载 `enabled && url非空` 的链接，`saveAll` 又把该子集整体回写 → 默认配置里的 `l4`/`l5` 在任意一次编辑后被永久删除 | LinksPanel.vue:83,246-255 |
 | E2 | `oobe.setState` 传**部分对象**，而 `ConfigService.set` 是整键覆盖 → `skip()` 会抹掉 `prefs`/`env`/`completedAt` 等字段 | OobeApp.vue:141；config.ts:127 |
-| E3 | 开机自启状态三处矛盾：SettingsApp 初值恒 `false` 且不读真值（preload 未暴露 `power:getAutoLaunch`，尽管 main.ts:517 有 handler）；SettingsPanel 初值恒 `true` | SettingsApp.vue:97,107-121；SettingsPanel.vue:144；preload.ts:106-108 |
+| E3 | 开机自启状态三处矛盾：SettingsApp 初值恒 `false` 且不读真值（preload 未暴露 `power:getAutoLaunch`，尽管 main.ts:517 有 handler）；SettingsPanel 初值恒 `true` ✅ **2026-08-31 修复**（P1-6）：`power:getAutoLaunch` 已暴露；autoLaunch 读取抽到共享 `SettingsForm.vue` 的 `onMounted`，设置窗口与侧边栏两处均读系统登录项真实状态 | SettingsApp.vue:97,107-121；SettingsPanel.vue:144；preload.ts:106-108 |
 | E4 | **打印机状态映射错误**：位掩码 `0x80/0x40/0x200000` 属于 `DetectedErrorState`，却被用在 `PrinterState \|\| PrinterStatus` 上；`state===3` 判为 `ok`，而 Win32_Printer.PrinterState **3 = Paper Jam**。查询里 `Select DetectedErrorState` 取了却不用 | printer.ts:17,20-29 |
 | E5 | `usb.getDiagnostics` 错接到 `help:runDiagnostics` → UsbPanel 每次挂载触发一次**全量诊断** | preload.ts:156；UsbPanel.vue:130-134 |
 | E6 | `PrinterService.broadcast` 无 `isDestroyed()` 保护（UsbService 有） | printer.ts:91-93 vs usb.ts:489 |
@@ -179,12 +179,12 @@
 | P1-3 | USB 轮询降载：拉长间隔 / 仅在 WMI 不可用时启用 / 复用常驻进程 ◐ **大部分完成**（2026-08-30 三次 PowerShell 调用合并为单次 `PS_SCAN_SCRIPT`；2026-08-31 轮询策略改为事件驱动 + 健康巡检：监听器健康时仅 5 分钟巡检 1 次，异常退出时回落 8s 降级轮询 + 指数退避重启 5s→60s 封顶。剩余「复用常驻进程做扫描」随事件驱动达成后收益已很小，暂不实施） | `services/usb.ts:382-457` | 1.5d | 空闲 10 分钟内 PowerShell 进程创建次数 ≤ 3 | 无 |
 | P1-4 | 修正打印机状态映射：改用 `DetectedErrorState` 位掩码 + `PrinterStatus` 综合判定 | `printer.ts:16-29,63-79` | 1d | 缺纸/卡纸/离线/墨量低四类可人工构造并正确识别；`PrinterState=3` 判为卡纸而非正常 | 无 |
 | P1-5 | 修复链接数据丢失：saveAll 回写全量 links | `LinksPanel.vue:80-85,246-255` | 0.5d | 编辑任一链接后，`l4`/`l5` 等未启用链接仍在 config 中 | 无 |
-| P1-6 | 统一设置 UI：合并 SettingsPanel / SettingsApp，autoLaunch 读取真值 | `SettingsApp.vue`、`SettingsPanel.vue`、`preload.ts` | 1.5d | 两处设置项一致；开关初值与系统登录项真实状态一致 | 无 |
+| P1-6 | 统一设置 UI：合并 SettingsPanel / SettingsApp，autoLaunch 读取真值 ✅ **2026-08-31 完成**（抽取 `SettingsForm.vue` 共享表单，SettingsApp 降为布局壳；autoLaunch 在共享表单 `onMounted` 读 `power:getAutoLaunch` 真值） | 新增 `components/SettingsForm.vue`、`SettingsApp.vue` | 1.5d | 两处设置项一致；开关初值与系统登录项真实状态一致 | 无 |
 | P1-7 | 录屏参数与结果闭环：fps/mic 取自 config；stop 回传 filepath 写入最近文件；README 更正「转 MP4」表述 | `CapturePanel.vue:274-293`、`recorder.ts:31-37,179-246`、README | 1d | 改 config.recorder.fps=30/mic=true 后生效；录屏结束后最近文件出现该条 | P0-4 |
 | P1-8 | 批注保存语义明确化：提供「仅笔迹 / 含屏幕背景」两种导出 | `AnnotateApp.vue:437-444`、`capture.ts:150-176` | 0.5d | 两种模式各产出一张 PNG，内容符合预期 | P0-5 |
 | P1-9 | 统一 `overlay:ready` 为「先注册监听、再加载页面」，并拆分录屏专用通道 | `main.ts:164-189,342-363`、`recorder.ts:84-98`、`shared/ipc-channels.ts` | 0.5d | 连续 20 次触发截图/批注/录屏，无一次进入 60s/300s 超时分支 | 无 |
-| P1-10 | 降级 `requireAdministrator`，评估最小提权范围 | `electron-builder.yml:16,32`、`installer.nsh` | 1d | 普通用户可安装并开机自启，无 UAC 弹窗；ProgramData 策略目录权限另行处理 | 无 |
-| P1-11 | 仓库卫生：移除已跟踪的 `out/`、删死文件、统一许可证与版本号、清理死 IPC 通道与未用 import ◐ **大部分完成**（2026-08-31：`out/` 取消跟踪、`smartsidebar.nsi` 删除、4 个死通道 + `WindowManager.minimize()` 删除、lint 驱动清理 8 处死引用；许可证与版本号已于前期统一为 Apache-2.0 / 1.1.0。剩余：提交收口由用户执行） | 全仓 | 0.5d | `git status` 干净；`package.json.license` 与 LICENSE 一致；全仓版本号唯一 | P0-4 |
+| P1-10 | 降级 `requireAdministrator`，评估最小提权范围 ✅ **2026-08-31 完成**（`perMachine: false` + `requestedExecutionLevel: asInvoker`；`installer.nsh` 账户类型分支写 HKLM/HKCU 与 ProgramData 策略层，普通用户跳过 ProgramData） | `electron-builder.yml:16,32`、`installer.nsh` | 1d | 普通用户可安装并开机自启，无 UAC 弹窗；ProgramData 策略目录权限另行处理 | 无 |
+| P1-11 | 仓库卫生：移除已跟踪的 `out/`、删死文件、统一许可证与版本号、清理死 IPC 通道与未用 import ✅ **2026-08-31 完成**（`out/` 取消跟踪、`smartsidebar.nsi` 删除、4 个死通道 + `WindowManager.minimize()` 删除、lint 驱动清理 8 处死引用；许可证与版本号统一为 Apache-2.0 / 1.1.0；已本地提交 `94bf2a1`） | 全仓 | 0.5d | `git status` 干净；`package.json.license` 与 LICENSE 一致；全仓版本号唯一 | P0-4 |
 | P1-12 | 修正 OOBE 与诊断的「假检测」 | `OobeApp.vue:177-203`、`diagnostic.ts:149-231` | 1.5d | 诊断报告 7 项均基于真实探测；OOBE 检测项含触控能力真实判定 | 无 |
 
 ### P2 — 补齐定位差距（合计 ≈ 12.5 人天）
@@ -226,3 +226,5 @@
 | 2026-08-31 | **P1-3 收尾（USB 轮询降载）**：原实现在监听器健康时仍无条件 30s 轮询（空闲 10 分钟 ≈20 次 PowerShell，远超验收 ≤3）。改为双定时器策略——监听器健康仅 5 分钟巡检 1 次；监听器异常退出后回落 8s 降级轮询，并实现此前「声明未用」的指数退避重启（5s→10s→20s→40s→60s 封顶；稳定运行 >60s 后重置计数）。诊断接口同步输出 `currentPollMs`/`degradedPolling`/`watcherFailures` | P1-3、C2 |
 | 2026-08-31 | **D15 修复（`config.usb.ignoreTypes` 落地）**：`UsbService.start()` 读取配置，新增 `filterIgnored()` 应用于初始扫描 / 事件驱动扫描 / 手动刷新三条路径 | D15 |
 | 2026-08-31 | **P1-11 仓库卫生**：`git rm -r --cached out/` 结束「已跟踪又被忽略」脏状态（F1 前半）；删除死文件 `build/smartsidebar.nsi`（F7）；删除 0 引用通道 `ime:locale`/`capture:longshot`/`display:metricsChanged` 与 `window:minimize`（含 main.ts handler + `WindowManager.minimize()`）（F6）；lint 驱动清理未用引用：capture.ts `nativeImage`/`dirname`、manager.ts `screen`/`shell`、config.ts `OobeState`、LinksPanel `isValidUrl()`、SidebarApp `DOCK_HEIGHT` | F1、F6、F7、P1-11 |
+| 2026-08-31 | **P1-6 统一设置 UI**：原 SettingsApp(窗口) 与 SettingsPanel(侧边) 两套字段漂移（E3 autoLaunch 三处矛盾、录屏参数一处配一处不配）。抽取 `components/SettingsForm.vue` 为唯一表单实现（含 loadConfig/save/autoLaunch 读真值），SettingsApp 降为布局壳（`ref` + `defineExpose.save`），两处共享同一字段集与保存逻辑 | P1-6、E3 |
+| 2026-08-31 | **P1-10 降级提权**：`electron-builder.yml` 改为 `perMachine: false` + `requestedExecutionLevel: asInvoker`（普通用户免 UAC 安装/自启）；`installer.nsh` 用 `UserInfo::GetAccountType` 分支——管理员写 HKLM 检测键 + ProgramData 策略层，普通用户写 HKCU 并跳过 ProgramData（运行时由 DEFAULT_CONFIG + %APPDATA% 兜底）。打包实测通过（NSIS 脚本编译 OK，`perMachine=false` 生效） | P1-10、B5 |
