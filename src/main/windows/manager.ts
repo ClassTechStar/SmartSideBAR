@@ -6,6 +6,7 @@ import log from 'electron-log'
 import type { SidekickConfig } from '../../shared/types'
 import { DisplayService } from '../services/display'
 import { ConfigService } from '../services/config'
+import { AppBarService, getHwnd, EDGE_LEFT, EDGE_RIGHT } from '../services/appbar'
 
 let sidebarWin: BrowserWindow | null = null
 let oobeWin: BrowserWindow | null = null
@@ -85,6 +86,26 @@ function getRendererPath(view: string): string {
   return join(__dirname, `../renderer/index.html`)
 }
 
+/** 辅助: 更新 AppBar 预留空间 (物理像素) */
+function updateAppBarPos(win: BrowserWindow, dipWidth: number, dipHeight: number): void {
+  if (!AppBarService.isAvailable()) return
+  try {
+    const target = DisplayService.sidebarTarget()
+    const side = (ConfigService.get().display.sidebarSide) === 'right' ? 'right' : 'left'
+    const edge = side === 'right' ? EDGE_RIGHT : EDGE_LEFT
+    const hwnd = getHwnd(win)
+    const physW = Math.round(dipWidth * target.scaleFactor)
+    const physH = Math.round(dipHeight * target.scaleFactor)
+    const physX = side === 'right'
+      ? Math.round(target.bounds.x + target.bounds.width - physW)
+      : Math.round(target.bounds.x)
+    const physY = Math.round(target.bounds.y)
+    AppBarService.queryAndSetPos(hwnd, edge, physX, physY, physW, physH)
+  } catch (e: any) {
+    log.warn('[AppBar] updateAppBarPos failed:', e.message)
+  }
+}
+
 
 
 export const WindowManager = {
@@ -95,14 +116,18 @@ export const WindowManager = {
 
     const target = DisplayService.sidebarTarget()
     const uiScale = computeUiScale(target.workArea.width)
-    // 相对 1920 基准的视觉缩放: 4K@100% 时 workArea=3840 宽 → uiScale=2 → 窗口 104 DIP;
-    // 4K@200% 时 workArea DIP 仍为 1920 → uiScale=1 → 窗口 52 DIP(物理映射交给 Chromium)
     const railWidth = Math.round(52 * uiScale)
     const sidebarHeight = target.workArea.height
+    const side = config.display.sidebarSide === 'right' ? 'right' : 'left'
+    const edge = side === 'right' ? EDGE_RIGHT : EDGE_LEFT
+
+    // 计算初始 DIP 位置 (AppBar 未就绪时的 fallback)
+    const dipX = side === 'right' ? target.workArea.x + target.workArea.width - railWidth : target.workArea.x
+    const dipY = target.workArea.y
 
     sidebarWin = new BrowserWindow({
-      x: target.workArea.x + (config.display.sidebarSide === 'right' ? target.workArea.width - railWidth : 0),
-      y: target.workArea.y,
+      x: dipX,
+      y: dipY,
       width: railWidth,
       height: sidebarHeight,
       frame: false,
@@ -113,7 +138,7 @@ export const WindowManager = {
       maximizable: false,
       fullscreenable: false,
       skipTaskbar: true,
-      alwaysOnTop: true,
+      alwaysOnTop: true, // fallback: AppBar 不可用时 (非 Windows / 模块加载失败) 仍保持置顶
       hasShadow: false,
       show: false,
       webPreferences: {
@@ -125,9 +150,7 @@ export const WindowManager = {
       }
     })
 
-    // 渲染内容等比放大一倍(仅当高DPI无缩放屏), 使 CSS 视口恒定在基准尺寸
     sidebarWin.webContents.setZoomFactor(uiScale)
-    // 适配 DPI: 强制 DIP 模式
     sidebarWin.setBackgroundColor('#ffffff')
 
     if (isDev) {
@@ -137,8 +160,27 @@ export const WindowManager = {
       sidebarWin.loadFile(getRendererPath('sidebar'), { hash: '/sidebar' })
     }
 
+    // 注册为 Windows AppBar: 系统从 WorkArea 预留侧边栏空间, 最大化窗口不会遮挡
     sidebarWin.on('ready-to-show', () => {
       log.info(`[Window] Sidebar ready (${railWidth} DIP x ${sidebarHeight} DIP, uiScale=${uiScale})`)
+
+      if (AppBarService.isAvailable()) {
+        try {
+          const hwnd = getHwnd(sidebarWin!)
+          AppBarService.register(hwnd)
+          // 用物理像素告知系统预留空间, Electron 窗口随后用 DIP 定位
+          const physW = Math.round(railWidth * target.scaleFactor)
+          const physH = Math.round(sidebarHeight * target.scaleFactor)
+          const physX = side === 'right'
+            ? Math.round(target.bounds.x + target.bounds.width - physW)
+            : Math.round(target.bounds.x)
+          const physY = Math.round(target.bounds.y)
+          AppBarService.queryAndSetPos(hwnd, edge, physX, physY, physW, physH)
+          log.info(`[AppBar] Sidebar registered as AppBar (edge=${edge}, physW=${physW}, physH=${physH})`)
+        } catch (e: any) {
+          log.warn('[AppBar] Registration failed, using alwaysOnTop fallback:', e.message)
+        }
+      }
     })
 
     sidebarWin.on('closed', () => {
@@ -429,6 +471,8 @@ export const WindowManager = {
         width: railedWidth,
         height: height > 0 ? Math.round(height * uiScale) : cfg.workArea.height
       }, true)
+      // 更新 AppBar 预留空间
+      updateAppBarPos(sidebarWin, railedWidth, height > 0 ? Math.round(height * uiScale) : cfg.workArea.height)
     }
   },
 
@@ -525,6 +569,7 @@ export const WindowManager = {
         width: railWidth,
         height: dockHeight
       }, true)
+      updateAppBarPos(sidebarWin, railWidth, dockHeight)
       log.info(`[Window] Docked sidebar repositioned: ${railWidth}x${dockHeight} @ (${x}, ${dockY}) uiScale=${uiScale}`)
       return
     }
@@ -535,10 +580,20 @@ export const WindowManager = {
       width: railWidth,
       height: cfg.workArea.height
     }, true)
+    updateAppBarPos(sidebarWin, railWidth, cfg.workArea.height)
     log.info(`[Window] Sidebar repositioned: ${railWidth}x${cfg.workArea.height} @ (${x}, ${cfg.workArea.y}) uiScale=${uiScale}`)
   },
 
   isDocked(): boolean {
     return sidebarDocked
+  },
+
+  /** 应用退出前调用: 注销 AppBar (系统恢复原始 WorkArea) */
+  destroy(): void {
+    if (sidebarWin && !sidebarWin.isDestroyed() && AppBarService.isRegistered()) {
+      try {
+        AppBarService.remove(getHwnd(sidebarWin))
+      } catch { /* ignore */ }
+    }
   }
 }
