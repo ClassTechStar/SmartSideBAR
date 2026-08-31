@@ -9,7 +9,7 @@ import type { SidekickConfig, ReminderSoundConfig } from '../../shared/types'
 const DEFAULT_CONFIG: SidekickConfig = {
   version: 2,
   ime: { slot1: 'Microsoft Pinyin', slot2: 'US', fallbackSwap: true },
-  capture: { hotkey: 'Ctrl+Shift+A', format: 'PNG', dir: '{Pictures}/Sidekick' },
+  capture: { hotkey: 'Ctrl+Shift+A', annotateHotkey: 'Ctrl+Shift+D', longshotHotkey: 'Ctrl+Shift+L', format: 'PNG', dir: '{Pictures}/Sidekick' },
   recorder: { fps: 15, bitrate: '2M', mic: false, dir: '{Videos}/Sidekick' },
   usb: { enabled: true, ignoreTypes: ['phone', 'carplay'] },
   printer: { pollIntervalSec: 10 },
