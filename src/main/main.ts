@@ -1,6 +1,6 @@
 // src/main/main.ts - 主进程入口 (完整版 v2.1 - 真实录屏/批注/区域截图)
 
-import { app, BrowserWindow, ipcMain, screen, globalShortcut, shell, dialog, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell, dialog, Notification } from 'electron'
 import { join } from 'path'
 import { spawn } from 'child_process'
 import log from 'electron-log'
@@ -16,6 +16,7 @@ import { RecorderService } from './services/recorder'
 import { DiagnosticService } from './services/diagnostic'
 import { LongshotService } from './services/longshot'
 import { TrayService } from './services/tray'
+import { HotkeyService } from './services/hotkey'
 import { WindowManager } from './windows/manager'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { SidekickConfig, ReminderSoundConfig } from '../shared/types'
@@ -118,7 +119,7 @@ async function bootstrap() {
     screen.on('display-removed', () => onDisplayEvent('Display removed'))
 
     // ⑧ 注册全局截图热键 (跨显示器场景: 热键动作吸附到当前目标显示器)
-    registerCaptureHotkey(config)
+    registerAllHotkeys(config)
 
     // ⑨ 系统托盘 (F10: 退出入口 + 通知归属)
     TrayService.init()
@@ -135,7 +136,7 @@ async function bootstrap() {
 const ALLOWED_CONFIG_KEYS = new Set([
   'version', 'ime', 'capture', 'recorder', 'usb', 'printer',
   'display', 'links', 'reminders', 'reminderSound', 'oobe', 'policy',
-  'capture.hotkey', 'capture.format', 'capture.dir',
+  'capture.hotkey', 'capture.annotateHotkey', 'capture.longshotHotkey', 'capture.format', 'capture.dir',
   'recorder.fps', 'recorder.bitrate', 'recorder.mic', 'recorder.dir',
   'usb.enabled', 'usb.ignoreTypes',
   'printer.pollIntervalSec',
@@ -157,9 +158,9 @@ ipcMain.handle(IPC_CHANNELS['config:set'], async (_event, key: string, value: un
     return false
   }
   const result = ConfigService.set(key, value)
-  // 热键变更时动态重注册
-  if (key === 'capture.hotkey' && config) {
-    registerCaptureHotkey(config)
+  // 热键变更时动态重注册 (P2-2: 3 个槽位)
+  if (config && (key === 'capture.hotkey' || key === 'capture.annotateHotkey' || key === 'capture.longshotHotkey')) {
+    registerAllHotkeys(config)
   }
   WindowManager.broadcast(IPC_CHANNELS['config:updated'], ConfigService.get())
   return result
@@ -346,25 +347,22 @@ ipcMain.handle(IPC_CHANNELS['capture:region'], async (_event, opts) => {
   return runRegionCapture(opts)
 })
 
-// 全局截图热键 (目标显示器 = 侧边栏吸附屏; 显示器热插拔后由 sidebarTarget 自动重算)
-function registerCaptureHotkey(cfg: SidekickConfig): void {
-  const hotkey = cfg.capture?.hotkey
-  if (!hotkey) return
-  try {
-    // 先注销旧绑定, 避免重复注册 / 同键冲突
-    globalShortcut.unregister(hotkey)
-    const ok = globalShortcut.register(hotkey, () => {
-      log.info(`[Hotkey] Global capture hotkey triggered: ${hotkey}`)
-      runRegionCapture({ mode: 'region' }).catch(e => log.error('[Hotkey] capture failed:', e))
-    })
-    if (ok) {
-      log.info(`[Hotkey] Registered: ${hotkey}`)
-    } else {
-      log.warn(`[Hotkey] Register failed (可能已被其他应用占用): ${hotkey}`)
-    }
-  } catch (e: any) {
-    log.warn(`[Hotkey] Register error: ${e.message}`)
-  }
+// P2-2: 3 个全局热键槽位 (截图/批注/长截图), 由 HotkeyService 统一管理。
+// 注册失败 (被其他应用占用) 时 HotkeyService 会记录替代建议, 供设置 UI 提示。
+function registerAllHotkeys(cfg: SidekickConfig): void {
+  const c = cfg.capture || ({} as SidekickConfig['capture'])
+  HotkeyService.register('capture', c.hotkey, () => {
+    log.info('[Hotkey] capture triggered')
+    runRegionCapture({ mode: 'region' }).catch(e => log.error('[Hotkey] capture failed:', e))
+  })
+  HotkeyService.register('annotate', c.annotateHotkey, () => {
+    log.info('[Hotkey] annotate triggered')
+    runAnnotate().catch(e => log.error('[Hotkey] annotate failed:', e))
+  })
+  HotkeyService.register('longshot', c.longshotHotkey, () => {
+    log.info('[Hotkey] longshot triggered')
+    runLongshot().catch(e => log.error('[Hotkey] longshot failed:', e))
+  })
 }
 
 // ---- 长截图 ----
@@ -374,8 +372,9 @@ ipcMain.handle(IPC_CHANNELS['longshot:selectWindow'], async () => {
   return result
 })
 
-ipcMain.handle(IPC_CHANNELS['longshot:start'], async (_event, opts?: { window?: any }) => {
-  log.info('[IPC] longshot:start opts=', opts)
+// P2-2: 长截图抽为独立函数, 供 rail 点击 (IPC) 与全局热键复用
+async function runLongshot(opts?: { window?: any }): Promise<{ success: boolean; filepath?: string; error?: string }> {
+  log.info('[Longshot] start opts=', opts)
   // D7 修复: 原实现在此 hideMain()+sleep(500) 后才进入 start() 的倒计时,
   // 导致倒计时播放时侧边栏已隐藏, 用户看不到倒计时。
   // start() 内部在倒计时结束后自行 hideMain(), 无需在此提前隐藏。
@@ -385,6 +384,11 @@ ipcMain.handle(IPC_CHANNELS['longshot:start'], async (_event, opts?: { window?: 
     new Notification({ title: '长截图已保存', body: filepath, timeoutType: 'default' }).show()
   }
   return { success: !!filepath, filepath: filepath || undefined, error: filepath ? undefined : '长截图失败' }
+}
+
+ipcMain.handle(IPC_CHANNELS['longshot:start'], async (_event, opts?: { window?: any }) => {
+  log.info('[IPC] longshot:start opts=', opts)
+  return runLongshot(opts)
 })
 
 ipcMain.handle(IPC_CHANNELS['longshot:stop'], async () => {
@@ -395,8 +399,9 @@ ipcMain.handle(IPC_CHANNELS['longshot:stop'], async () => {
 
 // ---- 截图: 批注 ----
 // 透明屏幕绘图模式: 直接在真实屏幕上绘图, 不抓背景截图, 秒开秒画, 更直觉
-ipcMain.handle(IPC_CHANNELS['capture:annotate'], async () => {
-  log.info('[IPC] capture:annotate (transparent overlay mode)')
+// P2-2: 抽为独立函数, 供 rail 点击 (IPC) 与全局热键复用
+async function runAnnotate(): Promise<{ success: boolean; filepath?: string; error?: string }> {
+  log.info('[Annotate] (transparent overlay mode)')
 
   WindowManager.hideMain()
   await sleep(300)
@@ -532,6 +537,11 @@ ipcMain.handle(IPC_CHANNELS['capture:annotate'], async () => {
   })
 
   return result
+}
+
+ipcMain.handle(IPC_CHANNELS['capture:annotate'], async () => {
+  log.info('[IPC] capture:annotate')
+  return runAnnotate()
 })
 
 // ---- 录屏 ----
@@ -660,6 +670,11 @@ ipcMain.handle(IPC_CHANNELS['power:setAutoLaunch'], async (_event, enabled: bool
 })
 ipcMain.handle(IPC_CHANNELS['power:getAutoLaunch'], async () => {
   return app.getLoginItemSettings().openAtLogin
+})
+
+// ---- 快捷键槽位 (P2-2) ----
+ipcMain.handle(IPC_CHANNELS['hotkey:getState'], async () => {
+  return HotkeyService.getState()
 })
 
 // ---- 窗口 ----
@@ -792,7 +807,7 @@ app.whenReady().then(bootstrap)
 
 // 退出清理
 app.on('before-quit', () => {
-  globalShortcut.unregisterAll()
+  HotkeyService.unregisterAll()
   SchedulerService.stop()
   UsbService.stop()
   PrinterService.stop()
