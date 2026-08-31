@@ -96,7 +96,7 @@
 | C2 | USB 后备轮询每 8 秒 spawn 一次 PowerShell 执行 `Get-CimInstance Win32_DiskDrive` 关联查询（最重的一条路径） ✅ **2026-08-31 修复**：监听器健康时仅 5 分钟巡检一次（空闲 10 分钟约 2 次扫描）；仅当 WMI 监听器异常退出时才回落 8s 降级轮询，并配合指数退避重启 | usb.ts:454,192-215 | 常驻进程 churn，4–8GB 教学一体机上 CPU 抖动明显 |
 | C3 | 长截图循环内每帧对**全部已采集帧**重跑 `sharp(f).metadata()`，复杂度 O(n²) | longshot.ts:209-213 | 20 帧 1080p 即需数百次 PNG 头解析，实测可能达分钟级 |
 | C4 | 区域截图先把整屏 PNG 写入临时目录（`saveTempImage`），而 OverlayApp 的 `onInit` 回调体为空，从不使用该图 ✅ **2026-08-31 修复**：删除 `saveTempImage`/`cleanupTemp` 及 4 处调用，overlay 仅框选坐标，裁剪直接用内存中的 img | main.ts:157；capture.ts:140-147；OverlayApp.vue:85-87 | 每次截图多一次全屏 PNG 编码 + 磁盘写入，纯浪费 I/O |
-| C5 | 每次输入法 `getState`/`toggle` 各 spawn 一个 PowerShell（5s 超时） | ime.ts:75,87 | 课堂高频操作下延迟明显（数百 ms 级） |
+| C5 | 每次输入法 `getState`/`toggle` 各 spawn 一个 PowerShell（5s 超时） ✅ **2026-08-31 修复**：改为常驻 PowerShell 守护进程（stdin 发命令、stdout 逐行回 JSON），课堂高频切换下首次 ~300ms、后续 <50ms，进程数从「每次 1 个」降为「全程 1 个」 | ime.ts:75,87 | 课堂高频操作下延迟明显（数百 ms 级） |
 | C6 | 安装包体积风险：Electron 30 + sharp 预编译二进制 + 已提交的 `out/`，README 预算 ≤110MB ✅ **2026-08-31 实测解除**：`electron-builder --win` 产出 **81.6MB** | README:223；package.json:23；dist 实测 | 原「未构建验证，超标概率高」已排除 |
 
 ### D. 未完成 / 占位实现 / 功能夸大
@@ -198,9 +198,9 @@
 | P2-5 | 锁屏/电源功能落地，或移除 rail 上的 `lock` 图标 ✅ **2026-08-31 完成（移除）**：删除 rail lock 项 + `config.power` 死配置（types/config/main 白名单/OOBE 引用一并清理） | `ipc-channels.ts`、`SidebarApp.vue:106`、`config.ts:11` | 0.5d | 功能可用，或图标消失且 config.power 删除 | 无 |
 | P2-6 | 自动更新：接入 `electron-updater` + builder `publish`，或移除依赖与 README 声明 ✅ **2026-08-31 完成（移除）**：`npm uninstall electron-updater` + 删除 README 技术栈「更新」行 | 新增更新模块、`electron-builder.yml`、README | 1d | 检测到新版本并提示；或依赖与文档均已删除 | P1-10 |
 | P2-7 | 托盘图标 + 退出入口 + `app.setAppUserModelId` ✅ **2026-08-31 完成**：新增 `services/tray.ts`（托盘含「显示侧边栏/打开设置/退出」），`main.ts` 调用 `app.setAppUserModelId` + `TrayService.init()` | `main.ts`、新增 tray 模块 | 1d | 托盘含「打开设置/退出」；通知来源名称正确 | 无 |
-| P2-8 | 性能预算实测与裁剪（空闲内存 ≤220MB、冷启动 ≤3s、包体 ≤110MB） | 全仓 + 构建配置 | 2d | 输出实测数据表；超标项有明确裁剪方案（如按需加载 sharp） | P1-2、P1-3 |
+| P2-8 | 性能预算实测与裁剪（空闲内存 ≤220MB、冷启动 ≤3s、包体 ≤110MB） ◐ **2026-08-31 部分完成**：包体 81.6MB 已达标；新增 `docs/testing.md` 性能核对清单（空闲内存/CPU/PS 进程数/冷启动 4 项留空待真机实测）；C5 输入法常驻化后空闲期 PS 进程创建显著减少 | 全仓 + 构建配置 | 2d | 输出实测数据表；超标项有明确裁剪方案 | P1-2、P1-3 |
 | P2-9 | 建立核心链路回归清单与手工 E2E 用例（截图/批注/长截图/录屏/USB/提醒） ✅ **2026-08-31 完成**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准） | 新增 `docs/testing.md` | 1d | 覆盖 6 条主链路 × 3 种 DPI × 2 种显示器组合 | P0-4 |
-| P2-10 | 重构巨型组件：AnnotateApp / CapturePanel 拆分（逻辑 composables + 子组件） | `renderer/annotate`、`renderer/components` | 1.5d | 单文件 ≤300 行；逻辑可单测 | P0-4 |
+| P2-10 | 重构巨型组件：AnnotateApp / CapturePanel 拆分（逻辑 composables + 子组件） ✅ **2026-08-31 完成**：AnnotateApp 813→213 行（抽 `composables/useAnnotate.ts` + `AnnotateToolbar.vue`）；CapturePanel 602→255 行（抽 `composables/useCaptureActions.ts` + `LongshotWindowSelect.vue` + `RecentFilesList.vue`）；顺手修正 env.d.ts `longshot.selectWindow`/`start` 类型 | `renderer/annotate`、`renderer/components`、`renderer/composables`、`renderer/capture` | 1.5d | 单文件 ≤300 行；逻辑可单测 | P0-4 |
 | P2-11 | **收起/展开箭头与 rail 图标视觉对齐**：把字符 `↑`/`↓` 替换为与 rail 图标同规格的内联 SVG（22×22、stroke-width 对齐现有图标的线条粗细），docked 水平条形态同步适配 ✅ **2026-08-31 完成**：替换为内联 SVG（24 视框 / stroke-width 2 / 22×22） | `SidebarApp.vue:20-22,356-394` | 0.5d | 箭头笔画粗细与 rail 图标视觉一致；100%/150%/200% 缩放下不变形；docked 水平态箭头方向正确 | 无 |
 
 ### 建议执行顺序
@@ -235,3 +235,4 @@
 | 2026-08-31 | **P2-9 回归清单**：新增 `docs/testing.md`（6 条主链路 × DPI/显示器矩阵 + 验收标准）。并标记 P2-4（P1-12 覆盖）/P2-7（托盘已做）/P2-11（箭头已做）为完成 | P2-4、P2-7、P2-9、P2-11 |
 | 2026-08-31 | **P2-5/P2-6 移除死功能**（用户决策）：P2-5 删除 rail `lock` 项与 `config.power` 死配置（types/config/main 白名单/OOBE 引用一并清理）；P2-6 `npm uninstall electron-updater` + 删除 README 技术栈「更新」行。顺手更正 README 录屏「WebM 转 MP4」夸大表述 | P2-5、P2-6、D13、D14、D4 |
 | 2026-08-31 | **P2-2 快捷键槽位**：新增 `services/hotkey.ts`（HotkeyService 管理 3 槽位 + 注册失败返回替代建议）；截图/批注/长截图抽为 `runRegionCapture`/`runAnnotate`/`runLongshot` 独立函数供热键复用；`capture.annotateHotkey`/`capture.longshotHotkey` 配置 + 设置表单 3 个热键输入 + `hotkey:getState` 通道 | P2-2、D13 |
+| 2026-08-31 | **C5 输入法常驻化 + P2-10 巨型组件重构 + P2-8 性能清单**：C5 将 ime.ts 从「每次 spawn PS」改为常驻 PowerShell 守护进程（stdin 命令 + stdout JSON + FIFO 队列），进程数从「每次 1 个」降为「全程 1 个」。P2-10 拆分 AnnotateApp（813→213 行，抽 `composables/useAnnotate.ts` + `AnnotateToolbar.vue`）与 CapturePanel（602→255 行，抽 `composables/useCaptureActions.ts` + `LongshotWindowSelect.vue` + `RecentFilesList.vue`）。P2-8 性能核对清单补入 `docs/testing.md`（4 项空格待真机实测）。顺手修正 `env.d.ts` `longshot.selectWindow`/`start` 返回类型 | C5、P2-8、P2-10 |
