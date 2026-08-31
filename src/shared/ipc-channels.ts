@@ -67,6 +67,9 @@ export const IPC_CHANNELS = {
   'power:setAutoLaunch': 'power:setAutoLaunch',
   'power:getAutoLaunch': 'power:getAutoLaunch',
 
+  // 快捷键槽位 (P2-2)
+  'hotkey:getState': 'hotkey:getState',
+
   // 系统操作
   'shell:openExternal': 'shell:openExternal',
   'shell:openPath': 'shell:openPath',

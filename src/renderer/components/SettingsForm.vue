@@ -38,6 +38,15 @@
         <span>截图快捷键</span>
         <input v-model="captureHotkey" class="text-input" />
       </div>
+      <!-- P2-2: 批注/长截图全局热键槽位 -->
+      <div class="setting-row">
+        <span>批注快捷键</span>
+        <input v-model="annotateHotkey" class="text-input" />
+      </div>
+      <div class="setting-row">
+        <span>长截图快捷键</span>
+        <input v-model="longshotHotkey" class="text-input" />
+      </div>
       <div class="setting-row">
         <span>保存格式</span>
         <select v-model="captureFormat">
@@ -114,6 +123,8 @@ const sidebarSide = ref('right')
 const imeSlot1 = ref('Microsoft Pinyin')
 const imeSlot2 = ref('US')
 const captureHotkey = ref('Ctrl+Shift+A')
+const annotateHotkey = ref('Ctrl+Shift+D')
+const longshotHotkey = ref('Ctrl+Shift+L')
 const captureFormat = ref('PNG')
 const captureDir = ref('')
 const recorderFps = ref(15)
@@ -128,6 +139,8 @@ async function loadConfig() {
     imeSlot1.value = cfg.ime.slot1
     imeSlot2.value = cfg.ime.slot2
     captureHotkey.value = cfg.capture.hotkey
+    annotateHotkey.value = cfg.capture.annotateHotkey || 'Ctrl+Shift+D'
+    longshotHotkey.value = cfg.capture.longshotHotkey || 'Ctrl+Shift+L'
     captureFormat.value = cfg.capture.format
     captureDir.value = cfg.capture.dir
     recorderFps.value = cfg.recorder?.fps || 15
@@ -156,6 +169,8 @@ async function save() {
     await window.sidekick.config.set('ime.slot1', imeSlot1.value)
     await window.sidekick.config.set('ime.slot2', imeSlot2.value)
     await window.sidekick.config.set('capture.hotkey', captureHotkey.value)
+    await window.sidekick.config.set('capture.annotateHotkey', annotateHotkey.value)
+    await window.sidekick.config.set('capture.longshotHotkey', longshotHotkey.value)
     await window.sidekick.config.set('capture.format', captureFormat.value)
     await window.sidekick.config.set('capture.dir', captureDir.value)
     await window.sidekick.config.set('recorder.fps', recorderFps.value)
