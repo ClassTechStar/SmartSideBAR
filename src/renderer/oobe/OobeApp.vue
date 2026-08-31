@@ -72,7 +72,7 @@
       <div v-if="currentStep === 5" class="step-content">
         <img :src="getIconPath('bell')" class="welcome-icon" />
         <h1>设置完成!</h1>
-        <p>侧边栏已就绪,鼠标移至屏幕边缘即可展开</p>
+        <p>侧边栏已就绪，点击屏幕边缘的图标即可使用各项功能</p>
         <p class="hint">您可以随时在设置中修改配置</p>
       </div>
     </div>
@@ -151,6 +151,19 @@ async function finish() {
     prefMap[p.key] = p.enabled
   }
 
+  // P2-3: 让 prefs / role 真正生效 —— 将未启用的功能映射为策略禁用模块,
+  // 由 SidebarApp 的 railItems 过滤 + 主进程服务启动过滤 (P2-1) 消费。
+  const disabledModules: string[] = []
+  if (prefMap.ime === false) disabledModules.push('ime')
+  if (prefMap.usb === false) disabledModules.push('usb')
+  if (prefMap.printer === false) disabledModules.push('printer')
+  // capture 模块包含区域截图/批注/长截图/录屏; 仅当「截图」与「录屏」都被取消时才禁用
+  if (prefMap.shot === false && prefMap.recorder === false) disabledModules.push('capture')
+  // role 预设: 教师默认隐藏管理类入口 (任务管理器/锁屏电源), 管理员保留全部
+  if (role.value === 'teacher') {
+    disabledModules.push('taskmgr', 'power')
+  }
+
   await window.sidekick.oobe.setState({
     completed: true,
     completedAt: new Date().toISOString(),
@@ -159,6 +172,9 @@ async function finish() {
     lastStepIndex: 5,
     prefs: prefMap
   })
+
+  // 策略禁用模块单独写入 policy 键 (与 oobe 键分离)
+  await window.sidekick.config.set('policy', { disabledModules })
 
   if (autoLaunch.value) {
     await window.sidekick.power.setAutoLaunch(true)
