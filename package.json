@@ -4,7 +4,7 @@
   "description": "希沃侧边快捷键工具 - 常驻教学大屏侧边的快捷操作与设备提醒中心",
   "main": "out/main/index.js",
   "author": "Seewo Sidekick Team",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
@@ -25,6 +25,8 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.68.0",
+    "@typescript-eslint/parser": "^8.68.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.0",
     "electron": "^30.0.0",

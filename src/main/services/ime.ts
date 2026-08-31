@@ -10,8 +10,9 @@ const execAsync = promisify(exec)
 let currentState: ImeState = { locale: 'zh-CN', isChinese: true, mode: 'cn' }
 let serviceState: 'idle' | 'starting' | 'running' | 'degraded' = 'idle'
 
-// PowerShell 7.6.5: 获取当前输入法状态
-// 修复: 添加 $ProgressPreference 消除 CLIXML 噪声
+// 获取当前输入法状态
+// $ProgressPreference 用于消除进度条输出对 JSON 解析的干扰
+// 注: 实际调用的是 Windows PowerShell 5.1 (exec 'powershell'), 脚本语法对 5.1/7.x 均兼容
 const PS_GET_IME = `
 $ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms
@@ -22,8 +23,8 @@ $result = @{ locale = $layout; isChinese = $isChinese; mode = $(if($isChinese){'
 $result | ConvertTo-Json -Compress
 `
 
-// PowerShell 7.6.5: 获取所有输入法并切换
-// 修复: 添加 $ProgressPreference 消除 CLIXML 噪声
+// 获取所有输入法并切换
+// $ProgressPreference 用于消除进度条输出对 JSON 解析的干扰
 const PS_TOGGLE_IME = `
 $ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms

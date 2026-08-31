@@ -10,15 +10,18 @@
     <div v-if="bgOpacity > 0" class="bg-mask" :style="{ opacity: bgOpacity / 100 }"></div>
 
     <!-- 绘图画布 -->
+    <!-- P0-5: Pointer Events 统一鼠标/触摸/笔输入 (原实现仅 mouse* —— 希沃触屏无法书写) -->
     <canvas
       ref="canvasRef"
       :width="canvasWidth"
       :height="canvasHeight"
       class="draw-canvas"
       :style="{ width: dipWidth + 'px', height: dipHeight + 'px', cursor: cursorStyle }"
-      @mousedown="onMouseDown"
-      @mousemove="onMouseMove"
-      @mouseup="onMouseUp"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @contextmenu.prevent
     />
 
     <!-- 工具栏 -->
@@ -88,11 +91,14 @@
 
       <div class="divider" v-if="isTransparent"></div>
 
-      <button class="action-btn undo" @click="undo" :disabled="undoStack.length === 0">
+      <button class="action-btn undo" @click="undo" :disabled="!canUndo">
         <span>撤销</span>
       </button>
-      <button class="action-btn save" @click="save">
-        <span>保存</span>
+      <button class="action-btn save" @click="saveAnnotationsOnly" title="仅保存笔迹 (透明背景)">
+        <span>仅笔迹</span>
+      </button>
+      <button class="action-btn save-bg" @click="saveWithBackground" :disabled="!hasBackground" :title="hasBackground ? '保存笔迹+屏幕截图' : '正在获取屏幕截图...'">
+        <span>含截图</span>
       </button>
       <button class="action-btn cancel" @click="cancel">
         <span>取消</span>
@@ -128,6 +134,11 @@ const canvasWidth = ref(0)
 const canvasHeight = ref(0)
 const scaleFactor = ref(1)
 
+// P1-8: 屏幕背景截图, 供「含截图」导出模式使用
+const hasBackground = ref(false)
+let bgImage: HTMLImageElement | null = null
+let unsubScreenshot: (() => void) | null = null
+
 const currentTool = ref<'pen' | 'highlighter' | 'arrow' | 'rect' | 'text' | 'eraser'>('pen')
 const currentColor = ref('#e74c3c')
 const currentSize = ref(3)
@@ -137,7 +148,11 @@ const startX = ref(0)
 const startY = ref(0)
 let savedImageData: ImageData | null = null
 
+// D3 修复: 撤销栈本身保持普通数组 (ImageData 为 DOM 对象, ref 深度响应式会对其
+// 做 Proxy 包装, putImageData 收到 Proxy 对象行为不可靠且逐像素深转换开销大);
+// 按钮禁用态改由 canUndo ref 驱动 —— 触屏用户无 Ctrl+Z 只能依赖按钮, 此修复对其尤关键
 const undoStack: ImageData[] = []
+const canUndo = ref(false)
 const MAX_UNDO = 30
 
 // 文字编辑
@@ -213,10 +228,21 @@ onMounted(() => {
 
   // ESC 取消
   document.addEventListener('keydown', onKey)
+
+  // P1-8: 接收主进程异步推送的屏幕截图, 供「含截图」导出使用
+  unsubScreenshot = window.sidekick.overlay.onScreenshot((dataUrl: string) => {
+    const img = new Image()
+    img.onload = () => {
+      bgImage = img
+      hasBackground.value = true
+    }
+    img.src = dataUrl
+  })
 })
 
 onUnmounted(() => {
   if (unsubInit) unsubInit()
+  if (unsubScreenshot) unsubScreenshot()
   document.removeEventListener('keydown', onKey)
 })
 
@@ -248,7 +274,7 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
-function getCanvasCoords(e: MouseEvent): { x: number; y: number } {
+function getCanvasCoords(e: { clientX: number; clientY: number }): { x: number; y: number } {
   const canvas = canvasRef.value!
   const rect = canvas.getBoundingClientRect()
   const scaleX = canvas.width / rect.width
@@ -269,9 +295,43 @@ function saveUndoState() {
   if (undoStack.length > MAX_UNDO) {
     undoStack.shift()
   }
+  canUndo.value = undoStack.length > 0
 }
 
-function onMouseDown(e: MouseEvent) {
+// ---- P0-5: 指针输入统一处理 (鼠标 / 触摸 / 触控笔) ------------------------------
+// Electron 30 (Chromium) 的 Pointer Events 对三类设备统一派发。
+// activePointerId 只跟踪第一支落下的指针: 触摸书写时手掌或第二根手指的
+// 误触会被忽略, 不会打断当前笔画; 抬起后可立即落下一笔。
+let activePointerId: number | null = null
+
+// 4px 抖动过滤 (与 OverlayApp 框选的 JITTER_PX 同源): 丢弃 <4px 的微小移动,
+// 过滤触摸起笔/手抖杂点。刻意不搬 OverlayApp 的 80ms 时间条件 —— 连续书写
+// 需要高频采样, 时间过滤会丢掉快笔画的中间点导致折线断裂。
+const JITTER_PX = 4
+let lastDrawX = 0
+let lastDrawY = 0
+
+function onPointerDown(e: PointerEvent) {
+  if (!ready.value) return
+  if (activePointerId !== null) return
+  activePointerId = e.pointerId
+  // 触摸/笔: 阻止浏览器派生 mouse 兼容事件, 避免一次触摸画两笔
+  if (e.pointerType !== 'mouse') e.preventDefault()
+  beginStroke(e)
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (e.pointerId !== activePointerId) return
+  moveStroke(e)
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (e.pointerId !== activePointerId) return
+  activePointerId = null
+  endStroke()
+}
+
+function beginStroke(e: { clientX: number; clientY: number }) {
   if (!ready.value) return
   const { x, y } = getCanvasCoords(e)
 
@@ -297,6 +357,8 @@ function onMouseDown(e: MouseEvent) {
   isDrawing.value = true
   startX.value = x
   startY.value = y
+  lastDrawX = x
+  lastDrawY = y
 
   const ctx = canvasRef.value!.getContext('2d')!
 
@@ -321,12 +383,16 @@ function onMouseDown(e: MouseEvent) {
   }
 }
 
-function onMouseMove(e: MouseEvent) {
+function moveStroke(e: { clientX: number; clientY: number }) {
   if (!isDrawing.value || !ready.value) return
   const { x, y } = getCanvasCoords(e)
   const ctx = canvasRef.value!.getContext('2d')!
 
   if (currentTool.value === 'pen' || currentTool.value === 'highlighter' || currentTool.value === 'eraser') {
+    // 抖动过滤: 微小移动不落点 (lineTo 链为连续折线路径, 跳过采样点不影响连续性)
+    if (Math.abs(x - lastDrawX) < JITTER_PX && Math.abs(y - lastDrawY) < JITTER_PX) return
+    lastDrawX = x
+    lastDrawY = y
     ctx.lineTo(x, y)
     ctx.stroke()
   } else if (currentTool.value === 'arrow') {
@@ -352,7 +418,7 @@ function onMouseMove(e: MouseEvent) {
   }
 }
 
-function onMouseUp(e: MouseEvent) {
+function endStroke() {
   if (!isDrawing.value) return
   isDrawing.value = false
 
@@ -432,14 +498,35 @@ function undo() {
   const ctx = canvas.getContext('2d')!
   const imageData = undoStack.pop()!
   ctx.putImageData(imageData, 0, 0)
+  canUndo.value = undoStack.length > 0
 }
 
-function save() {
+// P1-8: 仅笔迹导出 (透明背景, 只含批注内容)
+function saveAnnotationsOnly() {
   const canvas = canvasRef.value
   if (!canvas) return
 
-  // 透明模式: 直接导出画布 PNG (只含批注内容)
   const dataUrl = canvas.toDataURL('image/png')
+  window.sidekick.overlay.saveAnnotate(dataUrl)
+}
+
+// P1-8: 含屏幕背景导出 (截图 + 笔迹合成)
+function saveWithBackground() {
+  const canvas = canvasRef.value
+  if (!canvas || !bgImage) return
+
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = canvas.width
+  tempCanvas.height = canvas.height
+  const ctx = tempCanvas.getContext('2d')
+  if (!ctx) return
+
+  // 绘制屏幕截图背景
+  ctx.drawImage(bgImage, 0, 0, tempCanvas.width, tempCanvas.height)
+  // 叠加批注笔迹
+  ctx.drawImage(canvas, 0, 0)
+
+  const dataUrl = tempCanvas.toDataURL('image/png')
   window.sidekick.overlay.saveAnnotate(dataUrl)
 }
 
@@ -522,6 +609,8 @@ function cancel() {
   left: 0;
   z-index: 2;
   background: transparent;
+  /* P0-5: 触摸书写禁用浏览器手势 (滚动/双指缩放), 否则触摸拖动会被浏览器接管 */
+  touch-action: none;
 }
 
 .toolbar {
@@ -683,6 +772,20 @@ function cancel() {
 
 .action-btn.save:hover {
   background: #229954;
+}
+
+.action-btn.save-bg {
+  background: #2B6EE0;
+  color: #fff;
+}
+
+.action-btn.save-bg:hover {
+  background: #1a5dc4;
+}
+
+.action-btn.save-bg:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .action-btn.cancel {

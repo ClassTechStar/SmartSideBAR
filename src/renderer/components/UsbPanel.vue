@@ -8,7 +8,7 @@
       </div>
       <button class="refresh-btn" @click="refresh" :disabled="scanning" :class="{ spinning: scanning }">
         <svg v-if="scanning" class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
         </svg>
         <span v-else>刷新</span>
       </button>
@@ -36,8 +36,8 @@
             <span class="drive-letter">{{ d.drive }}</span>
             <span class="drive-type" :class="d.type">{{ typeLabel(d.type) }}</span>
           </div>
-          <span class="drive-label">{{ d.label || 'USB 存储设备' }}</span>
-          <span class="drive-size" v-if="d.size">{{ d.size }}</span>
+          <span class="drive-label">{{ d.label || d.model || 'USB 存储设备' }}</span>
+          <span class="drive-size" v-if="d.size">{{ d.size }}{{ d.model ? ' · ' + d.model : '' }}</span>
         </div>
         <button class="open-btn" @click="openDrive(d.drive)" title="在资源管理器中打开">
           <span>打开</span>
@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-const drives = ref<Array<{drive: string; label?: string; type?: string; size?: string}>>([])
+const drives = ref<Array<{drive: string; label?: string; type?: string; size?: string; model?: string}>>([])
 const enabled = ref(true)
 const scanning = ref(false)
 const error = ref('')
@@ -87,6 +87,7 @@ function icon(name: string): string {
 
 function typeLabel(type?: string): string {
   if (type === 'cdrom') return '光驱'
+  if (type === 'external') return '移动硬盘'
   if (type === 'usb') return 'USB'
   return 'U盘'
 }
@@ -145,7 +146,7 @@ onMounted(async () => {
   // 监听插入
   unsubArrived = window.sidekick.usb.onArrived((d: any) => {
     if (!drives.value.find(x => x.drive === d.drive)) {
-      drives.value.push({ drive: d.drive, label: d.label, type: d.type, size: d.size })
+      drives.value.push({ drive: d.drive, label: d.label, type: d.type, size: d.size, model: d.model })
     }
     events.value.unshift({ action: 'arrived', drive: d.drive, time: formatTime() })
     if (events.value.length > 5) events.value.pop()
@@ -302,6 +303,7 @@ async function openDrive(drive: string) {
 }
 .drive-type.cdrom { background: #8e44ad; }
 .drive-type.usb { background: #27ae60; }
+.drive-type.external { background: #d35400; }
 
 .drive-label { font-size: 12px; color: var(--text-secondary); }
 .drive-size { font-size: 11px; color: var(--text-disabled); }

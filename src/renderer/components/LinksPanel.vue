@@ -70,17 +70,24 @@ const editUrl = ref('')
 
 // 添加/编辑表单打开时, 阻止侧边栏自动收起
 watch([showAddForm, editingId], ([showForm, editId]) => {
-  ;(window as any).__keepSidebarOpen = showForm || editId !== null
+  (window as any).__keepSidebarOpen = showForm || editId !== null
 })
 
 function icon(name: string): string {
   return new URL(`../assets/icons/${name}.svg`, import.meta.url).href
 }
 
+// P1-5 (E1 修复): 保留未启用/无 URL 的链接, 防止 saveAll 回写时永久丢失
+// 原实现 loadLinks 只加载 enabled && url非空 的链接, saveAll 又把该子集整体回写
+// → 默认配置里的 l4/l5 等未启用链接在任意一次编辑后被永久删除
+let disabledLinks: LinkItem[] = []
+
 async function loadLinks() {
   try {
     const cfg = await window.sidekick.config.get()
-    links.value = cfg.links.filter(l => l.enabled && l.url && l.url.trim() !== '')
+    const all = cfg.links || []
+    links.value = all.filter(l => l.enabled && l.url && l.url.trim() !== '')
+    disabledLinks = all.filter(l => !(l.enabled && l.url && l.url.trim() !== ''))
   } catch (e) { console.error('[Links] Load failed:', e) }
 }
 
@@ -112,10 +119,6 @@ function normalizeUrl(url: string): string | null {
   }
   // 无效
   return null
-}
-
-function isValidUrl(url: string): boolean {
-  return !!normalizeUrl(url)
 }
 
 function showError(msg: string) {
@@ -245,8 +248,8 @@ function moveDown(index: number) {
 // 保存到配置
 async function saveAll() {
   try {
-    // 写入完整 links 数组(包含 enabled=true)
-    const allLinks = links.value.map(l => ({ ...l, enabled: true }))
+    // P1-5 (E1 修复): 回写全量 links (显示中的 + 未显示的), 防止数据丢失
+    const allLinks = [...links.value, ...disabledLinks]
     await window.sidekick.config.set('links', allLinks)
   } catch (e) {
     console.error('[Links] Save failed:', e)
@@ -257,7 +260,7 @@ async function saveAll() {
 onMounted(loadLinks)
 
 onUnmounted(() => {
-  ;(window as any).__keepSidebarOpen = false
+  (window as any).__keepSidebarOpen = false
 })
 </script>
 

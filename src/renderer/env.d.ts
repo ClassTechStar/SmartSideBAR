@@ -34,6 +34,7 @@ interface Window {
       sendData: (data: ArrayBuffer) => void
       sendComplete: (data: ArrayBuffer, mimeType: string) => void
       sendStarted: () => void
+      ready: () => void
       onPageStart: (cb: (opts: any) => void) => () => void
       onPageStop: (cb: () => void) => () => void
     }
@@ -43,6 +44,7 @@ interface Window {
       saveAnnotate: (dataUrl: string) => void
       cancel: () => void
       onInit: (cb: (init: any) => void) => () => void
+      onScreenshot: (cb: (dataUrl: string) => void) => () => void
     }
     display: {
       list: () => Promise<any[]>
@@ -59,6 +61,7 @@ interface Window {
       closeAndOpenMain: () => Promise<boolean>
     }
     power: {
+      getAutoLaunch: () => Promise<boolean>
       setAutoLaunch: (enabled: boolean) => Promise<boolean>
     }
     shell: {

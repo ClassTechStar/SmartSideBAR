@@ -13,18 +13,36 @@ let polling: NodeJS.Timeout | null = null
 let lastStatus: Map<string, PrinterStatus> = new Map()
 
 // PowerShell 获取打印机状态
+// E4 修复: 已选 DetectedErrorState 但原 mapState 未使用它, 位掩码用错属性
 const PS_GET_PRINTERS = `
 Get-CimInstance Win32_Printer | Select-Object Name,PrinterState,PrinterStatus,DetectedErrorState | ConvertTo-Json
 `
 
-function mapState(state: number): PrinterStatus['state'] {
-  // Win32_Printer status mapping
-  if (state === 0) return 'unknown'
-  if (state & 0x80) return 'out_of_paper'
-  if (state & 0x40) return 'jammed'
-  if (state & 0x200000) return 'low_ink'
-  if (state === 3) return 'ok'
-  if (state === 7) return 'offline'
+// E4 修复: Win32_Printer 的 DetectedErrorState 是枚举值 (非位掩码),
+// 原实现用位运算 (& 0x80/0x40/0x200000) 在 PrinterState 上, 判定全部错误。
+// PrinterState===3 被判为 ok, 实际 3 = Pending Deletion / 纸张问题。
+// 改为: DetectedErrorState 枚举优先 (精确错误), PrinterStatus 枚举补充 (整体状态)。
+//
+// DetectedErrorState (WMI 枚举):
+//   0=Unknown 1=Other 2=No Error 3=Low Paper 4=No Paper
+//   5=Low Toner/Ink 6=No Toner/Ink 7=Door Open 8=Paper Jam
+//   9=Offline 10=Service Requested 11=Output Bin Full
+//
+// PrinterStatus (WMI 枚举, 替代已废弃的 PrinterState):
+//   1=Other 2=Unknown 3=Idle 4=Printing 5=Warmup 6=Stopped 7=Offline
+
+function mapState(detectedError: number, printerStatus: number): PrinterStatus['state'] {
+  // DetectedErrorState 枚举优先检测具体错误
+  if (detectedError === 4 || detectedError === 3) return 'out_of_paper'  // No Paper / Low Paper
+  if (detectedError === 5 || detectedError === 6) return 'low_ink'       // Low/No Toner/Ink
+  if (detectedError === 8) return 'jammed'                               // Paper Jam
+  if (detectedError === 9) return 'offline'                                // Offline
+  if (detectedError === 10) return 'unknown'                              // Service Requested
+
+  // PrinterStatus 枚举补充 (无具体错误时判定整体)
+  if (printerStatus === 7) return 'offline'
+  if (printerStatus === 3 || printerStatus === 4 || printerStatus === 5) return 'ok'  // Idle/Printing/Warmup
+
   return 'unknown'
 }
 
@@ -64,7 +82,7 @@ export const PrinterService = {
       for (const p of printers) {
         const status: PrinterStatus = {
           name: p.Name,
-          state: mapState(p.PrinterState || p.PrinterStatus || 0),
+          state: mapState(p.DetectedErrorState || 0, p.PrinterStatus || p.PrinterState || 0),
           updatedAt: Date.now()
         }
         current.set(p.Name, status)
@@ -88,8 +106,11 @@ export const PrinterService = {
   },
 
   broadcast(status: PrinterStatus): void {
+    // E6 修复: 加 isDestroyed() 保护 (与 UsbService 一致)
     for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(IPC_CHANNELS['printer:changed'], status)
+      if (!win.isDestroyed()) {
+        win.webContents.send(IPC_CHANNELS['printer:changed'], status)
+      }
     }
   }
 }

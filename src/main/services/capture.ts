@@ -1,8 +1,8 @@
 // services/capture.ts - 截图服务 (desktopCapturer + 区域裁剪 + 批注支持)
 
-import { desktopCapturer, nativeImage, app, clipboard } from 'electron'
+import { desktopCapturer, app, clipboard } from 'electron'
 import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
-import { join, dirname } from 'path'
+import { join } from 'path'
 import log from 'electron-log'
 import { ConfigService } from './config'
 import { DisplayService } from './display'
@@ -51,7 +51,7 @@ export const CaptureService = {
 
   // 目标显示器截图 (多显示器场景): 截图源优先匹配侧边栏所在显示器,
   // 显示器热插拔后由 DisplayService 自动回退到有效显示器, 保证快捷键截图吸附到正确屏幕
-  async grabTarget(): Promise<{ img: Electron.NativeImage | null; target: DisplayInfo; workArea: Rect } | null> {
+  async grabTarget(): Promise<{ img: Electron.NativeImage | null; target: DisplayInfo; workArea: Rect; bounds: Rect } | null> {
     try {
       const sources = await this.getScreenSources()
       if (!sources || sources.length === 0) {
@@ -82,7 +82,9 @@ export const CaptureService = {
 
       const size = img.getSize()
       log.info(`[Capture] Grabbed ${size.width}x${size.height} (source=${source.display_id}, target=${target.id})`)
-      return { img, target: matched, workArea: matched.workArea }
+      // bounds 一并返回: 源图像 (desktopCapturer thumbnail) 以该显示器 bounds 原点为 (0,0),
+      // 副屏 (bounds.x/y ≠ 0) 裁剪坐标必须扣除 bounds 原点, 见 main.ts 区域换算 (P0-3)
+      return { img, target: matched, workArea: matched.workArea, bounds: matched.bounds }
     } catch (e: any) {
       log.error('[Capture] grabTarget failed:', e.message)
       return null
@@ -182,7 +184,7 @@ export const CaptureService = {
         unlinkSync(filepath)
         log.info(`[Capture] Cleaned temp: ${filepath}`)
       }
-    } catch (e) {
+    } catch {
       // 忽略清理失败
     }
   }
