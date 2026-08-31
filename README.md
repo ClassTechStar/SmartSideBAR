@@ -148,7 +148,6 @@ SmartSideBAR/
 ├── resources/                # 额外资源文件
 │   └── app/defaults/
 │       └── config.json       # 默认配置模板
-├── scripts/                  # 辅助脚本
 ├── src/
 │   ├── main/                 # 主进程（Node.js）
 │   │   ├── main.ts           # 主进程入口
