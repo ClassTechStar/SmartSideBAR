@@ -8,6 +8,11 @@ import { join } from 'path'
 import log from 'electron-log'
 import { SchedulerService } from './scheduler'
 import { ConfigService } from './config'
+import { ImeService } from './ime'
+import { RecorderService } from './recorder'
+import { UsbService } from './usb'
+import { PrinterService } from './printer'
+import { LongshotService } from './longshot'
 
 const execAsync = promisify(exec)
 
@@ -167,9 +172,15 @@ export const DiagnosticService = {
       checks.push({ name: '截图服务', status: 'error', message: '截图服务异常', detail: e.message })
     }
 
-    // 录屏
+    // 录屏 (P1-12 真实化)
     try {
-      checks.push({ name: '录屏服务', status: 'ok', message: '录屏通道就绪' })
+      const st = RecorderService.getStatus()
+      checks.push({
+        name: '录屏服务',
+        status: 'ok',
+        message: st.recording ? `正在录制中 (${st.elapsed}s)` : '录屏通道就绪',
+        detail: st.filepath || undefined
+      })
     } catch (e: any) {
       checks.push({ name: '录屏服务', status: 'error', message: '录屏服务异常', detail: e.message })
     }
@@ -187,30 +198,57 @@ export const DiagnosticService = {
       checks.push({ name: '定时提醒', status: 'error', message: '调度器异常', detail: e.message })
     }
 
-    // USB
+    // USB (P1-12 真实化)
     try {
-      checks.push({ name: 'USB 监控', status: 'ok', message: 'USB 监控通道就绪' })
+      const diag = UsbService.getDiagnostics() as { isRunning: boolean; watcherAlive?: boolean; lastDrivesCount?: number }
+      const ok = diag.isRunning && diag.watcherAlive !== false
+      checks.push({
+        name: 'USB 监控',
+        status: ok ? 'ok' : 'warn',
+        message: diag.isRunning
+          ? `监控运行中，已发现 ${diag.lastDrivesCount ?? 0} 个设备`
+          : 'USB 监控未启动',
+        detail: diag.watcherAlive === false ? 'WMI 监听器已断开（降级轮询中）' : undefined
+      })
     } catch (e: any) {
       checks.push({ name: 'USB 监控', status: 'error', message: 'USB 监控异常', detail: e.message })
     }
 
-    // 打印机
+    // 打印机 (P1-12 真实化)
     try {
-      checks.push({ name: '打印机', status: 'ok', message: '打印机通道就绪' })
+      await PrinterService.refresh()
+      const printers = await PrinterService.getStatus()
+      checks.push({
+        name: '打印机',
+        status: printers.length > 0 ? 'ok' : 'warn',
+        message: printers.length > 0 ? `已发现 ${printers.length} 台打印机` : '未检测到打印机',
+        detail: printers.map(p => `${p.name}(${p.state})`).join(', ')
+      })
     } catch (e: any) {
       checks.push({ name: '打印机', status: 'error', message: '打印机服务异常', detail: e.message })
     }
 
-    // 输入法
+    // 输入法 (P1-12 真实化)
     try {
-      checks.push({ name: '输入法', status: 'ok', message: '输入法切换通道就绪' })
+      const ime = await ImeService.getState()
+      checks.push({
+        name: '输入法',
+        status: 'ok',
+        message: `当前输入法：${ime.mode === 'cn' ? '中文' : '英文'}`,
+        detail: `locale=${ime.locale}, serviceState=${ImeService.getServiceState()}`
+      })
     } catch (e: any) {
       checks.push({ name: '输入法', status: 'error', message: '输入法通道异常', detail: e.message })
     }
 
-    // 长截图
+    // 长截图 (P1-12 真实化)
     try {
-      checks.push({ name: '长截图', status: 'ok', message: '长截图服务就绪' })
+      const running = LongshotService.isRunning()
+      checks.push({
+        name: '长截图',
+        status: 'ok',
+        message: running ? '长截图正在执行中' : '长截图服务就绪'
+      })
     } catch (e: any) {
       checks.push({ name: '长截图', status: 'error', message: '长截图服务异常', detail: e.message })
     }
@@ -219,14 +257,36 @@ export const DiagnosticService = {
   },
 
   async _checkFeatures(): Promise<DiagResult['features']> {
+    const { clipboard, desktopCapturer } = require('electron') as typeof import('electron')
+
+    // P1-12/D10 真实化: clipboard / desktopCapturer 不再硬编码 true, 改为真实探测
+    let clipboardOk = false
+    try {
+      clipboard.readText() // 读取剪贴板文本, 权限正常时不抛异常
+      clipboardOk = true
+    } catch { clipboardOk = false }
+
+    let capturerOk = false
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width: 1, height: 1 },
+        fetchWindowIcons: false
+      })
+      capturerOk = sources.length > 0
+    } catch { capturerOk = false }
+
     return {
       notification: (() => {
         try { return require('electron').Notification.isSupported() }
         catch { return false }
       })(),
-      clipboard: true,
-      desktopCapturer: true,
-      autoLaunch: null
+      clipboard: clipboardOk,
+      desktopCapturer: capturerOk,
+      autoLaunch: (() => {
+        try { return app.getLoginItemSettings().openAtLogin }
+        catch { return null }
+      })()
     }
   },
 
