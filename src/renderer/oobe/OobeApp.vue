@@ -159,9 +159,9 @@ async function finish() {
   if (prefMap.printer === false) disabledModules.push('printer')
   // capture 模块包含区域截图/批注/长截图/录屏; 仅当「截图」与「录屏」都被取消时才禁用
   if (prefMap.shot === false && prefMap.recorder === false) disabledModules.push('capture')
-  // role 预设: 教师默认隐藏管理类入口 (任务管理器/锁屏电源), 管理员保留全部
+  // role 预设: 教师默认隐藏管理类入口 (任务管理器), 管理员保留全部
   if (role.value === 'teacher') {
-    disabledModules.push('taskmgr', 'power')
+    disabledModules.push('taskmgr')
   }
 
   await window.sidekick.oobe.setState({

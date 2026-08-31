@@ -8,7 +8,6 @@ import type { SidekickConfig, ReminderSoundConfig } from '../../shared/types'
 
 const DEFAULT_CONFIG: SidekickConfig = {
   version: 2,
-  power: { launcher: 'side', sleep: '10min', powerOnAt: '07:50' },
   ime: { slot1: 'Microsoft Pinyin', slot2: 'US', fallbackSwap: true },
   capture: { hotkey: 'Ctrl+Shift+A', format: 'PNG', dir: '{Pictures}/Sidekick' },
   recorder: { fps: 15, bitrate: '2M', mic: false, dir: '{Videos}/Sidekick' },

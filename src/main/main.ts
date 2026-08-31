@@ -133,7 +133,7 @@ async function bootstrap() {
 // ---- 配置 ----
 // P0-6/B3: config:set 加键名白名单 — 阻止渲染层写入非预期配置字段或原型链路径
 const ALLOWED_CONFIG_KEYS = new Set([
-  'version', 'power', 'ime', 'capture', 'recorder', 'usb', 'printer',
+  'version', 'ime', 'capture', 'recorder', 'usb', 'printer',
   'display', 'links', 'reminders', 'reminderSound', 'oobe', 'policy',
   'capture.hotkey', 'capture.format', 'capture.dir',
   'recorder.fps', 'recorder.bitrate', 'recorder.mic', 'recorder.dir',
