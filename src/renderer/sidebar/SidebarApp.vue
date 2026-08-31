@@ -18,7 +18,30 @@
 
       <!-- 收起/展开 切换按钮 -->
       <div class="dock-toggle" :class="{ docked: isDocked }" @click="toggleDock" :title="isDocked ? '展开侧边栏' : '收起侧边栏'">
-        <span class="dock-arrow">{{ isDocked ? '↑' : '↓' }}</span>
+        <!-- 箭头用内联 SVG: 与 rail 图标 (assets/icons/*.svg) 完全同规格
+             —— 24 视框 / stroke-width 2 / 22x22 渲染尺寸。
+             原实现用字符 ↑ ↓, 笔画粗细由系统字体决定且随字体浮动,
+             无法与图标线条对齐(见 E12 / P2-11)。 -->
+        <svg
+          v-if="isDocked"
+          class="dock-arrow"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="12" y1="19" x2="12" y2="5" />
+          <polyline points="5 12 12 5 19 12" />
+        </svg>
+        <svg
+          v-else
+          class="dock-arrow"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <polyline points="19 12 12 19 5 12" />
+        </svg>
       </div>
     </div>
 
@@ -49,7 +72,6 @@ import SettingsPanel from '../components/SettingsPanel.vue'
 const RAIL_WIDTH = 52
 const PANEL_WIDTH = 380
 const EXPANDED_WIDTH = RAIL_WIDTH + PANEL_WIDTH
-const DOCK_HEIGHT = 52
 
 const isExpanded = ref(false)
 const isDocked = ref(false)
@@ -382,11 +404,13 @@ onUnmounted(() => {
   height: 44px;
 }
 
+/* 与 .rail-icon 同尺寸: 22x22 渲染 24 视框的 stroke-width:2,
+   等效线宽 2/24*22 ≈ 1.83px, 与轨道图标笔画完全一致 */
 .dock-arrow {
-  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  display: block;
   color: var(--text-secondary);
-  font-weight: 600;
-  line-height: 1;
 }
 
 .dock-toggle:hover .dock-arrow {

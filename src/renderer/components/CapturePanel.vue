@@ -275,7 +275,8 @@ async function startRecording() {
   if (recording.value || starting.value) return
   try {
     starting.value = true
-    const result = await window.sidekick.recorder.start({ fps: 15 })
+    // P1-7/D5 修复: 不再硬编码 fps, 由 RecorderService 从 config.recorder.fps/mic 读取
+    const result = await window.sidekick.recorder.start()
     if (!result?.success) {
       starting.value = false
       console.error('录屏启动失败:', result?.error)

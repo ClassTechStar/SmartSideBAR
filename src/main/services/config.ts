@@ -4,7 +4,7 @@ import { app } from 'electron'
 import { join, dirname } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import log from 'electron-log'
-import type { SidekickConfig, OobeState, ReminderSoundConfig } from '../../shared/types'
+import type { SidekickConfig, ReminderSoundConfig } from '../../shared/types'
 
 const DEFAULT_CONFIG: SidekickConfig = {
   version: 2,
