@@ -88,7 +88,22 @@
 
 ## 7. 性能预算核对（P2-8）
 
-> 用 `npm run win` 产出安装包后，在目标教学一体机（或等效 Windows 环境）实测。采集方式：任务管理器观察 `SmartSideBAR.exe` 进程。
+> 用 `npm run win` 产出安装包后，在目标教学一体机（或等效 Windows 环境）实测。
+> 提供自动化测试脚本 `scripts/bench-p28.mjs`，也可手动观测。
+
+**自动化方式：**
+```bash
+# 自动检测默认安装路径
+node scripts/bench-p28.mjs
+
+# 指定 exe 路径 + 自定义观测时长 (默认 10 分钟)
+node scripts/bench-p28.mjs --exe "C:\Users\xxx\AppData\Local\Programs\SmartSideBAR\SmartSideBAR.exe" --duration 600
+
+# 使用构建产物测试 (无需安装)
+npm run win && node scripts/bench-p28.mjs --exe dist\win-unpacked\SmartSideBAR.exe
+```
+
+脚本自动完成：冷启动计时 → 5 分钟空闲内存/CPU 采样 → USB 设备识别验证 → 10 分钟 PowerShell 进程创建计数 → 输出汇总表格 + `dist/perf-report.json`。
 
 | 指标 | 预算 | 实测记录 | 结果 |
 |------|------|---------|------|
