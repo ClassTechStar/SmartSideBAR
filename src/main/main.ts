@@ -807,6 +807,7 @@ app.whenReady().then(bootstrap)
 
 // 退出清理
 app.on('before-quit', () => {
+  WindowManager.destroy() // 注销 AppBar, 恢复系统 WorkArea
   HotkeyService.unregisterAll()
   SchedulerService.stop()
   UsbService.stop()
