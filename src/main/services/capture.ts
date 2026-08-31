@@ -1,7 +1,7 @@
 // services/capture.ts - 截图服务 (desktopCapturer + 区域裁剪 + 批注支持)
 
-import { desktopCapturer, app, clipboard } from 'electron'
-import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
+import { desktopCapturer, clipboard } from 'electron'
+import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import log from 'electron-log'
 import { ConfigService } from './config'
@@ -138,16 +138,6 @@ export const CaptureService = {
     }
   },
 
-  // 保存到临时文件 (用于批注背景)
-  saveTempImage(img: Electron.NativeImage): string {
-    const tmpDir = join(app.getPath('temp'), 'seewo-sidekick')
-    ensureDir(tmpDir)
-    const filepath = join(tmpDir, `screenshot-${Date.now()}.png`)
-    writeFileSync(filepath, img.toPNG())
-    log.info(`[Capture] Temp saved: ${filepath}`)
-    return filepath
-  },
-
   // 保存批注结果 (dataUrl -> 文件)
   saveAnnotatedImage(dataUrl: string): string | null {
     try {
@@ -174,18 +164,6 @@ export const CaptureService = {
     } catch (e: any) {
       log.error('[Capture] saveAnnotatedImage failed:', e.message)
       return null
-    }
-  },
-
-  // 清理临时文件
-  cleanupTemp(filepath: string): void {
-    try {
-      if (existsSync(filepath)) {
-        unlinkSync(filepath)
-        log.info(`[Capture] Cleaned temp: ${filepath}`)
-      }
-    } catch {
-      // 忽略清理失败
     }
   }
 }
