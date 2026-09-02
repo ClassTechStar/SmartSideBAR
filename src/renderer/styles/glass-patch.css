@@ -1,0 +1,51 @@
+/* 跨组件玻璃补丁 (v1.1 v4-v7, 去 hash 全局, 全 !important) */
+
+
+/* ---------- 4. 设置/外观开关防裁切 ---------- */
+.settings-body {
+  overflow-x: hidden !important;
+}
+
+.setting-row,
+.toggle-row,
+.row {
+  flex-wrap: wrap !important;
+  row-gap: 8px !important;
+}
+
+.setting-row > span:first-child,
+.toggle-row > span:first-child,
+.row > .label {
+  flex: 1 1 110px !important;
+  min-width: 0 !important;
+}
+
+.text-input,
+select,
+.text-input,
+select {
+  width: auto !important;
+  min-width: 130px !important;
+  max-width: 100% !important;
+}
+
+.toggle,
+.toggle,
+.lg-switch {
+  flex-shrink: 0 !important;
+}
+
+
+/* ---------- 5. 快捷链接「添加链接」按钮：实底可见 ---------- */
+.btn-add {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1.5px dashed rgba(43, 68, 120, 0.4) !important;
+  color: #2a2f38 !important;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.1) !important;
+}
+
+.btn-add:hover {
+  background: #ffffff !important;
+  border-color: var(--brand, #2b6ee0) !important;
+  color: var(--brand, #2b6ee0) !important;
+}

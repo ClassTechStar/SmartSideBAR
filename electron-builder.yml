@@ -6,7 +6,6 @@ directories:
   buildResources: build
 files:
   - out/**/*
-  - build/**/*
   - resources/**/*
   - package.json
 asarUnpack:
@@ -35,7 +34,11 @@ win:
   verifyUpdateCodeSignature: false
   # P1-10: requireAdministrator -> asInvoker, 应用本体启动/自启不再要求提权
   requestedExecutionLevel: asInvoker
-  signAndEditExecutable: false
+  # 自签名证书 (Seewo Sidekick Team, 有效期至 2031-09): 构建时自动签名
+  # app.exe / 卸载器 / 安装包。目标电脑需先运行 cert/install-trust.cmd 导入信任。
+  cscLink: cert/SmartSideBAR-codesign.pfx
+  cscKeyPassword: SmartSideBAR-2026
+  signAndEditExecutable: true
 extraResources:
   - from: resources/app/defaults
     to: app/defaults
