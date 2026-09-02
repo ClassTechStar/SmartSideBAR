@@ -118,6 +118,35 @@ const sidekickApi = {
     getState: () => ipcRenderer.invoke(IPC_CHANNELS['hotkey:getState'])
   },
 
+  // 外观 / 液态玻璃
+  appearance: {
+    get: () => ipcRenderer.invoke(IPC_CHANNELS['appearance:get']),
+    set: (patch: any) => ipcRenderer.invoke(IPC_CHANNELS['appearance:set'], patch),
+    onChanged: (cb: (snap: any) => void) => {
+      const handler = (_event: any, snap: any) => cb(snap)
+      ipcRenderer.on(IPC_CHANNELS['appearance:changed'], handler)
+      return () => ipcRenderer.off(IPC_CHANNELS['appearance:changed'], handler)
+    }
+  },
+
+  // 悬浮球
+  floatball: {
+    show: () => ipcRenderer.invoke(IPC_CHANNELS['floatball:show']),
+    hide: () => ipcRenderer.invoke(IPC_CHANNELS['floatball:hide']),
+    toggle: () => ipcRenderer.invoke(IPC_CHANNELS['floatball:toggle']),
+    dragStart: (grab: any) => ipcRenderer.invoke(IPC_CHANNELS['floatball:dragStart'], grab),
+    dragEnd: () => ipcRenderer.invoke(IPC_CHANNELS['floatball:dragEnd']),
+    expand: () => ipcRenderer.invoke(IPC_CHANNELS['floatball:expand']),
+    collapse: () => ipcRenderer.invoke(IPC_CHANNELS['floatball:collapse']),
+    action: (id: string) => ipcRenderer.invoke(IPC_CHANNELS['floatball:action'], id),
+    setClickThrough: (on: boolean) => ipcRenderer.send(IPC_CHANNELS['floatball:setClickThrough'], on),
+    onLayout: (cb: (layout: any) => void) => {
+      const handler = (_event: any, layout: any) => cb(layout)
+      ipcRenderer.on(IPC_CHANNELS['floatball:layout'], handler)
+      return () => ipcRenderer.off(IPC_CHANNELS['floatball:layout'], handler)
+    }
+  },
+
   // 系统操作
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke(IPC_CHANNELS['shell:openExternal'], url),
