@@ -1,5 +1,10 @@
 // shared/types.ts - 核心数据模型与类型定义
 
+import type { AppearanceConfig, AppearanceSnapshot } from './appearance'
+import type { FloatBallConfig } from './floatball-layout'
+
+export type { AppearanceConfig, AppearanceSnapshot, FloatBallConfig }
+
 export interface Rect {
   x: number
   y: number
@@ -139,6 +144,8 @@ export interface SidekickConfig {
     sidebarSide: 'left' | 'right'
     fitWindowsToWorkArea: boolean
   }
+  appearance: AppearanceConfig
+  floatBall: FloatBallConfig
   links: LinkItem[]
   reminders: Reminder[]
   reminderSound: ReminderSoundConfig
