@@ -1,0 +1,331 @@
+/* 悬浮球液态玻璃 (v1.1 编译产物, 去 hash 全局) */
+
+
+.fb-root {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 容器本身不参与命中，由球/项自己的 fb-interactive 接管 */
+}
+
+
+/* ====== 悬浮球本体（浅色液态玻璃风格） ====== */
+/*
+  浅色版：白色半透明底 + 玻璃高光/描边跟随光标
+*/
+.fb-orb {
+  position: absolute;
+  border-radius: 50%;
+  cursor: grab;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* 悬浮球图标：用户提供的镜头图标，铺满球体并随圆形裁切 */
+  background: url("../assets/floatball-icon.png") center / cover no-repeat;
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  /* 去掉所有 hairline 边框，只保留柔和的投影 */
+  box-shadow:
+    0 18px 44px rgba(16, 32, 64, 0.16),
+    0 2px 8px rgba(16, 32, 64, 0.08);
+  transition:
+    opacity var(--lg-anim, 220ms) ease,
+    transform var(--lg-anim-fast, 120ms) ease,
+    box-shadow var(--lg-anim-fast, 120ms) ease;
+}
+
+
+/* 镜面高光层：图标为不透明图片，关闭高光以免冲淡图案 */
+.fb-orb::before {
+  display: none;
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      125% 85% at calc(10% + var(--lg-mx, 0) * 0.6%) calc(-8% + var(--lg-my, 0) * 0.6%),
+      rgba(255, 255, 255, 0.55) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      calc(102deg + var(--lg-mx, 0) * 0.9deg),
+      transparent 34%,
+      rgba(255, 255, 255, 0.55) 47%,
+      transparent 60%
+    );
+  background-size: 100% 100%, 260% 100%;
+  background-position: 0 0, -70% 0;
+  background-repeat: no-repeat;
+}
+
+
+/* 镜面描边层：彻底关闭，不产生任何边缘环 */
+.fb-orb::after {
+  display: none;
+}
+
+.fb-orb:hover {
+  transform: scale(1.04);
+  box-shadow:
+    0 22px 50px rgba(16, 32, 64, 0.2),
+    0 4px 12px rgba(16, 32, 64, 0.12);
+}
+
+.fb-orb.dragging {
+  cursor: grabbing;
+  transform: scale(0.96);
+  box-shadow:
+    0 10px 24px rgba(16, 32, 64, 0.12),
+    0 2px 6px rgba(16, 32, 64, 0.06);
+}
+
+
+/* 中心深色同心圆标志：已由图片图标替代，关闭旧 CSS 绘制 */
+.fb-orb-ring {
+  display: none;
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+  border: 3px solid rgba(20, 26, 34, 0.18);
+  z-index: 1;
+}
+
+.fb-orb-core {
+  display: none;
+  position: absolute;
+  inset: 38%;
+  border-radius: 50%;
+  background: rgba(20, 26, 34, 0.12);
+  z-index: 1;
+}
+
+
+/* 录屏倒计时 / 计时 */
+.fb-rec-ring {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 2;
+}
+
+
+/* 输入法角标 */
+.fb-ime-badge {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--lg-accent, #2b6ee0);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: 2;
+}
+
+
+/* ====== 扇形菜单项 ====== */
+.fb-item {
+  position: absolute;
+  border-radius: 50%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: none;
+  transition:
+    left var(--lg-anim, 220ms) var(--lg-spring, ease),
+    top var(--lg-anim, 220ms) var(--lg-spring, ease),
+    opacity var(--lg-anim-fast, 120ms) ease,
+    transform var(--lg-anim, 220ms) var(--lg-spring, ease);
+}
+
+.fb-item.show {
+  pointer-events: auto;
+}
+
+.fb-item:hover {
+  transform: scale(1.08) !important;
+}
+
+.fb-item-icon {
+  width: 56%;
+  height: 56%;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+
+
+/* ==================================================================
+ * liquid-glass-react 移植覆盖区（对齐 rdev/liquid-glass-react）
+ * 目标：圆形玻璃一律按 rdev 结构重绘（tint → capture → 边光环 → 图标），
+ *       彻底消灭一切方形外观（系统背板已在主进程对 floatball/sidebar 关闭）
+ * ================================================================== */
+
+/* ---------- 悬浮球弧形菜单项：rdev 圆形玻璃 ---------- */
+/* tint 层（对应 rdev material/shade）：极淡白渐变 + rdev 默认投影
+   0px 12px 40px rgba(0,0,0,.25)，关闭容器级 backdrop（由 capture 层接管） */
+.fb-root .fb-item.lg-glass,
+.fb-root .fb-item.lg-item {
+  border-radius: 50% !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.12) 42%,
+      rgba(255, 255, 255, 0.05) 58%,
+      rgba(255, 255, 255, 0.22) 100%) !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 0 18px rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: hidden !important;
+}
+
+
+/* capture/warp 层（对应 rdev 玻璃位移采样层）：blur+saturate，
+   复用应用注入的 #lg-refract 滤镜提供真实折射（与 rdev 同构：filter+backdrop 并存） */
+.fb-root .fb-item.lg-glass::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 50% !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  background: none !important;
+  opacity: 1 !important;
+  background-repeat: repeat !important;
+  background-size: auto !important;
+  background-position: 0 0 !important;
+  backdrop-filter: blur(10px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(160%) !important;
+  filter: url(#lg-refract) !important;
+}
+
+
+/* 边光环（对应 rdev 双层 border 光效）：padding 1.5px + mask xor/exclude
+   掏空成环，白系多档渐变模拟「边缘折射环境光」，screen 混合提亮。
+   同时压制 .lg-liquid 的条纹焦散属性（inset/-opacity/filter/blend 全量覆写） */
+.fb-root .fb-item.lg-liquid::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 50% !important;
+  z-index: 3 !important;
+  padding: 1.5px !important;
+  opacity: 1 !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.28) 18%,
+      rgba(255, 255, 255, 0.08) 40%,
+      rgba(255, 255, 255, 0.16) 62%,
+      rgba(255, 255, 255, 0.6) 100%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  mix-blend-mode: screen !important;
+  filter: none !important;
+  pointer-events: none !important;
+}
+
+
+/* 图标置于折射层之上（rdev 内容层的层级关系） */
+.fb-root .fb-item .fb-item-icon {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+
+/* ---------- 3. 悬浮球重绘：深色玻璃球 ---------- */
+.fb-ime-badge {
+  display: none !important;
+}
+
+.fb-orb {
+  background:
+    radial-gradient(120% 100% at 30% 20%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.04) 34%,
+      transparent 58%),
+    linear-gradient(150deg,
+      rgba(64, 68, 76, 0.94) 0%,
+      rgba(38, 41, 47, 0.96) 55%,
+      rgba(22, 24, 28, 0.97) 100%) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.35),
+    0 18px 44px rgba(0, 0, 0, 0.3) !important;
+}
+
+
+/* ---------- 3. 悬浮球：镜头图标圆球（图标铺满并裁切正圆，无圆角方底） ---------- */
+.fb-orb {
+  isolation: isolate !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: url("../assets/floatball-icon.png") center / cover no-repeat !important;
+  backdrop-filter: blur(21px) saturate(2.2) !important;
+  -webkit-backdrop-filter: blur(21px) saturate(2.2) !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 镜面高光保持关闭：图标为不透明图片，高光层会冲淡图案 */
+.fb-orb::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* rdev 边光环：玻璃边缘折射环境光 */
+.fb-orb::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 50% !important;
+  z-index: 3 !important;
+  padding: 1.5px !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.32) 18%,
+      rgba(255, 255, 255, 0.1) 40%,
+      rgba(255, 255, 255, 0.2) 62%,
+      rgba(255, 255, 255, 0.68) 100%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  mix-blend-mode: screen !important;
+  pointer-events: none !important;
+}

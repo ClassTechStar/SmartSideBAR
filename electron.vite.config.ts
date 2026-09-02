@@ -3,12 +3,12 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import { copyFileSync, existsSync } from 'fs'
 
-// 原生模块复制插件: 构建时将 build/Release/appbar.node 复制到 out/main/
+// 原生模块复制插件: 构建时将 native/build/Release/appbar.node 复制到 out/main/
 function nativeModulePlugin(): any {
   return {
     name: 'copy-native-modules',
     closeBundle() {
-      const src = resolve(__dirname, 'build/Release/appbar.node')
+      const src = resolve(__dirname, 'native/build/Release/appbar.node')
       const dst = resolve(__dirname, 'out/main/appbar.node')
       if (existsSync(src)) {
         copyFileSync(src, dst)

@@ -1,0 +1,541 @@
+/* 液态玻璃设计系统 (v1.1 编译产物, 全局) */
+
+/* ============================================================================
+ * liquid-glass.css — 液态玻璃设计系统
+ *
+ * 设计要点（不是简单堆 backdrop-filter）：
+ *   1. 玻璃是「体」不是「膜」：底色用斜向渐变模拟厚度，越靠光源侧越浓；
+ *   2. 边缘光（rim）比背景更关键：上沿一条高光 + 下沿一条反弹光，玻璃才「立」起来；
+ *   3. 镜面高光（specular）缓慢扫动，静止界面才有液体感，但要能一键关掉（投影/低配）；
+ *   4. 折射（refraction）用 SVG feDisplacementMap，只作用于装饰层，绝不套在文字上 —— 套上去就糊；
+ *   5. 全部参数走 CSS 变量，由 shared/appearance.ts 的 glassCssVars() 在运行时注入。
+ *
+ * 降级开关（由 JS 写在 <html> 上）：
+ *   data-glass="off"     → 玻璃整体退化为不透明纯色
+ *   data-motion="reduced"→ 关闭所有动效
+ *   data-theme="dark"    → 暗色玻璃
+ * ==========================================================================*/
+
+/* ---------- 兜底 token：JS 尚未注入前也要能正常显示 ---------- */
+:root {
+  --lg-blur: 22px;
+  --lg-blur-strong: 35px;
+  --lg-sat: 1.6;
+  --lg-radius: 16px;
+  --lg-radius-sm: 10px;
+  --lg-radius-pill: 999px;
+  --lg-refraction: 14;
+  --lg-specular: 0.55;
+  --lg-aberration: 2;
+
+  /* 光标在玻璃内的归一化偏移（范围 -100~100，由 JS 在 mousemove 时写入）。
+     驱动高光/描边跟随光标——Apple 液态玻璃那种「光会跟着你动」的镜面感。 */
+  --lg-mx: 0;
+  --lg-my: 0;
+
+  /* 更清透的 tint：降低不透明度，接近全透明 */
+  --lg-tint: rgba(255, 255, 255, 0.28);
+  --lg-tint-weak: rgba(255, 255, 255, 0.14);
+  --lg-tint-strong: rgba(255, 255, 255, 0.42);
+  --lg-veil: rgba(236, 241, 248, 0.55);
+  --lg-solid: #ffffff;
+
+  --lg-rim: rgba(255, 255, 255, 0.75);
+  --lg-rim-bottom: rgba(255, 255, 255, 0.28);
+  --lg-hairline: rgba(16, 24, 40, 0.04);
+  --lg-specular-color: rgba(255, 255, 255, 0.47);
+
+  --lg-shadow: 0 18px 44px rgba(16, 32, 64, 0.16), 0 2px 8px rgba(16, 32, 64, 0.08);
+  --lg-shadow-sm: 0 6px 18px rgba(16, 32, 64, 0.12);
+
+  --lg-text: #141a22;
+  --lg-text-secondary: rgba(20, 26, 34, 0.62);
+  --lg-text-disabled: rgba(20, 26, 34, 0.34);
+  --lg-divider: rgba(16, 24, 40, 0.07);
+  --lg-hover: rgba(16, 32, 64, 0.05);
+
+  --lg-accent: #2b6ee0;
+  --lg-accent-hover: #2661c5;
+  --lg-accent-soft: rgba(43, 110, 224, 0.12);
+  --lg-accent-on: #ffffff;
+
+  --lg-anim: 220ms;
+  --lg-anim-fast: 120ms;
+  --lg-spring: cubic-bezier(0.34, 1.46, 0.44, 0.96);
+}
+
+
+/* ============================ 玻璃基底 ============================ */
+
+/*
+ * .lg-glass — 所有玻璃面的基类。
+ * 注意 isolation: isolate —— 防止内部的高光层跟窗口外的内容混合，
+ * 在 transparent 窗口里不加这行会出现诡异的发灰。
+ */
+.lg-glass {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--lg-radius);
+  color: var(--lg-text);
+  background: linear-gradient(
+    143deg,
+    var(--lg-tint-strong) 0%,
+    var(--lg-tint) 46%,
+    var(--lg-tint-weak) 100%
+  );
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  /* 去掉所有 inset 边框高光，只保留外投影 */
+  box-shadow: var(--lg-shadow);
+}
+
+
+/* 镜面高光层：左上主光斑 + 一道可扫动的窄高光。
+   光斑中心与高光角度跟随光标偏移 --lg-mx/--lg-my，模拟 Apple 那种
+   「光源相对位置随你移动」的折射感。 */
+.lg-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      125% 85% at calc(10% + var(--lg-mx, 0) * 0.6%) calc(-8% + var(--lg-my, 0) * 0.6%),
+      var(--lg-specular-color) 0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      calc(102deg + var(--lg-mx, 0) * 0.9deg),
+      transparent 34%,
+      var(--lg-specular-color) 47%,
+      transparent 60%
+    );
+  background-size: 100% 100%, 260% 100%;
+  background-position: 0 0, -70% 0;
+  background-repeat: no-repeat;
+}
+
+
+/*
+ * 跟随光标的镜面描边（需显式加 .lg-rim）。
+ * 用 1.5px 的 padding + mask-composite 掏空内部，只留一圈边缘高光；
+ * 渐变角度与高光位置随 --lg-mx/--lg-my 偏移，光标在哪儿，亮边就往哪儿偏。
+ * 这是 rdev 实现里「edges and highlights take on the underlying light」的 CSS 版。
+ */
+/* rim 描边层：彻底关闭，不再产生任何边缘环 */
+.lg-glass.lg-rim::after {
+  display: none;
+}
+
+
+/* 让子内容压在高光之上 */
+.lg-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* 缓慢扫动的高光。默认不开，需要显式加 .lg-sheen，避免整屏都在动 */
+.lg-sheen::before {
+  animation: lg-sheen-sweep 9s ease-in-out infinite;
+}
+
+
+@keyframes lg-sheen-sweep {
+  0%,
+  100% {
+    background-position: 0 0, -70% 0;
+  }
+  50% {
+    background-position: 0 0, 170% 0;
+  }
+}
+
+
+/* ---------- 变体 ---------- */
+
+/* 更薄的玻璃：用于贴边的窄轨，避免过浓遮住桌面 */
+.lg-glass.lg-thin {
+  background: linear-gradient(160deg, var(--lg-tint) 0%, var(--lg-tint-weak) 100%);
+  box-shadow: var(--lg-shadow-sm);
+}
+
+
+/* 更浓的玻璃：用于承载正文/表单，保证可读性 */
+.lg-glass.lg-solidish {
+  background: linear-gradient(150deg, var(--lg-veil) 0%, var(--lg-tint-strong) 100%);
+  backdrop-filter: blur(var(--lg-blur-strong)) saturate(var(--lg-sat));
+  -webkit-backdrop-filter: blur(var(--lg-blur-strong)) saturate(var(--lg-sat));
+}
+
+
+/* 无投影（嵌在别的玻璃里时用，避免投影叠加成脏边） */
+.lg-glass.lg-flat {
+  box-shadow: none;
+}
+
+
+/* ============================ 折射 / 液态 ============================ */
+
+/*
+ * .lg-lens — 磨砂基底。Chromium 不支持 backdrop-filter:url()（只有 blur/saturate
+ * 等基础函数），所以折射不走 backdrop，避免整块失效。真正的色散折射由
+ * .lg-aberrate 挂到装饰层（见下）实现。
+ */
+.lg-lens {
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat));
+}
+
+
+/*
+ * .lg-aberrate — 把 #lg-refract 色散透镜滤镜挂到「装饰层」上（球体高光、焦散
+ * 层等），让玻璃表面本身出现边缘弯曲 + 彩虹边。切忌挂到文字/图标层，会糊。
+ */
+.lg-aberrate {
+  filter: url(#lg-refract);
+}
+
+
+/*
+ * .lg-liquid — 液态焦散层：把一层极淡的条纹渐变用湍流打散，
+ * 得到缓慢流动的光斑，这是「液态」而非「毛玻璃」的关键。
+ */
+.lg-liquid::after {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: calc(var(--lg-specular) * 0.5);
+  background:
+    repeating-linear-gradient(
+      118deg,
+      rgba(255, 255, 255, 0.22) 0px,
+      rgba(255, 255, 255, 0) 26px,
+      rgba(255, 255, 255, 0.16) 52px
+    );
+  filter: url(#lg-caustic);
+  mix-blend-mode: soft-light;
+}
+
+
+/* ============================ 交互元件 ============================ */
+
+.lg-btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--lg-text);
+  border: none;
+  border-radius: var(--lg-radius-sm);
+  cursor: pointer;
+  background: linear-gradient(160deg, var(--lg-tint-strong), var(--lg-tint-weak));
+  backdrop-filter: blur(10px) saturate(var(--lg-sat));
+  -webkit-backdrop-filter: blur(10px) saturate(var(--lg-sat));
+  box-shadow: var(--lg-shadow-sm);
+  transition:
+    transform var(--lg-anim-fast) var(--lg-spring),
+    box-shadow var(--lg-anim-fast) ease,
+    background var(--lg-anim-fast) ease;
+}
+
+
+.lg-btn:hover {
+  background: linear-gradient(160deg, var(--lg-tint-strong), var(--lg-tint));
+  transform: translateY(-1px);
+}
+
+
+.lg-btn:active {
+  transform: translateY(0) scale(0.975);
+  box-shadow:
+    inset 0 1px 3px rgba(16, 24, 40, 0.14);
+}
+
+
+.lg-btn:disabled {
+  color: var(--lg-text-disabled);
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.6;
+}
+
+
+/* 主行动按钮：主题色玻璃 */
+.lg-btn.lg-primary {
+  color: var(--lg-accent-on);
+  background: linear-gradient(160deg, var(--lg-accent), var(--lg-accent-hover));
+  box-shadow: 0 6px 18px var(--lg-accent-soft);
+}
+
+
+.lg-btn.lg-primary:hover {
+  background: linear-gradient(160deg, var(--lg-accent-hover), var(--lg-accent-hover));
+}
+
+
+/* 圆形图标按钮 */
+.lg-icon-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--lg-radius-pill);
+}
+
+
+/* 药丸标签 */
+.lg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--lg-text-secondary);
+  border-radius: var(--lg-radius-pill);
+  background: var(--lg-tint-weak);
+}
+
+
+.lg-chip.lg-on {
+  color: var(--lg-accent-on);
+  background: var(--lg-accent);
+}
+
+
+/* 列表项：hover 时浮起一层薄玻璃 */
+.lg-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: var(--lg-radius-sm);
+  cursor: pointer;
+  transition: background var(--lg-anim-fast) ease, transform var(--lg-anim-fast) var(--lg-spring);
+}
+
+
+.lg-item:hover {
+  background: var(--lg-hover);
+  transform: translateX(2px);
+}
+
+
+.lg-item.lg-active {
+  background: var(--lg-accent-soft);
+}
+
+
+/* 分隔线：0.5px hairline，不用 border 避免 DPI 取整变粗 */
+.lg-divider {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--lg-divider);
+  transform: scaleY(0.5);
+  transform-origin: center;
+}
+
+
+/* 滑块：玻璃轨 + 主题色球 */
+.lg-range {
+  width: 100%;
+  height: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+
+.lg-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--lg-radius-pill);
+  background: var(--lg-tint-weak);
+  box-shadow:     inset 0 1px 2px rgba(16, 24, 40, 0.1);
+}
+
+
+.lg-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #fff, var(--lg-accent));
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: transform var(--lg-anim-fast) var(--lg-spring);
+}
+
+
+.lg-range:active::-webkit-slider-thumb {
+  transform: scale(1.18);
+}
+
+
+/* 开关 */
+.lg-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border-radius: var(--lg-radius-pill);
+  cursor: pointer;
+  background: var(--lg-tint-weak);
+  box-shadow: inset 0 1px 3px rgba(16, 24, 40, 0.12);
+  transition: background var(--lg-anim) ease;
+}
+
+
+.lg-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.3);
+  transition: transform var(--lg-anim) var(--lg-spring);
+}
+
+
+.lg-switch.lg-on {
+  background: var(--lg-accent);
+}
+
+
+.lg-switch.lg-on::after {
+  transform: translateX(18px);
+}
+
+
+/* 焦点可见性：键盘导航必须有环，触摸/鼠标点击不出现 */
+.lg-btn:focus-visible,
+.lg-item:focus-visible,
+.lg-switch:focus-visible {
+  outline: 2px solid var(--lg-accent);
+  outline-offset: 2px;
+}
+
+
+/* ============================ 文本 / 滚动条 ============================ */
+
+.lg-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lg-text);
+}
+
+
+.lg-sub {
+  font-size: 11px;
+  color: var(--lg-text-secondary);
+}
+
+
+.lg-scroll {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+
+.lg-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+
+.lg-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.lg-scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--lg-divider);
+}
+
+
+.lg-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--lg-text-disabled);
+}
+
+
+/* ============================ 降级 ============================ */
+
+/*
+ * 玻璃关闭：投影仪、远程桌面、集显老机器上 backdrop-filter 很贵，
+ * 这里整体退化为不透明纯色，功能完全不受影响。
+ */
+html[data-glass='off'] .lg-glass,
+html[data-glass='off'] .lg-btn,
+html[data-glass='off'] .lg-chip {
+  background: var(--lg-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 0 0 1px var(--lg-hairline), var(--lg-shadow-sm);
+}
+
+
+html[data-glass='off'] .lg-btn.lg-primary {
+  color: var(--lg-accent-on);
+  background: var(--lg-accent);
+}
+
+
+html[data-glass='off'] .lg-glass::before,
+html[data-glass='off'] .lg-glass.lg-rim::after,
+html[data-glass='off'] .lg-liquid::after {
+  display: none;
+}
+
+
+html[data-glass='off'] .lg-lens {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+
+/* 玻璃关闭时色散滤镜必须摘掉：scale=0 时 screen 混合仍会提亮装饰层 */
+html[data-glass='off'] .lg-aberrate {
+  filter: none;
+}
+
+
+/* 降动效：无障碍需求 + 低配机型 */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
+
+/* 浏览器/系统层面要求减少动效时同样尊重 */
+@media (prefers-reduced-motion: reduce) {
+  .lg-sheen::before {
+    animation: none;
+  }
+}
+
+
+/* backdrop-filter 不被支持时（极老的 WebView）保证仍可读 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-glass {
+    background: var(--lg-veil);
+  }
+}

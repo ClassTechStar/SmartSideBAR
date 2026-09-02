@@ -5,6 +5,8 @@ import { join, dirname } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import log from 'electron-log'
 import type { SidekickConfig, ReminderSoundConfig } from '../../shared/types'
+import { DEFAULT_APPEARANCE, clampAppearance } from '../../shared/appearance'
+import { DEFAULT_FLOATBALL, clampFloatBall } from '../../shared/floatball-layout'
 
 const DEFAULT_CONFIG: SidekickConfig = {
   version: 2,
@@ -14,6 +16,8 @@ const DEFAULT_CONFIG: SidekickConfig = {
   usb: { enabled: true, ignoreTypes: ['phone', 'carplay'] },
   printer: { pollIntervalSec: 10 },
   display: { sidebarMonitor: 'primary', sidebarSide: 'right', fitWindowsToWorkArea: true },
+  appearance: { ...DEFAULT_APPEARANCE },
+  floatBall: { ...DEFAULT_FLOATBALL, actions: [...DEFAULT_FLOATBALL.actions] },
   links: [
     { id: 'l1', name: '国家中小学智慧教育平台', url: 'https://www.zxx.edu.cn', enabled: true },
     { id: 'l2', name: '希沃白板', url: 'https://easinote.seewo.com', enabled: true },
@@ -118,6 +122,9 @@ export const ConfigService = {
     // 展开路径变量
     config.capture.dir = expandPath(config.capture.dir)
     config.recorder.dir = expandPath(config.recorder.dir)
+    // 外观 / 悬浮球参数钳制 (与 v1.1 一致: 加载后立即 clamp)
+    config.appearance = clampAppearance(config.appearance, DEFAULT_APPEARANCE)
+    config.floatBall = clampFloatBall(config.floatBall, DEFAULT_FLOATBALL)
 
     // F8: 配置 schema 迁移 —— 版本落后时迁移并落盘
     const beforeVersion = config.version
