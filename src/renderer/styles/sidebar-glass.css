@@ -1,0 +1,547 @@
+/* 侧边栏液态玻璃 (v1.1 编译产物, 去 hash 全局) */
+
+
+/* ====== 浅色液态玻璃侧边栏风格 ====== */
+.sidebar {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+
+/* docked 模式: 底部水平条 */
+.sidebar.docked {
+  flex-direction: column;
+  height: 72px;
+}
+
+
+/* ====== 轨道（侧边栏本体） ====== */
+.rail {
+  width: 72px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 8px;
+  border-right: none;
+  z-index: 2;
+  gap: 8px;
+}
+
+.rail.docked {
+  width: 100%;
+  height: 72px;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 4px;
+}
+
+.rail-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.rail-inner.docked {
+  flex-direction: row;
+  gap: 4px;
+  overflow-y: hidden;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* ====== 图标项：圆角方形（不是圆形） ====== */
+.rail-item {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 150ms cubic-bezier(0.34, 1.46, 0.44, 0.96),
+              background 150ms ease;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.rail-item:hover {
+  transform: scale(1.08);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.rail-item.active {
+  background: rgba(0, 0, 0, 0.10);
+}
+
+.rail-icon {
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+  /* 浅色背景下图标保持原色（深色） */
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+  transition: transform 150ms ease;
+}
+
+.rail-item:hover .rail-icon {
+  transform: scale(1.1);
+}
+
+
+/* IME 角标 */
+.rail-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 6px;
+  color: white;
+  line-height: 1;
+}
+
+.badge-cn { background: var(--brand);
+}
+
+.badge-en { background: rgba(0,0,0,0.45);
+}
+
+
+/* ====== 收起/展开 切换按钮 ====== */
+.dock-toggle {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: auto;
+  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  border: none;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+}
+
+.dock-toggle:hover {
+  background: rgba(0, 0, 0, 0.12);
+  transform: scale(1.05);
+}
+
+.dock-toggle.docked {
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-left: auto;
+  width: 44px;
+  height: 44px;
+}
+
+.dock-arrow {
+  font-size: 20px;
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.dock-toggle:hover .dock-arrow {
+  color: rgba(0, 0, 0, 0.85);
+}
+
+
+/* ====== 面板 ====== */
+.panel {
+  width: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 180ms ease;
+}
+
+.panel.expanded {
+  width: 380px;
+}
+
+.panel-header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lg-text);
+}
+
+.panel-close {
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  color: rgba(0, 0, 0, 0.5);
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 120ms ease;
+}
+
+.panel-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  min-height: 0;
+  color: var(--lg-text);
+}
+
+
+/* ---------- 停靠把手：方形玻璃钮 → rdev 圆形玻璃 ---------- */
+.dock-toggle,
+.dock-toggle.docked {
+  position: relative !important;
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.14) 45%,
+      rgba(255, 255, 255, 0.26) 100%) !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.22),
+    inset 0 0 18px rgba(255, 255, 255, 0.15) !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+}
+
+.dock-toggle:hover {
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.22)) !important;
+  transform: scale(1.06);
+}
+
+/* 把手同款边光环 */
+.dock-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 50%;
+  padding: 1.5px;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.28) 18%,
+      rgba(255, 255, 255, 0.08) 40%,
+      rgba(255, 255, 255, 0.16) 62%,
+      rgba(255, 255, 255, 0.6) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.dock-arrow {
+  position: relative;
+  z-index: 2;
+  color: rgba(20, 26, 34, 0.72);
+}
+
+
+/* ==================================================================
+ * v4：侧边栏/轨道/面板容器彻底去底 —— 方形最后据点根除
+ * rail 与 panel 挂 lg-glass/lg-thin/lg-rim 造成的灰条与展开大白板，
+ * 一律透明化，只保留各图标项自身的圆形玻璃（对齐 rdev 漂浮式美学）
+ * ================================================================== */
+.sidebar,
+.rail,
+.rail.docked,
+.rail-inner,
+.rail-inner.docked,
+.panel,
+.panel.expanded {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+}
+
+/* 容器上的 rim / liquid / ::before 伪层全部关闭 */
+.rail.lg-glass,
+.panel.lg-glass {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.rail.lg-rim::after,
+.panel.lg-rim::after,
+.rail.lg-thin::after,
+.panel.lg-thin::after {
+  display: none !important;
+  content: none !important;
+}
+
+.rail::before,
+.rail::after,
+.panel::before,
+.panel::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* 轨道图标项：圆角方形 → 正圆 */
+.rail-item {
+  border-radius: 50% !important;
+}
+
+.rail-item:hover {
+  border-radius: 50% !important;
+}
+
+/* IME 角标：方形蓝块 → 圆形小徽章 */
+.badge-cn,
+.badge-en {
+  min-width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+
+/* ==================================================================
+ * v5：用户反馈修复包
+ *  1) 黑背景下侧边栏隐形 → 中性暗玻璃底 + 图标反白
+ *  2) 停靠把手箭头过粗 → 字重 400 对齐图标线条
+ *  3) 悬浮球左上角蓝徽章/白色镜头芯 → 重绘为深色玻璃球
+ *  4) 设置开关被裁切 → 行可换行 + 输入弹性宽
+ *  5) 快捷链接「添加链接」按钮玻璃下不可见 → 实底玻璃
+ * ================================================================== */
+
+/* ---------- 1. 侧边栏轨道：任何壁纸下均可辨 ---------- */
+.rail,
+.rail.docked {
+  background: rgba(30, 32, 38, 0.42) !important;
+  backdrop-filter: blur(22px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 10px 30px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* 图标反白：暗玻璃底上的清晰对比 */
+.rail-icon {
+  filter: invert(1) brightness(1.3) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) !important;
+}
+
+.rail-item:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.rail-item.active {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 顶部中/英徽章去蓝：中性玻璃底 */
+.badge-cn {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #2a2f38 !important;
+  font-size: 10px !important;
+}
+
+.badge-en {
+  background: rgba(20, 22, 26, 0.55) !important;
+  color: #fff !important;
+  font-size: 10px !important;
+}
+
+
+/* ---------- 2. 停靠把手箭头：字重对齐图标线条 ---------- */
+.dock-arrow {
+  font-weight: 400 !important;
+  font-size: 20px !important;
+  color: rgba(30, 34, 40, 0.8) !important;
+}
+
+
+/* ==================================================================
+ * v6：侧边栏回归「浅灰玻璃胶囊」（用户钦定版式样）
+ *  - 高不透明度浅灰胶囊：深色/纯黑/浅色壁纸下均清晰可见
+ *  - 图标恢复深色（撤销 v5 反白）
+ *  - 悬浮球/开关/添加按钮维持 v5 修复不变
+ * ================================================================== */
+.rail,
+.rail.docked,
+.rail.lg-glass {
+  background: rgba(240, 242, 246, 0.86) !important;
+  backdrop-filter: blur(28px) saturate(1.25) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.25) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 14px 38px rgba(15, 23, 42, 0.18) !important;
+}
+
+.rail-icon {
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.18)) !important;
+}
+
+.rail-item:hover {
+  background: rgba(15, 23, 42, 0.08) !important;
+}
+
+.rail-item.active {
+  background: rgba(15, 23, 42, 0.13) !important;
+}
+
+/* 中/英角标在浅胶囊上的清晰度 */
+.badge-cn {
+  box-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.2),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* 停靠把手圆钮：浅胶囊上的白色玻璃提亮 */
+.dock-toggle,
+.dock-toggle.docked {
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(255, 255, 255, 0.45) 100%) !important;
+  box-shadow:
+    0 6px 18px rgba(15, 23, 42, 0.14),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.07) !important;
+}
+
+.dock-toggle::after {
+  display: none !important;
+  content: none !important;
+}
+
+
+/* ==================================================================
+ * v7：液态玻璃质感全面回归（照抄 liquid-glass-react 视觉配方）
+ *  - 配方来源 rdev/liquid-glass-react：斜向 tint 渐变玻璃体 + backdrop
+ *    blur/saturate + mask 掏空边光环 + 顶部镜面高光 + 0 12px 40px 投影
+ *  - 参数对齐用户 config：blur 21 / saturate 2.2 / radius 28
+ *  - 收起 rail 与展开 panel 都是玻璃体；悬浮球恢复透明玻璃球
+ *  - 保留 v5 修复（开关防裁/添加按钮/去蓝徽章）与 v6 深色图标
+ * ================================================================== */
+
+/* ---------- 1. 侧边栏轨道：玻璃胶囊（撤销 v6 实心灰） ---------- */
+.rail,
+.rail.docked,
+.rail.lg-glass {
+  position: relative !important;
+  isolation: isolate !important;
+  background:
+    radial-gradient(120% 90% at 18% 0%,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.14) 42%,
+      transparent 68%),
+    linear-gradient(143deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.4) 46%,
+      rgba(255, 255, 255, 0.28) 100%) !important;
+  backdrop-filter: blur(21px) saturate(2.2) !important;
+  -webkit-backdrop-filter: blur(21px) saturate(2.2) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* rdev 边光环：padding 1.5px + mask xor 掏空成环，screen 混合提亮 */
+.rail::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 28px !important;
+  z-index: 3 !important;
+  padding: 1.5px !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.28) 18%,
+      rgba(255, 255, 255, 0.08) 40%,
+      rgba(255, 255, 255, 0.16) 62%,
+      rgba(255, 255, 255, 0.6) 100%) !important;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: xor !important;
+  mask-composite: exclude !important;
+  mix-blend-mode: screen !important;
+  pointer-events: none !important;
+}
+
+
+/* ---------- 2. 展开面板：玻璃体（撤销白色实心观感） ---------- */
+.panel,
+.panel.expanded {
+  isolation: isolate !important;
+  background:
+    radial-gradient(120% 70% at 20% 0%,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.12) 45%,
+      transparent 70%),
+    linear-gradient(143deg,
+      rgba(255, 255, 255, 0.78) 0%,
+      rgba(255, 255, 255, 0.55) 46%,
+      rgba(255, 255, 255, 0.66) 100%) !important;
+  backdrop-filter: blur(21px) saturate(2.2) !important;
+  -webkit-backdrop-filter: blur(21px) saturate(2.2) !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5),
+    inset 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* 面板内部主题 token 玻璃化：白实底卡片自动变半透明玻璃卡片 */
+.panel-body {
+  --bg: rgba(255, 255, 255, 0.42);
+  --bg-hover: rgba(255, 255, 255, 0.55);
+  --brand-light: rgba(43, 110, 224, 0.16);
+  --border: rgba(16, 24, 40, 0.1);
+}
+
+.panel-body .action-btn:hover {
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.panel-body ::-webkit-scrollbar-thumb {
+  background: rgba(16, 24, 40, 0.18) !important;
+}

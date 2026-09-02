@@ -5,11 +5,11 @@ node_modules/
 # Build outputs
 out/
 dist/
-build/Release/
-build/appbar.vcxproj
-build/appbar.vcxproj.filters
-build/binding.sln
-build/config.gypi
+native/build/
+native/*.vcxproj
+native/*.vcxproj.filters
+native/binding.sln
+native/config.gypi
 *.node
 *.exe
 *.dmg
@@ -45,6 +45,9 @@ coverage/
 # Environment
 .env
 .env.local
+
+# Code signing (私钥/口令绝不入库; 公钥 .cer 与信任脚本随 release 分发)
+cert/
 
 # Electron
 release/

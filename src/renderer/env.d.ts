@@ -67,6 +67,23 @@ interface Window {
     hotkey: {
       getState: () => Promise<Array<{ id: string; accelerator: string }>>
     }
+    appearance: {
+      get: () => Promise<any>
+      set: (patch: any) => Promise<any>
+      onChanged: (cb: (snap: any) => void) => () => void
+    }
+    floatball: {
+      show: () => Promise<boolean>
+      hide: () => Promise<boolean>
+      toggle: () => Promise<boolean>
+      dragStart: (grab: { x: number; y: number }) => Promise<boolean>
+      dragEnd: () => Promise<boolean>
+      expand: () => Promise<boolean>
+      collapse: () => Promise<boolean>
+      action: (id: string) => Promise<boolean>
+      setClickThrough: (on: boolean) => void
+      onLayout: (cb: (layout: any) => void) => () => void
+    }
     shell: {
       openExternal: (url: string) => Promise<void>
       openPath: (path: string) => Promise<boolean>

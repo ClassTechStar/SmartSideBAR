@@ -1,6 +1,6 @@
 // src/main/main.ts - 主进程入口 (完整版 v2.1 - 真实录屏/批注/区域截图)
 
-import { app, BrowserWindow, ipcMain, screen, shell, dialog, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell, dialog, Notification, globalShortcut } from 'electron'
 import { join } from 'path'
 import { spawn } from 'child_process'
 import log from 'electron-log'
@@ -17,9 +17,10 @@ import { DiagnosticService } from './services/diagnostic'
 import { LongshotService } from './services/longshot'
 import { TrayService } from './services/tray'
 import { HotkeyService } from './services/hotkey'
+import { AppearanceService } from './services/appearance'
 import { WindowManager } from './windows/manager'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { SidekickConfig, ReminderSoundConfig } from '../shared/types'
+import type { SidekickConfig, ReminderSoundConfig, AppearanceConfig } from '../shared/types'
 
 // 单例锁
 const gotLock = app.requestSingleInstanceLock()
@@ -55,6 +56,8 @@ async function bootstrap() {
   try {
     // ① 配置先行
     config = await ConfigService.init()
+    // 液态玻璃外观服务 (需在窗口创建前 init, ready-to-show 时 register)
+    AppearanceService.init()
     log.info('[BOOT] Config loaded')
 
     // ② 显示服务
@@ -96,6 +99,8 @@ async function bootstrap() {
       })
     } else {
       mainWin.show()
+      // 悬浮球 (v1.1): 仅在 OOBE 完成后显示
+      if (config.floatBall.enabled) WindowManager.showFloatBall()
       log.info('[BOOT] Main window shown')
     }
 
@@ -112,6 +117,7 @@ async function bootstrap() {
         // E7 修复: 统一由此处防抖后刷新 DisplayService 缓存再重定位侧边栏
         DisplayService.refresh(config!)
         WindowManager.onDisplayChanged()
+        WindowManager.onFloatBallDisplayChanged()
       }, 250)
     }
     screen.on('display-metrics-changed', () => onDisplayEvent('Metrics changed'))
@@ -120,6 +126,8 @@ async function bootstrap() {
 
     // ⑧ 注册全局截图热键 (跨显示器场景: 热键动作吸附到当前目标显示器)
     registerAllHotkeys(config)
+    // 悬浮球全局热键 (v1.1: Alt+Q 显隐)
+    registerFloatBallHotkey(config)
 
     // ⑨ 系统托盘 (F10: 退出入口 + 通知归属)
     TrayService.init()
@@ -136,6 +144,7 @@ async function bootstrap() {
 const ALLOWED_CONFIG_KEYS = new Set([
   'version', 'ime', 'capture', 'recorder', 'usb', 'printer',
   'display', 'links', 'reminders', 'reminderSound', 'oobe', 'policy',
+  'appearance', 'floatBall',
   'capture.hotkey', 'capture.annotateHotkey', 'capture.longshotHotkey', 'capture.format', 'capture.dir',
   'recorder.fps', 'recorder.bitrate', 'recorder.mic', 'recorder.dir',
   'usb.enabled', 'usb.ignoreTypes',
@@ -162,6 +171,11 @@ ipcMain.handle(IPC_CHANNELS['config:set'], async (_event, key: string, value: un
   if (config && (key === 'capture.hotkey' || key === 'capture.annotateHotkey' || key === 'capture.longshotHotkey')) {
     registerAllHotkeys(config)
   }
+  // 悬浮球配置变更: 重新套用 (开关/尺寸/位置) + 热键重注册
+  if (config && (key === 'floatBall' || key.startsWith('floatBall.'))) {
+    WindowManager.applyFloatBallConfig(ConfigService.get())
+    if (key === 'floatBall.hotkey') registerFloatBallHotkey(ConfigService.get())
+  }
   WindowManager.broadcast(IPC_CHANNELS['config:updated'], ConfigService.get())
   return result
 })
@@ -178,7 +192,8 @@ ipcMain.handle(IPC_CHANNELS['ime:toggle'], async () => {
 async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepath?: string; error?: string }> {
   const mode = opts?.mode || 'region'
 
-  // 隐藏侧边栏
+  // 隐藏侧边栏与悬浮球 (v1.1: 免得球被拍进图里)
+  WindowManager.hideFloatBallForCapture()
   WindowManager.hideMain()
   await sleep(300)
 
@@ -186,6 +201,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
   const shot = await CaptureService.grabTarget()
   const img = shot?.img || null
   if (!img) {
+    WindowManager.restoreFloatBallAfterCapture()
     WindowManager.showMain()
     return { success: false, error: '无法获取屏幕图像' }
   }
@@ -193,6 +209,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
   // 全屏截图模式 (无区域选择)
   if (mode === 'fullscreen') {
     const filepath = await CaptureService.saveImage(img)
+    WindowManager.restoreFloatBallAfterCapture()
     WindowManager.showMain()
     if (filepath && Notification.isSupported()) {
       new Notification({ title: '截图已保存', body: filepath, timeoutType: 'default' }).show()
@@ -202,6 +219,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
 
   // 长截图已迁移到专用 IPC 通道
   if (mode === 'longshot') {
+    WindowManager.restoreFloatBallAfterCapture()
     WindowManager.showMain()
     return { success: false, error: '请使用新版长截图功能（点击「长截图」按钮）' }
   }
@@ -249,6 +267,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
 
     if (!activeOverlayWin) {
       ipcMain.removeListener(IPC_CHANNELS['overlay:ready'], readyHandler)
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '无法创建选择窗口' })
       return
@@ -262,6 +281,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       resolved = true
       cleanup()
       activeOverlayWin = null
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '选择窗口已关闭' })
     }
@@ -292,6 +312,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
         activeOverlayWin.close()
         activeOverlayWin = null
       }
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
 
       if (filepath && Notification.isSupported()) {
@@ -312,6 +333,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
         activeOverlayWin.close()
         activeOverlayWin = null
       }
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '用户取消' })
     }
@@ -334,6 +356,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
         activeOverlayWin.close()
         activeOverlayWin = null
       }
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '操作超时' })
     }, 60000)
@@ -378,7 +401,9 @@ async function runLongshot(opts?: { window?: any }): Promise<{ success: boolean;
   // D7 修复: 原实现在此 hideMain()+sleep(500) 后才进入 start() 的倒计时,
   // 导致倒计时播放时侧边栏已隐藏, 用户看不到倒计时。
   // start() 内部在倒计时结束后自行 hideMain(), 无需在此提前隐藏。
+  WindowManager.hideFloatBallForCapture()
   const filepath = await LongshotService.start(opts)
+  WindowManager.restoreFloatBallAfterCapture()
   WindowManager.showMain()
   if (filepath && Notification.isSupported()) {
     new Notification({ title: '长截图已保存', body: filepath, timeoutType: 'default' }).show()
@@ -403,6 +428,7 @@ ipcMain.handle(IPC_CHANNELS['longshot:stop'], async () => {
 async function runAnnotate(): Promise<{ success: boolean; filepath?: string; error?: string }> {
   log.info('[Annotate] (transparent overlay mode)')
 
+  WindowManager.hideFloatBallForCapture()
   WindowManager.hideMain()
   await sleep(300)
 
@@ -461,6 +487,7 @@ async function runAnnotate(): Promise<{ success: boolean; filepath?: string; err
 
     if (!activeAnnotatorWin) {
       ipcMain.removeListener(IPC_CHANNELS['overlay:ready'], readyHandler)
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '无法创建批注窗口' })
       return
@@ -474,6 +501,7 @@ async function runAnnotate(): Promise<{ success: boolean; filepath?: string; err
       resolved = true
       cleanup()
       activeAnnotatorWin = null
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '批注窗口已关闭' })
     }
@@ -491,6 +519,7 @@ async function runAnnotate(): Promise<{ success: boolean; filepath?: string; err
         activeAnnotatorWin.close()
         activeAnnotatorWin = null
       }
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
 
       if (filepath && Notification.isSupported()) {
@@ -510,6 +539,7 @@ async function runAnnotate(): Promise<{ success: boolean; filepath?: string; err
         activeAnnotatorWin.close()
         activeAnnotatorWin = null
       }
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '用户取消' })
     }
@@ -531,6 +561,7 @@ async function runAnnotate(): Promise<{ success: boolean; filepath?: string; err
         activeAnnotatorWin.close()
         activeAnnotatorWin = null
       }
+      WindowManager.restoreFloatBallAfterCapture()
       WindowManager.showMain()
       resolve({ success: false, error: '操作超时' })
     }, 300000)
@@ -660,8 +691,117 @@ ipcMain.handle(IPC_CHANNELS['oobe:setState'], async (_event, state) => {
 ipcMain.handle(IPC_CHANNELS['oobe:closeAndOpenMain'], async () => {
   WindowManager.closeOobe()
   WindowManager.showMain()
+  // OOBE 完成后拉起悬浮球 (与 v1.1 行为一致)
+  if (ConfigService.get().floatBall.enabled) WindowManager.showFloatBall()
   return true
 })
+
+// ---- 外观 / 液态玻璃 ----
+ipcMain.handle(IPC_CHANNELS['appearance:get'], async () => AppearanceService.snapshot())
+ipcMain.handle(IPC_CHANNELS['appearance:set'], async (_event, patch: Partial<AppearanceConfig>) => {
+  return AppearanceService.set(patch)
+})
+
+// ---- 悬浮球 ----
+ipcMain.handle(IPC_CHANNELS['floatball:show'], () => {
+  WindowManager.showFloatBall()
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:hide'], () => {
+  WindowManager.hideFloatBall()
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:toggle'], () => {
+  WindowManager.toggleFloatBall()
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:dragStart'], (_event, grab) => {
+  WindowManager.floatBallDragStart(grab)
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:dragEnd'], () => {
+  WindowManager.floatBallDragEnd()
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:expand'], () => {
+  WindowManager.expandFloatBall()
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:collapse'], () => {
+  WindowManager.collapseFloatBall()
+  return true
+})
+ipcMain.handle(IPC_CHANNELS['floatball:action'], async (_event, id: string) => {
+  await dispatchFloatBallAction(id)
+  return true
+})
+ipcMain.on(IPC_CHANNELS['floatball:setClickThrough'], (_event, on: boolean) => {
+  const w = WindowManager.getFloatBall()
+  if (w && !w.isDestroyed()) {
+    try {
+      w.setIgnoreMouseEvents(!!on, { forward: true })
+    } catch { /* ignore */ }
+  }
+})
+
+/** 悬浮球扇形菜单动作分发 (从 v1.1 编译产物重建) */
+async function dispatchFloatBallAction(id: string): Promise<void> {
+  try {
+    switch (id) {
+      case 'capture':
+        await runRegionCapture({ mode: 'region' })
+        break
+      case 'annotate':
+        await runAnnotate()
+        break
+      case 'longshot':
+        WindowManager.hideMain()
+        await sleep(500)
+        await runLongshot({})
+        break
+      case 'record':
+        await RecorderService.start({})
+        break
+      case 'ime': {
+        const s = await ImeService.toggle()
+        WindowManager.broadcast(IPC_CHANNELS['ime:changed'], s)
+        break
+      }
+      case 'taskmgr':
+        try {
+          spawn('taskmgr.exe', { detached: true })
+        } catch { /* ignore */ }
+        break
+      case 'sidebar':
+        WindowManager.toggleMain()
+        break
+      case 'settings':
+        WindowManager.showSettings()
+        break
+      default:
+        log.warn(`[FloatBall] 未知动作: ${id}`)
+    }
+  } catch (e) {
+    log.warn(`[FloatBall] 动作执行失败 (${id}):`, e)
+  }
+}
+
+/** 悬浮球全局热键 (独立于 HotkeyService 的 3 个截图槽位) */
+function registerFloatBallHotkey(cfg: SidekickConfig): void {
+  const hotkey = cfg.floatBall?.hotkey
+  if (!hotkey) return
+  try {
+    globalShortcut.unregister(hotkey)
+    const ok = globalShortcut.register(hotkey, () => {
+      log.info(`[Hotkey] FloatBall toggled: ${hotkey}`)
+      WindowManager.toggleFloatBall()
+    })
+    if (ok) log.info(`[Hotkey] FloatBall 热键已注册: ${hotkey}`)
+    else log.warn(`[Hotkey] FloatBall 热键注册失败 (可能被其他应用占用): ${hotkey}`)
+  } catch (e: any) {
+    log.warn(`[Hotkey] FloatBall 热键注册异常: ${e?.message ?? e}`)
+  }
+}
 
 // ---- 电源 ----
 ipcMain.handle(IPC_CHANNELS['power:setAutoLaunch'], async (_event, enabled: boolean) => {
@@ -807,7 +947,9 @@ app.whenReady().then(bootstrap)
 
 // 退出清理
 app.on('before-quit', () => {
+  WindowManager.destroyFloatBall() // 关闭悬浮球窗口
   WindowManager.destroy() // 注销 AppBar, 恢复系统 WorkArea
+  globalShortcut.unregisterAll() // 悬浮球热键
   HotkeyService.unregisterAll()
   SchedulerService.stop()
   UsbService.stop()
