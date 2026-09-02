@@ -1,7 +1,15 @@
 <template>
-  <div class="sidebar" :class="{ docked: isDocked }" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
+  <div
+    class="sidebar"
+    :class="{ docked: isDocked }"
+    :style="{ '--lg-mx': String(sx), '--lg-my': String(sy) }"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+    @mousemove="onSidebarMove"
+  >
+    <LiquidGlassDefs :lens-map="lensMap" />
     <!-- 图标轨 (垂直/水平自适应) -->
-    <div class="rail" :class="{ docked: isDocked }" @dblclick="onRailDblClick">
+    <div class="rail lg-glass lg-thin lg-rim" :class="{ docked: isDocked }" @dblclick="onRailDblClick">
       <div class="rail-inner" :class="{ docked: isDocked }">
         <div
           class="rail-item"
@@ -46,7 +54,7 @@
     </div>
 
     <!-- 右侧展开面板 (仅 expanded 且未 docked 时渲染) -->
-    <div class="panel" v-show="isExpanded && !isDocked" :class="{ expanded: isExpanded }">
+    <div class="panel lg-glass lg-thin lg-rim" v-show="isExpanded && !isDocked" :class="{ expanded: isExpanded }">
       <div class="panel-header">
         <span class="panel-title">{{ panelTitle }}</span>
         <button class="panel-close" @click="collapse">×</button>
@@ -68,8 +76,10 @@ import LinksPanel from '../components/LinksPanel.vue'
 import ReminderPanel from '../components/ReminderPanel.vue'
 import TaskMgrPanel from '../components/TaskMgrPanel.vue'
 import SettingsPanel from '../components/SettingsPanel.vue'
+import LiquidGlassDefs from '../glass/LiquidGlassDefs.vue'
+import { makeLensMap } from '../composables/useGlass'
 
-const RAIL_WIDTH = 52
+const RAIL_WIDTH = 72
 const PANEL_WIDTH = 380
 const EXPANDED_WIDTH = RAIL_WIDTH + PANEL_WIDTH
 
@@ -77,6 +87,10 @@ const isExpanded = ref(false)
 const isDocked = ref(false)
 const activePanel = ref<string>('')
 const imeMode = ref<'cn' | 'en'>('cn')
+// 液态玻璃: 光标归一化偏移 (驱动 --lg-mx/--lg-my 高光跟随) + 折射位移贴图
+const sx = ref(0)
+const sy = ref(0)
+const lensMap = ref('')
 // P2-1: 策略禁用的模块集合 (来自 config.policy.disabledModules)
 const disabledModules = ref<string[]>([])
 let expandTimer: ReturnType<typeof setTimeout> | null = null
@@ -160,6 +174,8 @@ function onMouseEnter() {
 
 function onMouseLeave() {
   if (isDocked.value) return
+  sx.value = 0
+  sy.value = 0
   if (isExpanded.value) {
     if ((window as any).__keepSidebarOpen) return
     collapseTimer = setTimeout(() => {
@@ -167,6 +183,13 @@ function onMouseLeave() {
       collapse()
     }, 5000)
   }
+}
+
+// 液态玻璃: 光标相对面板中心的归一化偏移 (-100~100), 写入 --lg-mx/--lg-my
+function onSidebarMove(e: MouseEvent) {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  sx.value = Math.max(-100, Math.min(100, ((e.clientX - r.left - r.width / 2) / r.width) * 100))
+  sy.value = Math.max(-100, Math.min(100, ((e.clientY - r.top - r.height / 2) / r.height) * 100))
 }
 
 function expandPanel(name: string) {
@@ -263,6 +286,7 @@ async function openTaskMgr() {
 let imeUnsub: (() => void) | null = null
 
 onMounted(async () => {
+  lensMap.value = makeLensMap(128)
   // P2-1: 读取策略禁用模块, railItems 据此隐藏对应图标
   try {
     const cfg = await window.sidekick.config.get()
@@ -284,201 +308,4 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
-.sidebar {
-  display: flex;
-  height: 100vh;
-  width: 100%;
-  background: var(--bg);
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
-/* ====== docked 模式: 水平条 ====== */
-.sidebar.docked {
-  flex-direction: column;
-  height: 52px;
-}
-
-/* ====== 轨道 ====== */
-.rail {
-  width: 52px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 0;
-  background: var(--bg);
-  border-right: 1px solid var(--border);
-  z-index: 2;
-}
-
-.rail.docked {
-  width: 100%;
-  height: 52px;
-  flex-direction: row;
-  align-items: center;
-  padding: 0 4px;
-  border-right: none;
-  border-top: 1px solid var(--border);
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.rail-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.rail-inner.docked {
-  flex-direction: row;
-  gap: 2px;
-  overflow-y: hidden;
-  overflow-x: auto;
-  flex: 1;
-  min-width: 0;
-}
-
-.rail-item {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  position: relative;
-  cursor: pointer;
-  transition: background var(--anim);
-  flex-shrink: 0;
-}
-
-.rail-item:hover,
-.rail-item.active {
-  background: var(--brand-light);
-}
-
-.rail-icon {
-  width: 22px;
-  height: 22px;
-  pointer-events: none;
-}
-
-.rail-badge {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 4px;
-  border-radius: 6px;
-  color: white;
-  line-height: 1;
-}
-
-.badge-cn { background: var(--brand); }
-.badge-en { background: var(--text-secondary); }
-
-/* ====== 收起/展开 切换按钮 ====== */
-.dock-toggle {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  margin-top: auto;
-  margin-bottom: 4px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-  transition: all var(--anim);
-}
-
-.dock-toggle:hover {
-  background: var(--brand-light);
-  border-color: var(--brand);
-}
-
-.dock-toggle.docked {
-  margin-top: 0;
-  margin-bottom: 0;
-  margin-left: auto;
-  width: 44px;
-  height: 44px;
-}
-
-/* 与 .rail-icon 同尺寸: 22x22 渲染 24 视框的 stroke-width:2,
-   等效线宽 2/24*22 ≈ 1.83px, 与轨道图标笔画完全一致 */
-.dock-arrow {
-  width: 22px;
-  height: 22px;
-  display: block;
-  color: var(--text-secondary);
-}
-
-.dock-toggle:hover .dock-arrow {
-  color: var(--brand);
-}
-
-/* ====== 面板 ====== */
-.panel {
-  width: 0;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  overflow: hidden;
-  transition: width 180ms ease;
-}
-
-.panel.expanded {
-  width: 380px;
-}
-
-.panel-header {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.panel-title {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.panel-close {
-  width: 28px;
-  height: 28px;
-  font-size: 18px;
-  color: var(--text-secondary);
-  background: transparent;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.panel-close:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-
-.panel-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 16px;
-  min-height: 0;
-}
-</style>
+<!-- 侧边栏样式已迁移到全局 styles/sidebar-glass.css (v1.1 液态玻璃, 去 scoped hash) -->

@@ -17,28 +17,28 @@ export function getHwnd(win: BrowserWindow): number {
 }
 
 // ---- 原生模块加载 ----
-// electron-vite 构建时将 build/Release/appbar.node 复制到 out/main/,
+// electron-vite 构建时将 native/Release/appbar.node 复制到 out/main/,
 // electron-builder 打包时通过 asarUnpack 将 .node 文件解压到 app.asar.unpack/。
-// 开发模式直接从 build/Release 加载。
+// 开发模式直接从 native/Release 加载。
 let _native: any = null
 function getNative(): any {
   if (_native) return _native
-  // 打包后: app.asar.unpack/out/main/appbar.node (asarUnpack 解压)
+  // 打包后: app.asar.unpacked/out/main/appbar.node (asarUnpack 解压)
   if (app.isPackaged) {
     try {
       const asarDir = app.getAppPath() // .../app.asar
-      const unpackedPath = join(asarDir.replace('app.asar', 'app.asar.unpack'), 'out', 'main', 'appbar.node')
+      const unpackedPath = join(asarDir.replace('app.asar', 'app.asar.unpacked'), 'out', 'main', 'appbar.node')
       _native = require(unpackedPath)
       log.info('[AppBar] Loaded from unpacked asar:', unpackedPath)
       return _native
     } catch { /* fallback */ }
   }
-  // 开发模式: build/Release/appbar.node (node-gyp 构建产物)
+  // 开发模式: native/build/Release/appbar.node (node-gyp 构建产物)
   try {
     const projectRoot = join(__dirname, '..', '..', '..')
-    const devPath = join(projectRoot, 'build', 'Release', 'appbar.node')
+    const devPath = join(projectRoot, 'native', 'build', 'Release', 'appbar.node')
     _native = require(devPath)
-    log.info('[AppBar] Loaded from build/Release:', devPath)
+    log.info('[AppBar] Loaded from native/build/Release:', devPath)
     return _native
   } catch (e: any) {
     log.warn('[AppBar] Native module not available:', e.message)

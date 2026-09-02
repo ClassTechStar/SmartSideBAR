@@ -9,6 +9,15 @@ import OverlayApp from './overlay/OverlayApp.vue'
 import AnnotateApp from './annotate/AnnotateApp.vue'
 import RecorderApp from './recorder/RecorderApp.vue'
 import SettingsApp from './settings/SettingsApp.vue'
+import FloatBallApp from './floatball/FloatBallApp.vue'
+
+// 液态玻璃设计系统 (v1.1 编译产物提取, 全局注入; 顺序 = 级联顺序)
+import './styles/liquid-glass.css'
+import './styles/sidebar-glass.css'
+import './styles/floatball.css'
+import './styles/glass-patch.css'
+// 面板文字可读性覆盖 (白底蓝字, 固定不随主题变化; 必须最后导入)
+import './styles/panel-contrast.css'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -19,6 +28,7 @@ const router = createRouter({
     { path: '/annotate', component: AnnotateApp },
     { path: '/recorder', component: RecorderApp },
     { path: '/settings', component: SettingsApp },
+    { path: '/floatball', component: FloatBallApp },
     { path: '/', redirect: '/sidebar' }
   ]
 })
