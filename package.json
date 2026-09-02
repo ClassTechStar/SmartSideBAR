@@ -1,14 +1,14 @@
 {
   "name": "smartsidebar",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "希沃侧边快捷键工具 - 常驻教学大屏侧边的快捷操作与设备提醒中心",
   "main": "out/main/index.js",
   "author": "Seewo Sidekick Team",
   "license": "Apache-2.0",
   "private": true,
   "scripts": {
-    "postinstall": "electron-rebuild",
-    "rebuild:native": "electron-rebuild",
+    "postinstall": "node scripts/rebuild-native.mjs",
+    "rebuild:native": "node scripts/rebuild-native.mjs",
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
@@ -16,11 +16,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . --ext .ts,.vue",
-    "win": "npm run build && electron-builder --win",
-    "verify-build": "npm run typecheck && npm run test && npm run build && npm run win"
+    "win": "npm run rebuild:native && npm run build && electron-builder --win",
+    "verify-build": "npm run typecheck && npm run test && npm run win"
   },
   "dependencies": {
     "electron-log": "^5.0.1",
+    "koffi": "^2.16.3",
     "sharp": "^0.35.3",
     "vue": "^3.4.0",
     "vue-router": "^4.6.4"
@@ -32,7 +33,6 @@
     "@vue/test-utils": "^2.4.0",
     "electron": "^30.0.0",
     "electron-builder": "^24.13.0",
-    "electron-rebuild": "^3.2.9",
     "electron-vite": "^2.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.25.0",

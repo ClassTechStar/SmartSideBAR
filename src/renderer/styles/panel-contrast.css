@@ -1,0 +1,48 @@
+/* ============================================================
+ * 面板文字可读性覆盖 (用户钦定, 固定不随主题/玻璃参数变化):
+ * 展开面板整体不透明白底, 所有文字/图标强制品牌蓝 #2b6ee0。
+ * 液态玻璃在深浅桌面下文字对比度不足, 此表最后导入, !important 压过玻璃层。
+ * ============================================================ */
+
+/* 面板容器: 纯白底 (撤销玻璃渐变/模糊) */
+.sidebar .panel {
+  background: #ffffff !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 面板内所有文字与跟随 currentColor 的图标: 统一品牌蓝 */
+.sidebar .panel,
+.sidebar .panel * {
+  color: #2b6ee0 !important;
+}
+
+/* 实底控件改白底, 避免蓝底蓝字不可见 (开关 .toggle 保留原色以区分状态) */
+.sidebar .panel button:not(.toggle),
+.sidebar .panel input,
+.sidebar .panel select,
+.sidebar .panel textarea {
+  background: #ffffff !important;
+}
+
+/* 按钮/输入框加蓝色描边, 在白底面板上保持边界可辨 */
+.sidebar .panel button:not(.toggle),
+.sidebar .panel input,
+.sidebar .panel select,
+.sidebar .panel textarea {
+  border-color: rgba(43, 110, 224, 0.45) !important;
+}
+
+/* 列表卡片行: 白底 + 淡蓝描边, 保证分组可见 */
+.sidebar .panel .link-item,
+.sidebar .panel .setting-row,
+.sidebar .panel .toggle-row,
+.sidebar .panel .row,
+.sidebar .panel .env-item,
+.sidebar .panel .pref-item,
+.sidebar .panel .reminder-item,
+.sidebar .panel .action-btn {
+  background: #ffffff !important;
+  border: 1px solid rgba(43, 110, 224, 0.22) !important;
+}
