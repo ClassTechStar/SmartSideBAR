@@ -92,6 +92,23 @@ export const IPC_CHANNELS = {
   'window:dock': 'window:dock',
   'window:undock': 'window:undock',
 
+  // 外观 / 液态玻璃
+  'appearance:get': 'appearance:get',
+  'appearance:set': 'appearance:set',
+  'appearance:changed': 'appearance:changed',
+
+  // 悬浮球
+  'floatball:show': 'floatball:show',
+  'floatball:hide': 'floatball:hide',
+  'floatball:toggle': 'floatball:toggle',
+  'floatball:dragStart': 'floatball:dragStart',
+  'floatball:dragEnd': 'floatball:dragEnd',
+  'floatball:expand': 'floatball:expand',
+  'floatball:collapse': 'floatball:collapse',
+  'floatball:action': 'floatball:action',
+  'floatball:layout': 'floatball:layout',
+  'floatball:setClickThrough': 'floatball:setClickThrough',
+
   // 通知
   'notification:show': 'notification:show',
   'notification:dismiss': 'notification:dismiss',
