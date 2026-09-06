@@ -1,5 +1,7 @@
-// Windows/Devices/UsbDeviceWatcher.cs —— §6.6 (ADR-M5): WM_DEVICECHANGE 消息驱动, 零 PowerShell/零 WMI。
-// v1.2.0 的 WMI 事件+巡检+PS 降级三层补丁整体退役; 延迟 ≤1s (原 ≤2s 承诺)。
+// Windows/Devices/UsbDeviceWatcher.cs —— §6.6: 直接读取系统事件。
+// WM_DEVICECHANGE 广播 (VOLUME 到达/移除 + DEVNODES_CHANGED) → 驱动器快照差异扫描。
+// 勘误: DBT_DEVTYP_VOLUME 不能经 RegisterDeviceNotification 过滤注册 (err=13);
+// 卷事件本就广播给所有顶层窗口, 差异扫描兜底 NODES_CHANGED-only 的设备 (读卡器等)。
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Messaging;
@@ -25,20 +27,24 @@ public sealed class UsbDeviceWatcher(
     ConfigService config,
     ILogger<UsbDeviceWatcher>? log = null) : IUsbWatcher, IDisposable
 {
+    private const uint WM_DEVICECHANGE = 0x0219;
+    private const uint DBT_DEVICEARRIVAL = 0x8000;
+    private const uint DBT_DEVICEREMOVECOMPLETE = 0x8004;
+    private const uint DBT_DEVNODES_CHANGED = 0x0007;
+
+    private readonly object _gate = new();
     private nint _hwnd;
     private WndProcCallback? _callback;
+    private Dictionary<string, UsbDriveInfo> _lastDrives = [];
 
-    // 勘误 (方案 §6.6/ADR-M5): DBT_DEVTYP_VOLUME 过滤器不支持 RegisterDeviceNotification
-    // (该 API 仅接受 DEVICEINTERFACE/HANDLE, VOLUME 注册返回 err=13 ERROR_INVALID_DATA)。
-    // 卷插拔 WM_DEVICECHANGE 本就广播给所有顶层窗口 —— 直接 WndProcHook 接收即为正解,
-    // 与 v1.2.0 行为一致, 零注册零过滤。
     public void Start(nint hostHwnd)
     {
         if (_hwnd != 0) return;
         _hwnd = hostHwnd;
+        _lastDrives = Snapshot();
         _callback = OnDeviceChange;
         hook.Add(hostHwnd, _callback);
-        log?.LogInformation("[USB] 已监听 WM_DEVICECHANGE (顶层窗口广播, 零过滤注册)");
+        log?.LogInformation("[USB] 已监听 WM_DEVICECHANGE (系统广播 + 差异扫描, 基线 {Count} 个可移动盘)", _lastDrives.Count);
     }
 
     public void Stop()
@@ -50,41 +56,75 @@ public sealed class UsbDeviceWatcher(
     }
 
     public IReadOnlyList<UsbDriveInfo> ListRemovable() =>
-        [.. DriveInfo.GetDrives().Where(IsTargetDrive).Select(ToInfo)];
+        Snapshot().Values.ToArray();
 
     private nint OnDeviceChange(nint hwnd, uint msg, nuint wParam, nint lParam, ref bool handled)
     {
-        if (msg != Win32Input.WM_DEVICECHANGE) return 0;
-        if (wParam is not (Win32Input.DBT_DEVICEARRIVAL or Win32Input.DBT_DEVICEREMOVECOMPLETE)) return 0;
-        if (lParam == 0) return 0;
-
-        var volume = System.Runtime.InteropServices.Marshal.PtrToStructure<Win32Input.DEV_BROADCAST_VOLUME>(lParam);
-        if (volume.dbcv_devicetype != Win32Input.DBT_DEVTYP_VOLUME) return 0;
-
-        var letter = UnitMaskToLetter(volume.dbcv_unitmask);
-        if (letter is null) return 0;
-        if (!IsAllowedDrive(letter)) { log?.LogDebug("[USB] 忽略非目标盘 {Drive}:", letter); return 0; }
-
-        var info = ToInfo(new DriveInfo(letter));
+        if (msg != WM_DEVICECHANGE) return 0;
         handled = true;
-        if (wParam == Win32Input.DBT_DEVICEARRIVAL)
+        // 到达/移除/设备节点变化 三类都值得重扫; 卷挂载后文件系统可能未就绪, 延迟再扫一次
+        RescanWithDiff();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(900).ConfigureAwait(false);
+                RescanWithDiff();
+            }
+            catch { /* 尽力而为 */ }
+        });
+        return 0;
+    }
+
+    private void RescanWithDiff()
+    {
+        List<UsbDriveInfo> added;
+        List<UsbDriveInfo> removed;
+        lock (_gate)
+        {
+            var now = Snapshot();
+            (added, removed) = DiffDrives(_lastDrives, now);
+            _lastDrives = now;
+        }
+        foreach (var info in added)
         {
             bus.Publish(new UsbArrived(info));
-            log?.LogInformation("[USB] 接入 {Drive} ({Label})", info.Drive, info.Label);
+            log?.LogInformation("[USB] 接入 {Drive} ({Label}, {Gb}GB)", info.Drive, info.Label, info.SizeGb);
         }
-        else
+        foreach (var info in removed)
         {
             bus.Publish(new UsbRemoved(info));
             log?.LogInformation("[USB] 移除 {Drive}", info.Drive);
         }
-        return 0;
     }
 
-    /// <summary>config.usb.ignoreTypes 语义保留: 过滤由调用方/策略完成; 此处仅留扩展点。</summary>
-    private bool IsAllowedDrive(string letter) => config.Current.Usb.Enabled;
+    /// <summary>驱动器快照差异 (纯函数, 单测锁定)。</summary>
+    internal static (List<UsbDriveInfo> Added, List<UsbDriveInfo> Removed) DiffDrives(
+        Dictionary<string, UsbDriveInfo> before, Dictionary<string, UsbDriveInfo> after)
+    {
+        var added = after.Values.Where(d => !before.ContainsKey(d.Drive)).ToList();
+        var removed = before.Values.Where(d => !after.ContainsKey(d.Drive)).ToList();
+        return (added, removed);
+    }
 
-    private static bool IsTargetDrive(DriveInfo d) =>
-        d.DriveType == DriveType.Removable || d.DriveType == DriveType.CDRom;
+    private Dictionary<string, UsbDriveInfo> Snapshot()
+    {
+        if (!config.Current.Usb.Enabled) return [];
+        var result = new Dictionary<string, UsbDriveInfo>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var d in DriveInfo.GetDrives())
+            {
+                if (d.DriveType is not (DriveType.Removable or DriveType.CDRom)) continue;
+                result[d.Name] = ToInfo(d);
+            }
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "[USB] 驱动器扫描异常");
+        }
+        return result;
+    }
 
     private static UsbDriveInfo ToInfo(DriveInfo d)
     {
@@ -100,15 +140,6 @@ public sealed class UsbDeviceWatcher(
         }
         catch { /* 移除竞态: 元数据尽力而为 */ }
         return new UsbDriveInfo(d.Name, label, gb, d.DriveType == DriveType.Removable);
-    }
-
-    internal static string? UnitMaskToLetter(uint unitMask)
-    {
-        for (var i = 0; i < 26; i++)
-        {
-            if ((unitMask & (1u << i)) != 0) return $"{(char)('A' + i)}:\\";
-        }
-        return null;
     }
 
     public void Dispose() => Stop();
