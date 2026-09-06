@@ -2,7 +2,7 @@
 
   <!-- 假 IAppBarApi / 假时钟 / 状态机断言 (方案 §7.1): 无需真实 Win32 即可验证 AppBarService 序列 -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

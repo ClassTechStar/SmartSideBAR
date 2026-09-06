@@ -1,16 +1,23 @@
 using Microsoft.Extensions.DependencyInjection;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
+using SmartSideBAR.Windows.Audio;
 
 namespace SmartSideBAR.Avalonia;
 
 public partial class App : Application
 {
     private readonly IServiceProvider? _sp;
+    private TrayIcon? _tray;
 
     public App(IServiceProvider sp) => _sp = sp;
 
@@ -25,11 +32,23 @@ public partial class App : Application
         {
             var scheduler = _sp.GetRequiredService<SchedulerService>();
             var appBar = _sp.GetRequiredService<AppBarService>();
+            var sounds = _sp.GetRequiredService<ISoundService>();
+            var bus = _sp.GetRequiredService<IEventBus>();
             var windowManager = _sp.GetRequiredService<WindowManager>();
 
             desktop.MainWindow = windowManager.CreateSidebar();
 
-            // V8: 退出前注销 AppBar / 停调度, 系统 WorkArea 完全恢复
+            // 提醒: 铃声 (winmm) + 进程内通知 (Wave C Toast)
+            bus.Subscribe<ReminderDue>(d =>
+            {
+                var cfg = _sp!.GetRequiredService<ConfigService>().Current.ReminderSound;
+                _ = sounds.PlayReminderAsync(cfg);
+            });
+
+            scheduler.Start();
+            CreateTray(desktop);
+
+            // V8: 退出前注销 AppBar / 停服务, 系统 WorkArea 完全恢复
             desktop.ShutdownRequested += (_, _) =>
             {
                 appBar.Detach();
@@ -39,6 +58,43 @@ public partial class App : Application
             ConfigureSmokeExit(desktop);
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>托盘 (P2-7 语义): 显示侧栏 / 打开设置 / 退出。图标运行时生成, 零资源文件。</summary>
+    private void CreateTray(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var windowManager = _sp!.GetRequiredService<WindowManager>();
+        var menu = new NativeMenu();
+        var show = new NativeMenuItem("显示 / 隐藏侧栏");
+        show.Click += (_, _) => windowManager.ToggleSidebar();
+        var settings = new NativeMenuItem("打开设置");
+        settings.Click += (_, _) => windowManager.OpenSettings();
+        var exit = new NativeMenuItem("退出");
+        exit.Click += (_, _) => desktop.Shutdown();
+        menu.Add(show);
+        menu.Add(settings);
+        menu.Add(new NativeMenuItemSeparator());
+        menu.Add(exit);
+
+        _tray = new TrayIcon
+        {
+            Icon = MakeIcon(),
+            ToolTipText = "SmartSideBAR",
+            Menu = menu,
+            IsVisible = true,
+        };
+    }
+
+    private static WindowIcon MakeIcon()
+    {
+        var rtb = new RenderTargetBitmap(new PixelSize(32, 32), new Vector(96, 96));
+        using (var ctx = rtb.CreateDrawingContext())
+        {
+            ctx.FillRectangle(new SolidColorBrush(Color.Parse("#2B6EE0")), new Rect(2, 2, 28, 28), 6);
+            ctx.FillRectangle(Brushes.White, new Rect(9, 14, 14, 4), 2);
+            ctx.FillRectangle(Brushes.White, new Rect(9, 21, 9, 4), 2);
+        }
+        return new WindowIcon(rtb);
     }
 
     /// <summary>冒烟验证: SSB_SMOKE_EXIT_MS&gt;0 时 N 毫秒后自动退出 (自动化/CI 用)。</summary>
