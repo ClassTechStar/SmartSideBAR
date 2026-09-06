@@ -101,3 +101,70 @@ SmartSideBAR.slnx
 - `IWndProcHook` 支持同窗口多回调叠加——HotkeyService/UsbDeviceWatcher 直接 `Add`。
 - `ModuleIds` + `PolicyService` 就绪，服务启动跳过逻辑按 P2-1 语义接入。
 - 铃声播放 (NAudio)、IME (InputLanguage)、USB (WM_DEVICECHANGE) 按方案 §6 对应节实现。
+
+---
+
+# 追加：Wave B / C / D 交付报告（2026-09-06 晚，分支 avalonia）
+
+## Wave B 常驻服务族（b0ae19e）
+
+| 模块 | 落点 | 真机状态 |
+|---|---|---|
+| 输入法 (§6.1) | ImeService：键盘布局枚举 + WM_INPUTLANGCHANGEREQUEST，零 PS 子进程 | rail 按钮可切 |
+| U 盘 (§6.6) | UsbDeviceWatcher：WM_DEVICECHANGE 顶层窗口广播（勘误见下） | 监听中 |
+| 打印机 (§6.7) | PrinterMonitor：WMI 轮询 + DetectedErrorState 映射（E4 根修，单测锁定） | 2 台实检 |
+| 热键 (§6.13) | HotkeyService：RegisterHotKey 系统级冲突事实 + 替代建议 | 5 槽位注册零冲突 |
+| Shell (§6.8) | taskmgr / 外链白名单 (B2) / HKCU 自启 | — |
+| 铃声 | winmm PlaySound 别名 + MCI 播 MP3（PS 守护退役） | — |
+| 托盘 (§6.14) | 运行时图标 + 显示侧栏/设置/退出 | — |
+
+## Wave C 捕获族 + UX（8daa938 / 3e88891）
+
+- **区域截图**（§6.2）：全屏透明覆盖层拖选 → BitBlt 物理像素裁剪 → PNG/JPG 落盘 → Toast。
+- **屏幕批注**（§6.3/D1/D3/P1-8）：InkCanvas 统一 Pointer（触屏/笔/鼠标）；导出 仅笔迹/含背景 双模式。
+- **长截图**（§6.4/A5/C3）：EnumWindows（剔 cloaked）+ DWM 扩展框 + 行哈希线性拼接
+  （`LongshotStitcher` 纯函数单测）+ 倒计时/进度事件。
+- **录屏**（§6.5/ADR-M4）：GraphicsCaptureItem →（**IGraphicsCaptureItemInterop COM 路径**，
+  19041 投影无 CreateForMonitorAsync）→ Direct3D11CaptureFramePool → MediaStreamSource →
+  MediaTranscoder 系统 H.264 → **MP4 直出**；停止以 null 样本收尾保证 moov 完整。
+- **悬浮球/设置/OOBE/诊断**：扇形菜单 8 动作；设置六区即时生效；6 步向导含真实环境探测；
+  诊断 7 项聚合 + 诊断包（report.json + logs.zip）。
+- **动作总路由**：rail 按钮 / 悬浮球 / 热键 / 托盘 四入口共用 `WindowManager.Dispatch`。
+
+## Wave D 质量与性能（部分完成）
+
+| 指标（§8） | v1.2.0 基线 | 实测（Release 单文件，2560×1600@150%） | 目标 | 结论 |
+|---|---|---|---|---|
+| 空闲内存 | 预算 ≤220MB 未实测 | **私有 87.5MB / 工作集 134.6MB** | ≤80MB | 大幅优于 Electron 预算；未达 80MB，列 Wave D 优化（Avalonia 渲染线程 + WinRT 持有） |
+| 冷启动 | ≤3s 未实测 | **~3.5s**（bootstrap→AppBar 就绪，含单文件解压） | ≤1.2s | 未达；单文件解压为首帧大头，可改多文件分发或 ReadyToRun 缓解 |
+| 安装包 | 81.6MB | **14.7MB 单文件 / 10MB zip** | ≤25MB | ✅ |
+| 常驻子进程 | 1（PS 守护） | **0** | 0 | ✅ |
+| 覆盖率门禁 | 无 | 机制就绪，阈值 0（74 用例全绿） | 80% | Wave D 收官项 |
+
+## Wave B/C 新增勘误与根修（对方案）
+
+1. **§6.6/ADR-M5 勘误**：`DBT_DEVTYP_VOLUME` 不支持 `RegisterDeviceNotification` 过滤注册
+   （该 API 仅接受 DEVICEINTERFACE/HANDLE，VOLUME 一律 err=13，真机复现）。卷事件本就
+   广播至所有顶层窗口——直接 WndProcHook 接收即正解（与 v1.2.0 一致）。
+2. **§6.5 补充**：19041 SDK 投影的 `GraphicsCaptureItem` 仅暴露 `CreateFromVisual`，
+   监视器捕获必须走 `IGraphicsCaptureItemInterop.CreateForMonitor` COM 互操作。
+3. **file-scoped namespace 遮蔽**：项目名含 `.Windows`/`.Avalonia` 时，命名空间内引用
+   `Windows.*`/`Avalonia.*` 会被解析到自有前缀——一律 `global::` 别名（多次踩坑后固化为规范）。
+
+## 安装包（本机已产出）
+
+| 产物 | 路径 | 说明 |
+|---|---|---|
+| 单文件 | `artifacts/app/SmartSideBAR.Avalonia.exe` (14.7MB) | 自包含+部分裁剪+压缩，冒烟全绿 |
+| 绿色包 | `dist/SmartSideBAR-2.0.0-waveC-win-x64.zip` (10MB) | install.cmd/uninstall.cmd 免管理员安装 |
+| NSIS 脚本 | `installer/SmartSideBAR.nsi` | CI（choco nsis）产出标准安装器；per-user；签名 CI 注入 |
+
+发布冒烟（Trimmed 产物）：AppBar 注册 ✓ / 5 热键 ✓ / 调度器 ✓ / 打印机 2 台 ✓ / 单进程 ✓。
+
+## 遗留（Wave D/E 收官清单）
+
+1. 真机人工回归：V1-V7 全场景矩阵（希沃触屏 + 多显示器）、长截图滚动页（PDF/网页）、
+   录屏端到端产物校验（可播性/时长）、悬浮球触屏拖拽。
+2. 录屏麦克风混流（ADR-M4 增强）；自动隐藏 AppBar（K6/P2）；悬浮球 WS_EX_TRANSPARENT 闲时穿透。
+3. 覆盖率门禁 0→80%；内存优化（87.5→80MB 以下）；冷启动（ReadyToRun / 多文件分发）。
+4. NSIS 实机打包 + 签名（CI secrets）+ v2.0-beta Release（Wave E）。
