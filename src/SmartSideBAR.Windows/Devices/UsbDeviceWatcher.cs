@@ -26,37 +26,26 @@ public sealed class UsbDeviceWatcher(
     ILogger<UsbDeviceWatcher>? log = null) : IUsbWatcher, IDisposable
 {
     private nint _hwnd;
-    private nint _notificationHandle;
     private WndProcCallback? _callback;
 
+    // 勘误 (方案 §6.6/ADR-M5): DBT_DEVTYP_VOLUME 过滤器不支持 RegisterDeviceNotification
+    // (该 API 仅接受 DEVICEINTERFACE/HANDLE, VOLUME 注册返回 err=13 ERROR_INVALID_DATA)。
+    // 卷插拔 WM_DEVICECHANGE 本就广播给所有顶层窗口 —— 直接 WndProcHook 接收即为正解,
+    // 与 v1.2.0 行为一致, 零注册零过滤。
     public void Start(nint hostHwnd)
     {
         if (_hwnd != 0) return;
         _hwnd = hostHwnd;
-        var volume = new Win32Input.DEV_BROADCAST_VOLUME
-        {
-            dbcv_size = (uint)System.Runtime.InteropServices.Marshal.SizeOf<Win32Input.DEV_BROADCAST_VOLUME>(),
-            dbcv_devicetype = Win32Input.DBT_DEVTYP_VOLUME,
-        };
-        _notificationHandle = Win32Input.RegisterDeviceNotification(hostHwnd, ref volume, Win32Input.DEVICE_NOTIFY_WINDOW_HANDLE);
-        if (_notificationHandle == 0)
-        {
-            // 注册失败: WM_DEVICECHANGE 仍会广播到窗口 (仅缺少精确过滤), 功能不中断
-            log?.LogWarning("[USB] RegisterDeviceNotification 失败 err={Err}, 降级为窗口级广播", 
-                System.Runtime.InteropServices.Marshal.GetLastWin32Error());
-        }
         _callback = OnDeviceChange;
         hook.Add(hostHwnd, _callback);
-        log?.LogInformation("[USB] 已监听 WM_DEVICECHANGE (notification={Ok})", _notificationHandle != 0);
+        log?.LogInformation("[USB] 已监听 WM_DEVICECHANGE (顶层窗口广播, 零过滤注册)");
     }
 
     public void Stop()
     {
         if (_hwnd == 0) return;
         if (_callback is not null) hook.Remove(_hwnd, _callback);
-        if (_notificationHandle != 0) _ = Win32Input.UnregisterDeviceNotification(_notificationHandle);
         _hwnd = 0;
-        _notificationHandle = 0;
         log?.LogInformation("[USB] 已停止监听");
     }
 
