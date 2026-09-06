@@ -46,13 +46,13 @@
       <!-- rail (恒 64 物理像素, 经代码按 Scaling 折算 DIP) -->
       <StackPanel Grid.Column="0">
         <Button Classes="railBtn" Content="☰" Command="{Binding TogglePanelCommand}" />
-        <Button Classes="railBtn" Content="📷" x:Name="CaptureBtn" />
-        <Button Classes="railBtn" Content="✏️" x:Name="AnnotateBtn" />
+        <Button Classes="railBtn" Content="📷" Command="{Binding CaptureCommand}" />
+        <Button Classes="railBtn" Content="✏️" Command="{Binding AnnotateCommand}" />
         <Button Classes="railBtn" Command="{Binding ToggleImeCommand}">
           <TextBlock Text="{Binding ImeState}" FontSize="14" Margin="0,0,0,0"/>
         </Button>
-        <Button Classes="railBtn" Content="🎥" x:Name="RecordBtn" />
-        <Button Classes="railBtn" Content="usb" FontSize="12" x:Name="UsbBtn"/>
+        <Button Classes="railBtn" Content="🎥" Command="{Binding RecordCommand}" />
+        <Button Classes="railBtn" Content="usb" FontSize="12" Command="{Binding LongshotCommand}"/>
         <Button Classes="railBtn" Content="🖨" x:Name="PrinterBtn" />
         <Button Classes="railBtn" Content="📊" FontSize="14" Command="{Binding OpenTaskMgrCommand}"/>
       </StackPanel>

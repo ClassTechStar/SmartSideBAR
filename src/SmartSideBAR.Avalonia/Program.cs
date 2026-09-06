@@ -11,9 +11,11 @@ using SmartSideBAR.Core.Policy;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Audio;
+using SmartSideBAR.Windows.Capture;
 using SmartSideBAR.Windows.Devices;
 using SmartSideBAR.Windows.Input;
 using SmartSideBAR.Windows.Native;
+using SmartSideBAR.Windows.Recording;
 using SmartSideBAR.Windows.Shell;
 
 namespace SmartSideBAR.Avalonia;
@@ -45,6 +47,10 @@ internal static class Program
         services.AddSingleton<IPrinterMonitor, PrinterMonitor>();
         services.AddSingleton<IShellService, ShellService>();
         services.AddSingleton<ISoundService, SoundService>();
+        services.AddSingleton<ICaptureApi, GdiCapture>();
+        services.AddSingleton<ILongshotService, LongshotService>();
+        services.AddSingleton<IRecorderApi, GraphicsCaptureRecorder>();
+        services.AddSingleton<IDiagnosticsService, DiagnosticsService>();
 
         // UI 层
         services.AddSingleton<WindowManager>();

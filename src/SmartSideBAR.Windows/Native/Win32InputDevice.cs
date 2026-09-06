@@ -67,7 +67,7 @@ internal static partial class Win32Input
         public ushort dbcv_flags;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [DllImport("user32.dll", EntryPoint = "RegisterDeviceNotificationW", SetLastError = true)]
     internal static extern nint RegisterDeviceNotification(nint hRecipient, ref DEV_BROADCAST_VOLUME notification, uint flags);
 
     [DllImport("user32.dll", SetLastError = true)]
