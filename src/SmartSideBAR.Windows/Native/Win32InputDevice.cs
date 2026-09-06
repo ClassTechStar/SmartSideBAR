@@ -57,7 +57,7 @@ internal static partial class Win32Input
     public const uint DBT_DEVTYP_VOLUME = 0x0002;
     public const uint DEVICE_NOTIFY_WINDOW_HANDLE = 0x0000;
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential)] // dbt.h 默认对齐: 原生尺寸 20
     public struct DEV_BROADCAST_VOLUME
     {
         public uint dbcv_size;
