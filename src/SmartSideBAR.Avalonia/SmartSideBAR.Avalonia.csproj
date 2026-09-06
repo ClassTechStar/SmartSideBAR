@@ -3,7 +3,7 @@
   <!-- UI 层: Avalonia 11.x (ADR-M2)。窗口形态: 侧栏 AppBar 轨 / 透明置顶 / 点击穿透 -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <RootNamespace>SmartSideBAR.Avalonia</RootNamespace>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
