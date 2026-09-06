@@ -8,8 +8,8 @@
         ShowInTaskbar="False"
         CanResize="False"
         ShowActivated="False"
-        Background="#F0141A22"
-        TransparencyLevelHint="None"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur"
         Width="64" Height="1040">
 
   <Window.Styles>
@@ -20,48 +20,62 @@
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="Height" Value="56"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="CornerRadius" Value="8"/>
       </Style.Setters>
     </Style>
     <Style Selector="Button.railBtn:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="#332B6EE0"/>
     </Style>
+    <Style Selector="Button.linkBtn">
+      <Style.Setters>
+        <Setter Property="Background" Value="#142B6EE0"/>
+        <Setter Property="Foreground" Value="#2B6EE0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      </Style.Setters>
+    </Style>
   </Window.Styles>
 
-  <Grid x:Name="RootGrid" ColumnDefinitions="64,*">
+  <Panel>
+    <!-- 玻璃背板 (仅覆盖 rail 64px + 展开面板区域) -->
+    <Border Background="#E610141C" CornerRadius="0" />
+    <Grid x:Name="RootGrid" ColumnDefinitions="64,*">
 
-    <!-- rail (64 物理像素, 经代码按 Scaling 折算 DIP) -->
-    <StackPanel Grid.Column="0" Background="#E610141C">
-      <Button Classes="railBtn" Content="☰" Command="{Binding TogglePanelCommand}" />
-      <Button Classes="railBtn" Content="📷" />
-      <Button Classes="railBtn" Content="✏️" />
-      <Button Classes="railBtn" Content="⌨️" />
-      <Button Classes="railBtn" Content="🎥" />
-      <Button Classes="railBtn" Content="usb" FontSize="12"/>
-      <Button Classes="railBtn" Content="🖨" />
-      <Button Classes="railBtn" Content="📊" FontSize="14"/>
-    </StackPanel>
-
-    <!-- 面板 (展开时可见; 宽度 = 系统授予 - rail) -->
-    <Border Grid.Column="1" Background="#E8F4F7FD" IsVisible="{Binding PanelOpen}" Padding="16,12">
-      <StackPanel Spacing="8">
-        <TextBlock Text="快捷链接" FontSize="16" FontWeight="SemiBold" Foreground="#141A22"/>
-        <ItemsControl ItemsSource="{Binding Links}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Button HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Left"
-                      Background="Transparent"
-                      Foreground="#2B6EE0"
-                      Command="{Binding $parent[Window].((vm:SidebarViewModel)DataContext).OpenLinkCommand}"
-                      CommandParameter="{Binding}">
-                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <TextBlock Text="Wave A Demo — AppBar 一等公民验证窗口"
-                   FontSize="11" Foreground="#8A94A3" TextWrapping="Wrap"/>
+      <!-- rail (恒 64 物理像素, 经代码按 Scaling 折算 DIP) -->
+      <StackPanel Grid.Column="0">
+        <Button Classes="railBtn" Content="☰" Command="{Binding TogglePanelCommand}" />
+        <Button Classes="railBtn" Content="📷" x:Name="CaptureBtn" />
+        <Button Classes="railBtn" Content="✏️" x:Name="AnnotateBtn" />
+        <Button Classes="railBtn" Command="{Binding ToggleImeCommand}">
+          <TextBlock Text="{Binding ImeState}" FontSize="14" Margin="0,0,0,0"/>
+        </Button>
+        <Button Classes="railBtn" Content="🎥" x:Name="RecordBtn" />
+        <Button Classes="railBtn" Content="usb" FontSize="12" x:Name="UsbBtn"/>
+        <Button Classes="railBtn" Content="🖨" x:Name="PrinterBtn" />
+        <Button Classes="railBtn" Content="📊" FontSize="14" Command="{Binding OpenTaskMgrCommand}"/>
       </StackPanel>
-    </Border>
-  </Grid>
+
+      <!-- 面板 (展开时可见; 宽度 = 系统授予 - rail) -->
+      <Border Grid.Column="1" Background="#F2F4F7FD" IsVisible="{Binding PanelOpen}" Padding="16,12">
+        <StackPanel Spacing="8">
+          <TextBlock Text="快捷链接" FontSize="16" FontWeight="SemiBold" Foreground="#141A22"/>
+          <ItemsControl ItemsSource="{Binding Links}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Classes="linkBtn" Margin="0,0,0,4"
+                        Command="{Binding $parent[Window].((vm:SidebarViewModel)DataContext).OpenLinkCommand}"
+                        CommandParameter="{Binding}">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="Wave B — 常驻服务已接入 (IME/USB/打印机/热键/托盘)"
+                     FontSize="11" Foreground="#8A94A3" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Panel>
 </Window>

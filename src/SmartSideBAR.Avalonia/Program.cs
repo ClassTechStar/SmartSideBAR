@@ -10,7 +10,11 @@ using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Policy;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
+using SmartSideBAR.Windows.Audio;
+using SmartSideBAR.Windows.Devices;
+using SmartSideBAR.Windows.Input;
 using SmartSideBAR.Windows.Native;
+using SmartSideBAR.Windows.Shell;
 
 namespace SmartSideBAR.Avalonia;
 
@@ -34,6 +38,13 @@ internal static class Program
         services.AddSingleton<IWndProcHook, WndProcHook>();
         services.AddSingleton<IAppBarApi, AppBarApi>();
         services.AddSingleton<AppBarService>();
+        services.AddSingleton<IImeService, ImeService>();
+        services.AddSingleton<HotkeyService>();
+        services.AddSingleton<IHotkeyService>(sp => sp.GetRequiredService<HotkeyService>());
+        services.AddSingleton<IUsbWatcher, UsbDeviceWatcher>();
+        services.AddSingleton<IPrinterMonitor, PrinterMonitor>();
+        services.AddSingleton<IShellService, ShellService>();
+        services.AddSingleton<ISoundService, SoundService>();
 
         // UI 层
         services.AddSingleton<WindowManager>();
@@ -52,7 +63,7 @@ internal static class Program
         config.Load();
         var log = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Bootstrap");
         log.LogInformation(
-            "SmartSideBAR (Avalonia Wave A) 启动 — config v{Version}, 侧栏 {Side} 侧, 链接 {Links} 条, 提醒 {Reminders} 条",
+            "SmartSideBAR (Avalonia Wave B) 启动 — config v{Version}, 侧栏 {Side} 侧, 链接 {Links} 条, 提醒 {Reminders} 条",
             config.Current.Version, config.Current.Display.SidebarSide,
             config.Current.Links.Count, config.Current.Reminders.Count);
 
