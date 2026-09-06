@@ -46,8 +46,27 @@ coverage/
 .env
 .env.local
 
-# Code signing (私钥/口令绝不入库; 公钥 .cer 与信任脚本随 release 分发)
-cert/
+# Code signing —— 私钥/口令绝不入库 (G1 治理): 仅公钥 .cer 与信任脚本可随仓库分发
+# 新密钥生成与轮换步骤见 cert/README.md (方案附录 C.1)
+cert/*.pfx
+cert/*.p12
+cert/*.pem
+cert/*password*
+cert/thumbprint.txt
+cert/private/
+*.pfx
+*.p12
+
+# .NET (Avalonia 版)
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+.vs/
+
+# NSIS
+installer/Output/
 
 # Electron
 release/
