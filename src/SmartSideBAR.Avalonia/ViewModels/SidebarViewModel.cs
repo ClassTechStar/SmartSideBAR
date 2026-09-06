@@ -17,11 +17,12 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     private bool _panelOpen;
     private string _imeState = "IME";
 
-    public SidebarViewModel(AppBarService appBar, IImeService ime, IShellService shell, IReadOnlyList<LinkItem> links)
+    public SidebarViewModel(AppBarService appBar, IImeService ime, IShellService shell, IReadOnlyList<LinkItem> links, Action<string> dispatch)
     {
         _appBar = appBar;
         _ime = ime;
         _shell = shell;
+        Dispatch = dispatch;
         Links = [.. links.Where(l => l.Enabled)];
         TogglePanelCommand = new RelayCommand(_ => TogglePanel());
         OpenLinkCommand = new RelayCommand(p =>
@@ -34,6 +35,10 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
             RefreshIme();
         });
         OpenTaskMgrCommand = new RelayCommand(_ => _shell.OpenTaskManager());
+        CaptureCommand = new RelayCommand(_ => Dispatch("capture"));
+        AnnotateCommand = new RelayCommand(_ => Dispatch("annotate"));
+        RecordCommand = new RelayCommand(_ => Dispatch("record"));
+        LongshotCommand = new RelayCommand(_ => Dispatch("longshot"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -64,10 +69,15 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
 
     public string AppBarState => _appBar.IsRegistered ? "AppBar 已注册" : "Topmost 回退";
 
+    public Action<string> Dispatch { get; }
     public ICommand TogglePanelCommand { get; }
     public ICommand OpenLinkCommand { get; }
     public ICommand ToggleImeCommand { get; }
     public ICommand OpenTaskMgrCommand { get; }
+    public ICommand CaptureCommand { get; } = new RelayCommand(_ => { });
+    public ICommand AnnotateCommand { get; } = new RelayCommand(_ => { });
+    public ICommand RecordCommand { get; } = new RelayCommand(_ => { });
+    public ICommand LongshotCommand { get; } = new RelayCommand(_ => { });
 
     public void RefreshIme()
     {

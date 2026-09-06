@@ -39,6 +39,12 @@ public sealed class UsbDeviceWatcher(
             dbcv_devicetype = Win32Input.DBT_DEVTYP_VOLUME,
         };
         _notificationHandle = Win32Input.RegisterDeviceNotification(hostHwnd, ref volume, Win32Input.DEVICE_NOTIFY_WINDOW_HANDLE);
+        if (_notificationHandle == 0)
+        {
+            // 注册失败: WM_DEVICECHANGE 仍会广播到窗口 (仅缺少精确过滤), 功能不中断
+            log?.LogWarning("[USB] RegisterDeviceNotification 失败 err={Err}, 降级为窗口级广播", 
+                System.Runtime.InteropServices.Marshal.GetLastWin32Error());
+        }
         _callback = OnDeviceChange;
         hook.Add(hostHwnd, _callback);
         log?.LogInformation("[USB] 已监听 WM_DEVICECHANGE (notification={Ok})", _notificationHandle != 0);
