@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Native;
 
@@ -32,6 +33,7 @@ public partial class SidebarWindow : Window
         // K4: rail 恒为 64 物理像素; DIP 列宽按窗口 DPI 折算 (物理/96)
         _scaling = Win32Display.GetScaling(TryGetPlatformHandle()?.Handle ?? 0);
         ApplyScaling();
+        if (DataContext is SidebarViewModel vm) vm.RefreshIme();
     }
 
     private void ApplyScaling()
