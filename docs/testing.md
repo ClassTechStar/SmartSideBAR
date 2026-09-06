@@ -126,3 +126,22 @@ npm run win && node scripts/bench-p28.mjs --exe dist\win-unpacked\SmartSideBAR.e
 
 - 录屏产物为 WebM（非 MP4），README 不应宣称「转 MP4」。
 - 自动更新、锁屏/电源已移除（见 `docs/project-audit-and-roadmap.md` P2-5/P2-6）；快捷键槽位已实现（P2-2）。
+
+## Wave A 追加：AppBar 验收清单（方案 §5.6 V1-V8）
+
+> Avalonia 版基座已完成 AppBar 一等公民化（`docs/mlp-wave-a-report.md`）。
+> 下表为出口验收清单；自动化层见 `tests/SmartSideBAR.Windows.Tests`（状态机序列断言）。
+
+| # | 场景 | 预期 | 状态 |
+|---|---|---|---|
+| V1 | 任一应用最大化 | 工作区自动避让侧栏，侧栏完整可见 | ✅ 真机验证（ABM_NEW=True，WorkArea 扣除带宽） |
+| V2 | 任务栏移到左缘/上缘 | ABN_POSCHANGED → 自动重排（≤200ms 目标 Wave D 计时） | ✅ 单测（序列断言）；真机人工项 |
+| V3 | 100%~250% 缩放像素级对齐 | 物理像素单轨，无 DIP 取整误差 | ✅ 结构性保证（PMv2 强制 + MoveWindow 直达）；150% 真机验证 |
+| V4 | 双显示器 + 热插拔 | WM_DISPLAYCHANGE → 重注册 | ✅ 单测；多屏真机人工项 |
+| V5 | 全屏授课视频 | ABN_FULLSCREENAPP → 收起 rail，退出恢复 | ✅ 单测（含用户偏好恢复） |
+| V6 | 进程被强杀 | 启动自愈：Attach 前补发 ABM_REMOVE | ✅ 单测 + 实测（杀进程后 WorkArea 回收） |
+| V7 | 与第三方 AppBar 共存 | 系统自动分栏无死锁 | ⏳ 真机人工项（注册失败自动回退 Topmost 已实现） |
+| V8 | 退出应用 | WorkArea 完全恢复 | ✅ 实测（ABM_REMOVE → 对比退出前后工作区） |
+
+冒烟命令：`SSB_SMOKE_EXIT_MS=8000 src/SmartSideBAR.Avalonia/bin/Debug/net10.0-windows/SmartSideBAR.Avalonia.exe`
+（N 毫秒后自动退出；日志在 `%APPDATA%\SmartSideBAR\logs\`）
