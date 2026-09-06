@@ -20,6 +20,9 @@ public sealed class AppBarService(
     IEventBus bus,
     ILogger<AppBarService>? log = null) : IDisposable
 {
+    /// <summary>v1.1 悬浮玻璃胶囊: 上下各留 8% 工作区高度 (不顶到屏幕上下缘)。</summary>
+    public const double CapsuleMarginRatio = 0.08;
+
     private nint _hwnd;
     private uint _edge = AppBarNative.ABE_RIGHT;
     private int _railPx = 64;      // rail 收起宽度 (物理像素)
@@ -72,15 +75,18 @@ public sealed class AppBarService(
     /// <summary>重排: 注册后 / 展开收起 / ABN_POSCHANGED / 分辨率与任务栏变化 (K1/K4)。
     /// 锚点必须是 rcMonitor 全屏矩形: rcWork 已扣除自身 AppBar 占位, 若以它为锚,
     /// 每次 Reposition 都会向屏幕内侧漂移一个带宽 —— 对方案 §5.3 蓝本的勘误。
-    /// 贴边方向的尺寸提议全屏高/宽, 沿边方向的裁剪 (任务栏避让) 由 ABM_QUERYPOS 完成。</summary>
+    /// 垂直范围 = 工作区高度 84% 的悬浮胶囊 (上下各留 8%, 对齐 v1.1 玻璃胶囊设计);
+    /// 水平锚定显示器边缘, 沿边裁剪交给 ABM_QUERYPOS。</summary>
     public void Reposition(int widthPx)
     {
         if (!_registered || _hwnd == 0) return;
         var mon = api.GetMonitorOf(_hwnd);
+        var capsuleH = (int)Math.Round(mon.Work.H * (1 - 2 * CapsuleMarginRatio));
+        var capsuleY = mon.Work.Y + (int)Math.Round(mon.Work.H * CapsuleMarginRatio);
         var want = _edge switch
         {
-            AppBarNative.ABE_LEFT => new AppBarRect(mon.Monitor.X, mon.Monitor.Y, widthPx, mon.Monitor.H),
-            AppBarNative.ABE_RIGHT => new AppBarRect(mon.Monitor.X + mon.Monitor.W - widthPx, mon.Monitor.Y, widthPx, mon.Monitor.H),
+            AppBarNative.ABE_LEFT => new AppBarRect(mon.Monitor.X, capsuleY, widthPx, capsuleH),
+            AppBarNative.ABE_RIGHT => new AppBarRect(mon.Monitor.X + mon.Monitor.W - widthPx, capsuleY, widthPx, capsuleH),
             AppBarNative.ABE_TOP => new AppBarRect(mon.Monitor.X, mon.Monitor.Y, mon.Monitor.W, widthPx),
             _ => new AppBarRect(mon.Monitor.X, mon.Monitor.Y + mon.Monitor.H - widthPx, mon.Monitor.W, widthPx),
         };
