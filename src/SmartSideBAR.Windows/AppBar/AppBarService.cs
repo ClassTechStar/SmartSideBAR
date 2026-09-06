@@ -30,11 +30,13 @@ public sealed class AppBarService(
     private bool _registered;
     private bool _fullscreen;      // K3: 全屏应用在场标志
     private bool _userExpanded;    // 用户偏好; 全屏结束后据此恢复 (V5)
+    private bool _docked;          // v1.1 dock 语义: 收起为角落小方块
 
     public bool IsRegistered => _registered;
     public AppBarRect? GrantedRect { get; private set; }
     public bool FullscreenActive => _fullscreen;
     public int CurrentWidthPx => _userExpanded ? _expandedPx : _railPx;
+    public bool Docked => _docked;
 
     /// <summary>注册 + 首次定位。失败返回 false (调用方回退 Topmost 置顶, 与 v1.2.0 同策略)。</summary>
     public bool Attach(nint hwnd, AppBarEdge edge, int railWidthPx, int expandedWidthPx)
@@ -72,6 +74,15 @@ public sealed class AppBarService(
         Reposition(CurrentWidthPx);
     }
 
+    /// <summary>v1.1 dock 语义: docked = 指定边距尺寸的小方块停靠在工作区底角。</summary>
+    public void SetDocked(bool docked, int dockSizePx)
+    {
+        _docked = docked;
+        _dockSizePx = Math.Max(2, dockSizePx);
+        Reposition(CurrentWidthPx);
+    }
+    private int _dockSizePx = 78;
+
     /// <summary>重排: 注册后 / 展开收起 / ABN_POSCHANGED / 分辨率与任务栏变化 (K1/K4)。
     /// 锚点必须是 rcMonitor 全屏矩形: rcWork 已扣除自身 AppBar 占位, 若以它为锚,
     /// 每次 Reposition 都会向屏幕内侧漂移一个带宽 —— 对方案 §5.3 蓝本的勘误。
@@ -81,6 +92,37 @@ public sealed class AppBarService(
     {
         if (!_registered || _hwnd == 0) return;
         var mon = api.GetMonitorOf(_hwnd);
+
+        // v1.1 dock 语义: 工作区底角小方块 (side-aware)
+        if (_docked && (_edge is AppBarNative.ABE_LEFT or AppBarNative.ABE_RIGHT))
+        {
+            // 先注销自身旧占位: QUERYPOS 会为已注册 AppBar(含我们自己)让位, 否则方块逐次左漂。
+            // ABM_REMOVE 后系统 WorkArea 恢复滞后一步 —— 收敛循环直至授予位==期望位。
+            var dockWant = _edge == AppBarNative.ABE_RIGHT
+                ? new AppBarRect(mon.Work.X + mon.Work.W - _dockSizePx,
+                    mon.Work.Y + mon.Work.H - _dockSizePx, _dockSizePx, _dockSizePx)
+                : new AppBarRect(mon.Work.X, mon.Work.Y + mon.Work.H - _dockSizePx, _dockSizePx, _dockSizePx);
+            var dockGranted = dockWant;
+            for (var attempt = 0; attempt < 4; attempt++)
+            {
+                api.Remove(_hwnd);
+                dockGranted = api.QueryAndSetPos(_hwnd, _edge, dockWant);
+                if (Math.Abs(dockGranted.X - dockWant.X) <= 2 && Math.Abs(dockGranted.Y - dockWant.Y) <= 2)
+                {
+                    break;
+                }
+            }
+            api.WindowPosChanged(_hwnd);
+            if (!api.MoveWindow(_hwnd, dockGranted))
+            {
+                log?.LogWarning("[AppBar] MoveWindow 失败 (hwnd=0x{Hwnd:X})", _hwnd);
+            }
+            GrantedRect = dockGranted;
+            bus.Publish(new AppBarGeometryChanged(dockGranted, _dockSizePx));
+            log?.LogInformation("[AppBar] dock 重排 → ({X},{Y}) {W}x{H}px", dockGranted.X, dockGranted.Y, dockGranted.W, dockGranted.H);
+            return;
+        }
+
         var capsuleH = (int)Math.Round(mon.Work.H * (1 - 2 * CapsuleMarginRatio));
         var capsuleY = mon.Work.Y + (int)Math.Round(mon.Work.H * CapsuleMarginRatio);
         var want = _edge switch
@@ -98,7 +140,7 @@ public sealed class AppBarService(
         }
         GrantedRect = granted;
         bus.Publish(new AppBarGeometryChanged(granted, widthPx));
-        log?.LogDebug("[AppBar] 重排 → ({X},{Y}) {W}x{H}px", granted.X, granted.Y, granted.W, granted.H);
+        log?.LogInformation("[AppBar] 重排 → ({X},{Y}) {W}x{H}px", granted.X, granted.Y, granted.W, granted.H);
     }
 
     /// <summary>WndProc 状态机 —— K1/K2/K3/K7 的通知闭环。</summary>

@@ -1,4 +1,7 @@
 using Avalonia.Controls;
+using AvaloniaVisual = global::Avalonia.Visual;
+using Avalonia.VisualTree;
+using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Windows.AppBar;
 
 namespace SmartSideBAR.Avalonia.Views;
@@ -27,6 +30,28 @@ public partial class SidebarWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+        LoadSvgIcons(this);
         if (DataContext is ViewModels.SidebarViewModel vm) vm.RefreshIme();
+    }
+
+    /// <summary>Tag="svg:名称" → Assets/icons/名称.svg (1.1 图标, 深色); "svgw:" → 白色变体。</summary>
+    internal static void LoadSvgIcons(AvaloniaVisual root)
+    {
+        foreach (var image in root.GetVisualDescendants().OfType<Image>())
+        {
+            if (image.Tag is not string tag) continue;
+            var (prefix, dir) = tag.StartsWith("svgw:") ? ("svgw:", "icons-white") : ("svg:", "icons");
+            if (!tag.StartsWith(prefix)) continue;
+            var name = tag[prefix.Length..];
+            try
+            {
+                var uri = new Uri($"avares://SmartSideBAR.Avalonia/Assets/{dir}/{name}.svg");
+                image.Source = new global::Avalonia.Svg.Skia.SvgImage { Source = new global::Avalonia.Svg.Skia.SvgSource(uri) };
+            }
+            catch
+            {
+                // 图标缺失不阻断 UI
+            }
+        }
     }
 }
