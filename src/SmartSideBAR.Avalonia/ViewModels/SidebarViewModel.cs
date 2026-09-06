@@ -39,6 +39,10 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         AnnotateCommand = new RelayCommand(_ => Dispatch("annotate"));
         RecordCommand = new RelayCommand(_ => Dispatch("record"));
         LongshotCommand = new RelayCommand(_ => Dispatch("longshot"));
+        UsbCommand = new RelayCommand(_ => Dispatch("usb"));
+        PrinterCommand = new RelayCommand(_ => Dispatch("printer"));
+        SettingsCommand = new RelayCommand(_ => Dispatch("settings"));
+        ReminderCommand = new RelayCommand(_ => Dispatch("reminder"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -74,10 +78,14 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     public ICommand OpenLinkCommand { get; }
     public ICommand ToggleImeCommand { get; }
     public ICommand OpenTaskMgrCommand { get; }
-    public ICommand CaptureCommand { get; } = new RelayCommand(_ => { });
-    public ICommand AnnotateCommand { get; } = new RelayCommand(_ => { });
-    public ICommand RecordCommand { get; } = new RelayCommand(_ => { });
-    public ICommand LongshotCommand { get; } = new RelayCommand(_ => { });
+    public ICommand CaptureCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand AnnotateCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand RecordCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand LongshotCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand UsbCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand PrinterCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand SettingsCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand ReminderCommand { get; private set; } = new RelayCommand(_ => { });
 
     public void RefreshIme()
     {

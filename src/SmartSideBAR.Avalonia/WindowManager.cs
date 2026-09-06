@@ -32,8 +32,9 @@ public sealed class WindowManager(
     IEventBus bus,
     ILogger<WindowManager> log)
 {
-    public const int RailWidthPx = 64;    // rail 收起宽度 (物理像素)
-    public const int ExpandedWidthPx = 420; // 面板展开宽度 (物理像素)
+    // v1.1 液态玻璃设计基准 (DIP): rail 72 + 面板 380; 物理像素 = DIP × 窗口 DPI 缩放
+    public const double RailWidthDip = 72;
+    public const double PanelWidthDip = 380;
 
     private SidebarWindow? _sidebar;
     private FloatBallWindow? _floatBall;
@@ -59,9 +60,12 @@ public sealed class WindowManager(
                 return;
             }
             var hwnd = handle.Handle;
+            var scale = Windows.Native.Win32Display.GetScaling(hwnd);
+            var railPx = (int)Math.Round(RailWidthDip * scale);
+            var expandedPx = (int)Math.Round((RailWidthDip + PanelWidthDip) * scale);
 
             // §5.4: AppBar 注册失败回退 alwaysOnTop (v1.2.0 同策略)
-            if (appBar.Attach(hwnd, side, RailWidthPx, ExpandedWidthPx))
+            if (appBar.Attach(hwnd, side, railPx, expandedPx))
             {
                 win.Topmost = false;
             }
@@ -115,7 +119,7 @@ public sealed class WindowManager(
             log.LogDebug("[Window] AppBar 几何: ({X},{Y}) {W}x{H}px", g.Rect.X, g.Rect.Y, g.Rect.W, g.Rect.H);
         });
 
-        log.LogInformation("[Window] 侧栏窗口已创建 ({Side} 侧, rail={Rail}px)", side, RailWidthPx);
+        log.LogInformation("[Window] 侧栏窗口已创建 ({Side} 侧, rail={Rail} DIP, 胶囊高度=工作区 84%)", side, RailWidthDip);
         return win;
     }
 

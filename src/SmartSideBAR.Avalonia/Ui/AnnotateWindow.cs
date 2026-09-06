@@ -48,13 +48,16 @@ public sealed class InkCanvas : Control
         StrokesChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>导出仅笔迹 (透明底)。</summary>
-    public Bitmap ExportStrokesOnly(int width, int height)
+    /// <summary>导出仅笔迹 (透明底)。width/height 为物理像素, DIP 笔迹按 scale 放大。</summary>
+    public Bitmap ExportStrokesOnly(int width, int height, double scale)
     {
-        var rtb = new RenderTargetBitmap(new PixelSize(width, height));
+        var rtb = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96 * scale, 96 * scale));
         using (var ctx = rtb.CreateDrawingContext())
         {
-            DrawAll(ctx, 1.0);
+            using (ctx.PushTransform(Matrix.CreateScale(scale, scale)))
+            {
+                DrawAll(ctx, 1.0);
+            }
         }
         return rtb;
     }
@@ -92,35 +95,29 @@ public sealed class InkCanvas : Control
 
     public override void Render(DrawingContext context) => DrawAll(context, 1.0);
 
-    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    // ---- 由宿主 Border (Background=Transparent, 保证可命中) 驱动的笔画 API ----
+
+    public void BeginStroke(Point p, IPointer pointer)
     {
-        var p = e.GetCurrentPoint(this);
         _current = new Stroke { Color = _color, Width = _width };
-        _current.Points.Add(p.Position);
-        e.Pointer.Capture(this);
-        e.Handled = true; // 全类型指针接受 —— D1 根修
+        _current.Points.Add(p);
+        pointer.Capture(this);
     }
 
-    protected override void OnPointerMoved(PointerEventArgs e)
+    public void ExtendStroke(Point p)
     {
         if (_current is null) return;
-        var p = e.GetCurrentPoint(this);
-        if (e is PointerEventArgs { } && p.Properties.IsLeftButtonPressed || e.Pointer.Type == PointerType.Touch || e.Pointer.Type == PointerType.Pen)
-        {
-            _current.Points.Add(p.Position);
-            InvalidateVisual();
-            e.Handled = true;
-        }
+        _current.Points.Add(p);
+        InvalidateVisual();
     }
 
-    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    public void EndStroke()
     {
         if (_current is null) return;
-        _strokes.Add(_current);
+        if (_current.Points.Count > 0) _strokes.Add(_current);
         _current = null;
         InvalidateVisual();
         StrokesChanged?.Invoke(this, EventArgs.Empty);
-        e.Handled = true;
     }
 }
 
@@ -149,9 +146,28 @@ public sealed class AnnotateWindow : Window
         TransparencyLevelHint = [];
 
         var toolbar = BuildToolbar();
+        var inkHost = new Border { Background = Brushes.Transparent }; // Transparent 笔刷 = 可命中
+        inkHost.PointerPressed += (_, e) =>
+        {
+            var p = e.GetCurrentPoint(inkHost);
+            if (!p.Properties.IsLeftButtonPressed) return;
+            _ink.BeginStroke(p.Position, e.Pointer);
+            e.Handled = true; // Pointer 统一: 触屏/笔/鼠标 (D1 根修)
+        };
+        inkHost.PointerMoved += (_, e) =>
+        {
+            if (e.Pointer.Captured is null) return;
+            _ink.ExtendStroke(e.GetCurrentPoint(inkHost).Position);
+            e.Handled = true;
+        };
+        inkHost.PointerReleased += (_, e) =>
+        {
+            _ink.EndStroke();
+            e.Handled = true;
+        };
         Content = new Panel
         {
-            Children = { _ink, toolbar },
+            Children = { inkHost, _ink, toolbar },
         };
         KeyDown += (_, args) =>
         {
@@ -220,8 +236,8 @@ public sealed class AnnotateWindow : Window
             if (withBackground && _backgroundPng is not null)
             {
                 using var bg = new Bitmap(new MemoryStream(_backgroundPng));
-                using var strokes = _ink.ExportStrokesOnly(w, h);
-                using var composite = new RenderTargetBitmap(new PixelSize(w, h));
+                using var strokes = _ink.ExportStrokesOnly(w, h, scale);
+                using var composite = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96 * scale, 96 * scale));
                 using (var ctx = composite.CreateDrawingContext())
                 {
                     ctx.DrawImage(bg, new Rect(0, 0, w, h));
@@ -231,7 +247,7 @@ public sealed class AnnotateWindow : Window
             }
             else
             {
-                using var strokes = _ink.ExportStrokesOnly(w, h);
+                using var strokes = _ink.ExportStrokesOnly(w, h, scale);
                 strokes.Save(path);
             }
             ToastService.Instance.Show($"批注已保存: {path}", "success");
