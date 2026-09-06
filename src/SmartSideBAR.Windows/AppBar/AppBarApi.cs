@@ -9,7 +9,7 @@ namespace SmartSideBAR.Windows.AppBar;
 public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
 {
     /// <summary>PMv2 线程上下文作用域: 块内所有 Win32 坐标为物理像素。</summary>
-    private readonly struct PhysicalDpiScope : IDisposable
+    public readonly struct PhysicalDpiScope : IDisposable
     {
         private readonly nint _prev;
         public PhysicalDpiScope()
