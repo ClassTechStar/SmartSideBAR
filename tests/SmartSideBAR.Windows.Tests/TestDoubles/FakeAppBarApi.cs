@@ -42,11 +42,11 @@ public sealed class FakeAppBarApi : IAppBarApi
         Ops.Add("QUERYPOS");
         QueryCalls.Add((hwnd, edge, want));
         Ops.Add("SETPOS");
-        // 系统行为模拟: 沿边方向裁剪到工作区 (任务栏避让), 垂直方向保留提议带宽
+        // 系统行为模拟: 贴边锚定到显示器缘, 沿边尺寸保留提议 (胶囊矩形在工作区内, 无需裁剪)
         return edge switch
         {
-            AppBarNative.ABE_RIGHT => new AppBarRect(Monitor.W - want.W, Work.Y, want.W, Work.H),
-            AppBarNative.ABE_LEFT => new AppBarRect(Work.X, Work.Y, want.W, Work.H),
+            AppBarNative.ABE_RIGHT => new AppBarRect(Monitor.W - want.W, want.Y, want.W, want.H),
+            AppBarNative.ABE_LEFT => new AppBarRect(Work.X, want.Y, want.W, want.H),
             AppBarNative.ABE_TOP => new AppBarRect(Work.X, Work.Y, Monitor.W, want.H),
             _ => new AppBarRect(Work.X, Work.Y + Work.H - want.H, Monitor.W, want.H),
         };
