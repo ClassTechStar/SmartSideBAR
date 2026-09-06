@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SmartSideBAR.Avalonia.ViewModels"
+        x:Class="SmartSideBAR.Avalonia.Views.SidebarWindow"
+        x:DataType="vm:SidebarViewModel"
+        Title="SmartSideBAR"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        CanResize="False"
+        ShowActivated="False"
+        Background="#F0141A22"
+        TransparencyLevelHint="None"
+        Width="64" Height="1040">
+
+  <Window.Styles>
+    <Style Selector="Button.railBtn">
+      <Style.Setters>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#EAF0F8"/>
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="Height" Value="56"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      </Style.Setters>
+    </Style>
+    <Style Selector="Button.railBtn:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#332B6EE0"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid x:Name="RootGrid" ColumnDefinitions="64,*">
+
+    <!-- rail (64 物理像素, 经代码按 Scaling 折算 DIP) -->
+    <StackPanel Grid.Column="0" Background="#E610141C">
+      <Button Classes="railBtn" Content="☰" Command="{Binding TogglePanelCommand}" />
+      <Button Classes="railBtn" Content="📷" />
+      <Button Classes="railBtn" Content="✏️" />
+      <Button Classes="railBtn" Content="⌨️" />
+      <Button Classes="railBtn" Content="🎥" />
+      <Button Classes="railBtn" Content="usb" FontSize="12"/>
+      <Button Classes="railBtn" Content="🖨" />
+      <Button Classes="railBtn" Content="📊" FontSize="14"/>
+    </StackPanel>
+
+    <!-- 面板 (展开时可见; 宽度 = 系统授予 - rail) -->
+    <Border Grid.Column="1" Background="#E8F4F7FD" IsVisible="{Binding PanelOpen}" Padding="16,12">
+      <StackPanel Spacing="8">
+        <TextBlock Text="快捷链接" FontSize="16" FontWeight="SemiBold" Foreground="#141A22"/>
+        <ItemsControl ItemsSource="{Binding Links}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Left"
+                      Background="Transparent"
+                      Foreground="#2B6EE0"
+                      Command="{Binding $parent[Window].((vm:SidebarViewModel)DataContext).OpenLinkCommand}"
+                      CommandParameter="{Binding}">
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="Wave A Demo — AppBar 一等公民验证窗口"
+                   FontSize="11" Foreground="#8A94A3" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
