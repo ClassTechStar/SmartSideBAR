@@ -42,18 +42,18 @@ jobs:
   dotnet:
     name: Avalonia (Core/Windows/Avalonia 三层)
     runs-on: windows-latest
-    if: hashFiles('SmartSideBAR.sln') != ''
+    if: hashFiles('SmartSideBAR.slnx') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
       - name: Restore
-        run: dotnet restore SmartSideBAR.sln
+        run: dotnet restore SmartSideBAR.slnx
       - name: Build
-        run: dotnet build SmartSideBAR.sln -c Release --no-restore
+        run: dotnet build SmartSideBAR.slnx -c Release --no-restore
       - name: Test (覆盖率采集)
-        run: dotnet test SmartSideBAR.sln -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: dotnet test SmartSideBAR.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
       # 覆盖率门禁：Wave A 先落机制、阈值 0；Wave D（§10.1）提升至 80
       - name: Coverage gate
         shell: pwsh
@@ -65,10 +65,11 @@ jobs:
           Write-Host "Line coverage: $line%"
           $min = 0 # TODO(Wave D): 80
           if ([double]$line -lt $min) { throw "coverage $line% < $min%" }
-      - name: Publish (自包含单文件)
+      - name: Publish (自包含单文件, 部分裁剪+压缩 —— 实测 14.7MB 冒烟全绿)
         run: >
           dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64
           --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true
+          -p:TrimMode=partial -p:EnableCompressionInSingleFile=true
           -o artifacts/app
       - uses: actions/upload-artifact@v4
         with:
