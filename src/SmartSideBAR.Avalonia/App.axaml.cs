@@ -56,6 +56,8 @@ public partial class App : Application
             };
 
             ConfigureSmokeExit(desktop);
+            ConfigureAutoDock(windowManager);
+            ConfigureAutoUndock(windowManager);
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -95,6 +97,32 @@ public partial class App : Application
             ctx.FillRectangle(Brushes.White, new Rect(9, 21, 9, 4), 2);
         }
         return new WindowIcon(rtb);
+    }
+
+    /// <summary>测试钩子: SSB_AUTO_UNDOCK_MS&gt;0 时 N 毫秒后自动展开侧栏 (undock 回归)。</summary>
+    private void ConfigureAutoUndock(WindowManager wm)
+    {
+        if (!int.TryParse(Environment.GetEnvironmentVariable("SSB_AUTO_UNDOCK_MS"), out var ms) || ms <= 0) return;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ms) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            wm.Dispatch("dock"); // _docked=true → 取反为 undock
+        };
+        timer.Start();
+    }
+
+    /// <summary>测试钩子: SSB_AUTO_DOCK_MS&gt;0 时 N 毫秒后自动收起侧栏 (dock 形态验证)。</summary>
+    private void ConfigureAutoDock(WindowManager wm)
+    {
+        if (!int.TryParse(Environment.GetEnvironmentVariable("SSB_AUTO_DOCK_MS"), out var ms) || ms <= 0) return;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ms) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            wm.Dispatch("dock");
+        };
+        timer.Start();
     }
 
     /// <summary>冒烟验证: SSB_SMOKE_EXIT_MS&gt;0 时 N 毫秒后自动退出 (自动化/CI 用)。</summary>

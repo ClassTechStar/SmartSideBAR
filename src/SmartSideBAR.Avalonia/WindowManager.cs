@@ -1,5 +1,6 @@
 // 窗口集中管理 (方案 §4.1): 侧栏 AppBar 轨窗口的创建、常驻服务挂接与全部动作路由。
 // 附录 A 的 window:*/floatball:*/capture:* 等 invoke 通道在本进程内直达类型安全服务。
+using Avalonia;
 using Avalonia.Controls;
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Avalonia.Ui;
@@ -32,18 +33,25 @@ public sealed class WindowManager(
     IEventBus bus,
     ILogger<WindowManager> log)
 {
-    // v1.1 液态玻璃设计基准 (DIP): rail 72 + 面板 380; 物理像素 = DIP × 窗口 DPI 缩放
-    public const double RailWidthDip = 72;
+    // v1.1 设计基准 (DIP): rail 52 + 面板 380, dock 收起方块 52×52; 物理像素 = DIP × 窗口 DPI 缩放
+    public const double RailWidthDip = 52;
     public const double PanelWidthDip = 380;
+    public const double DockSizeDip = 52;
 
     private SidebarWindow? _sidebar;
+    private DockWindow? _dockWindow;
     private FloatBallWindow? _floatBall;
     private SettingsWindow? _settings;
+    private int _dockPx = 78;
+    private bool _docked;
+    private AppBarEdge _side = AppBarEdge.Right;
+    private (nint Hwnd, int RailPx, int ExpandedPx) _attachInfo;
 
     public SidebarWindow CreateSidebar()
     {
         var cfg = config.Current;
         var side = cfg.Display.SidebarSide == SidebarSide.Left ? AppBarEdge.Left : AppBarEdge.Right;
+        _side = side;
 
         var win = new SidebarWindow(side)
         {
@@ -63,6 +71,8 @@ public sealed class WindowManager(
             var scale = Windows.Native.Win32Display.GetScaling(hwnd);
             var railPx = (int)Math.Round(RailWidthDip * scale);
             var expandedPx = (int)Math.Round((RailWidthDip + PanelWidthDip) * scale);
+            _dockPx = (int)Math.Round(DockSizeDip * scale);
+            _attachInfo = (hwnd, railPx, expandedPx);
 
             // §5.4: AppBar 注册失败回退 alwaysOnTop (v1.2.0 同策略)
             if (appBar.Attach(hwnd, side, railPx, expandedPx))
@@ -183,6 +193,10 @@ public sealed class WindowManager(
                     ToggleSidebar();
                     break;
 
+                case "dock":
+                    SetDocked(!_docked);
+                    break;
+
                 case "settings":
                     OpenSettings();
                     break;
@@ -271,7 +285,9 @@ public sealed class WindowManager(
     {
         if (_floatBall is { IsVisible: true }) return;
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
-        _floatBall = new FloatBallWindow(config.Current.FloatBall, new Core.FloatBall.RectLike(0, 0, 2560, 1600), Dispatch);
+        var wa = Windows.Native.Win32Display.PrimaryWorkAreaPx();
+        _floatBall = new FloatBallWindow(config.Current.FloatBall,
+            new Core.FloatBall.RectLike(wa.X, wa.Y, wa.W, wa.H), Dispatch, ToggleSidebar);
         _floatBall.Show();
     }
 
@@ -280,6 +296,41 @@ public sealed class WindowManager(
         if (_floatBall is null) { ShowFloatBall(); return; }
         if (_floatBall.IsVisible) _floatBall.Hide();
         else _floatBall.Show();
+    }
+
+    /// <summary>v1.1 dock/undock: 收起为工作区底角小方块 / 恢复玻璃胶囊。
+    /// 勘误: 不复用侧栏窗口缩放 (透明窗外部 MoveWindow 缩放后 Avalonia 不出帧),
+    /// dock 用独立 DockWindow; AppBar 先注销 (WorkArea 完整归还, v1.1 同语义),
+    /// undock 时对侧栏窗口重新 Attach (含孤儿注册自愈)。</summary>
+    public void SetDocked(bool docked)
+    {
+        if (docked == _docked) return;
+        _docked = docked;
+        if (_sidebar is not { } sidebar) return;
+
+        if (docked)
+        {
+            appBar.Detach();
+            sidebar.Hide();
+            if (_dockWindow is null)
+            {
+                _dockWindow = new DockWindow(() => SetDocked(false));
+            }
+            var wa = Windows.Native.Win32Display.PrimaryWorkAreaPx();
+            var sizePx = (int)Math.Round(DockSizeDip * Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd));
+            var x = _side == AppBarEdge.Right ? wa.X + wa.W - sizePx : wa.X;
+            _dockWindow.Position = new PixelPoint(x, wa.Y + wa.H - sizePx);
+            _dockWindow.Show();
+            log.LogInformation("[Window] 侧栏已收起为底角方块 ({X},{Y}) {Size}px", x, wa.Y + wa.H - sizePx, sizePx);
+        }
+        else
+        {
+            _dockWindow?.Hide();
+            sidebar.Show();
+            _ = appBar.Attach(_attachInfo.Hwnd, _side, _attachInfo.RailPx, _attachInfo.ExpandedPx);
+            sidebar.Topmost = !appBar.IsRegistered; // Attach 失败回退置顶
+            log.LogInformation("[Window] 侧栏已展开为玻璃胶囊");
+        }
     }
 
     public void ToggleSidebar()

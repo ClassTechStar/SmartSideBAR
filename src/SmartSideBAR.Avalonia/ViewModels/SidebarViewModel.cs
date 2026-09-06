@@ -43,6 +43,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         PrinterCommand = new RelayCommand(_ => Dispatch("printer"));
         SettingsCommand = new RelayCommand(_ => Dispatch("settings"));
         ReminderCommand = new RelayCommand(_ => Dispatch("reminder"));
+        DockCommand = new RelayCommand(_ => Dispatch("dock"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -50,11 +51,26 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     public bool PanelOpen
     {
         get => _panelOpen;
-        private set
+        set
         {
             if (_panelOpen == value) return;
             _panelOpen = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PanelOpen)));
+        }
+    }
+
+    private bool _isDocked;
+
+    /// <summary>v1.1 语义: docked = 收起为右下角 52×52 小方块。</summary>
+    public bool IsDocked
+    {
+        get => _isDocked;
+        set
+        {
+            if (_isDocked == value) return;
+            _isDocked = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDocked)));
+            if (value) PanelOpen = false;
         }
     }
 
@@ -86,6 +102,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     public ICommand PrinterCommand { get; private set; } = new RelayCommand(_ => { });
     public ICommand SettingsCommand { get; private set; } = new RelayCommand(_ => { });
     public ICommand ReminderCommand { get; private set; } = new RelayCommand(_ => { });
+    public ICommand DockCommand { get; private set; } = new RelayCommand(_ => { });
 
     public void RefreshIme()
     {
