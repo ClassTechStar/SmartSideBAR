@@ -8,7 +8,7 @@
 //
 // koffi 为可选依赖: 加载失败时 native 材质退化为 "none", 玻璃观感由 CSS 承载, 功能不受影响。
 
-import { app, BrowserWindow, nativeTheme, screen } from 'electron'
+import { BrowserWindow, nativeTheme, screen } from 'electron'
 import * as os from 'os'
 import log from 'electron-log'
 import type { AppearanceConfig, AppearanceSnapshot } from '../../shared/types'
@@ -210,7 +210,7 @@ function applyToTarget(t: Target): boolean {
   try {
     if (material === 'acrylic' || material === 'mica') {
       if (supportsNativeMaterial(osBuild) && typeof (win as any).setBackgroundMaterial === 'function') {
-        ;(win as any).setBackgroundMaterial(material === 'mica' ? 'mica' : 'acrylic')
+        (win as any).setBackgroundMaterial(material === 'mica' ? 'mica' : 'acrylic')
         applied = true
       } else if (isDwmAvailable()) {
         applied = setAcrylic(hwndOf(win), 'acrylic', accentGradientAbgr(currentAppearance, theme))
@@ -219,7 +219,7 @@ function applyToTarget(t: Target): boolean {
       applied = setAcrylic(hwndOf(win), 'acrylic', accentGradientAbgr(currentAppearance, theme))
     } else {
       if (supportsNativeMaterial(osBuild) && typeof (win as any).setBackgroundMaterial === 'function') {
-        ;(win as any).setBackgroundMaterial('none')
+        (win as any).setBackgroundMaterial('none')
       }
       if (isDwmAvailable()) setAcrylic(hwndOf(win), 'off')
     }

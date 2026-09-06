@@ -1,0 +1,109 @@
+# SmartSideBAR CI —— G3 修复（仓库此前无任何 workflow）
+# 结构按《优化方案_Master_MLP_v1.md》§7.3/§7.4：
+#   1) secrets-scan  : gitleaks 前置门禁（G1 防再犯：*.pfx/*password* 永不入库）
+#   2) electron      : v1.2.0 冻结维护期的门禁（typecheck + lint + test）
+#   3) dotnet        : Avalonia 版（avalonia 分支）构建 + 测试 + 覆盖率门禁
+#   4) release       : v2* tag 触发 —— 发布单文件自包含 exe（签名证书从 secrets 注入，绝不入库）
+name: CI
+
+on:
+  push:
+    branches: [main, avalonia]
+    tags: ['v2*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  secrets-scan:
+    name: gitleaks (G1 防再犯)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 全历史扫描
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  electron:
+    name: Electron v1.2.0 (冻结维护门禁)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  dotnet:
+    name: Avalonia (Core/Windows/Avalonia 三层)
+    runs-on: windows-latest
+    if: hashFiles('SmartSideBAR.sln') != ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore SmartSideBAR.sln
+      - name: Build
+        run: dotnet build SmartSideBAR.sln -c Release --no-restore
+      - name: Test (覆盖率采集)
+        run: dotnet test SmartSideBAR.sln -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+      # 覆盖率门禁：Wave A 先落机制、阈值 0；Wave D（§10.1）提升至 80
+      - name: Coverage gate
+        shell: pwsh
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:cover -reporttypes:TextSummary
+          $txt = Get-Content cover/Summary.txt -Raw
+          $line = [regex]::Match($txt, 'Line coverage:\s+([\d.]+)%').Groups[1].Value
+          Write-Host "Line coverage: $line%"
+          $min = 0 # TODO(Wave D): 80
+          if ([double]$line -lt $min) { throw "coverage $line% < $min%" }
+      - name: Publish (自包含单文件)
+        run: >
+          dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64
+          --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true
+          -o artifacts/app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-win-x64
+          path: artifacts/app
+
+  release:
+    name: Release (v2* tag → NSIS + 签名)
+    needs: [dotnet]
+    if: startsWith(github.ref, 'refs/tags/v2')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-win-x64
+          path: artifacts/app
+      - name: Sign (证书从 secrets 注入 —— 绝不再入仓库, §7.4)
+        env:
+          PFX_B64: ${{ secrets.CODESIGN_PFX_B64 }}
+          PFX_PASS: ${{ secrets.CODESIGN_PFX_PASS }}
+        if: env.PFX_B64 != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:PFX_B64))
+          signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+            artifacts/app/SmartSideBAR.exe
+          Remove-Item cert.pfx
+      - name: NSIS installer
+        if: hashFiles('installer/SmartSideBar.iss') != ''
+        run: |
+          choco install nsis -y
+          makensis installer/SmartSideBar.iss
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            installer/Output/*.exe
