@@ -21,7 +21,7 @@ public sealed class DockWindow : Window
         ShowInTaskbar = false;
         ShowActivated = false;
         Background = Brushes.Transparent;
-        TransparencyLevelHint = [ ];
+        TransparencyLevelHint = [];
 
         var btn = new Button
         {
