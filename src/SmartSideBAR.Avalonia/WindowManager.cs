@@ -307,6 +307,7 @@ public sealed class WindowManager(
         if (docked == _docked) return;
         _docked = docked;
         if (_sidebar is not { } sidebar) return;
+        if (sidebar.DataContext is ViewModels.SidebarViewModel vm) vm.IsDocked = docked;
 
         if (docked)
         {

@@ -67,22 +67,47 @@ public sealed class FloatBallWindow : Window
 
     private Border BuildOrb()
     {
+        // v1.1 v7: 悬浮球 = floatball-icon.png 铺满正圆 + 边光环
+        var orbIcon = new Image
+        {
+            Source = new global::Avalonia.Media.Imaging.Bitmap(
+                global::Avalonia.Platform.AssetLoader.Open(
+                    new Uri("avares://SmartSideBAR.Avalonia/Assets/floatball-icon.png"))),
+            Stretch = Stretch.UniformToFill,
+        };
+
+        // 边光环: 1.5px 白色渐变环 (v1.1 v7 ::after rim light 近似)
+        var rim = new Border
+        {
+            CornerRadius = new CornerRadius(_size / 2.0),
+            BorderThickness = new Thickness(1.5),
+            Child = orbIcon,
+            ClipToBounds = true,
+        };
+        rim.BorderBrush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.Parse("#E6FFFFFF"), 0),
+                new GradientStop(Color.Parse("#52FFFFFF"), 0.18),
+                new GradientStop(Color.Parse("#1AFFFFFF"), 0.4),
+                new GradientStop(Color.Parse("#33FFFFFF"), 0.62),
+                new GradientStop(Color.Parse("#ADFFFFFF"), 1),
+            },
+        };
+
         var orb = new Border
         {
             Width = _size,
             Height = _size,
             CornerRadius = new CornerRadius(_size / 2.0),
-            BoxShadow = BoxShadows.Parse("0 6 18 #40000000"),
-            Child = new Image
-            {
-                Source = new global::Avalonia.Media.Imaging.Bitmap(
-                    global::Avalonia.Platform.AssetLoader.Open(
-                        new Uri("avares://SmartSideBAR.Avalonia/Assets/floatball-icon.png"))),
-                Stretch = Stretch.UniformToFill,
-            },
+            // v1.1 v7: 0 12px 40px 0.25 + 0 2px 8px 0.12
+            BoxShadow = BoxShadows.Parse("0 12 40 #40000000, 0 2 8 #1F000000"),
+            Child = rim,
             ClipToBounds = true,
         };
-        orb.CornerRadius = new CornerRadius(_size / 2.0);
         return orb;
     }
 
@@ -177,8 +202,18 @@ public sealed class FloatBallWindow : Window
                 Padding = new Thickness(0),
                 HorizontalContentAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
                 VerticalContentAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
-
+                // v1.1 扇形菜单: 白色 SVG 图标 + 玻璃边光环
+                Content = new Image
+                {
+                    Width = 22,
+                    Height = 22,
+                    Tag = "svgw:" + action,
+                    HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
+                },
             };
+            item.BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255));
+            item.BorderThickness = new Thickness(1);
             item.Click += (_, _) =>
             {
                 CollapseFan();

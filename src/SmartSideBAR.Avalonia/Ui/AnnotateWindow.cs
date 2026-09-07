@@ -145,14 +145,30 @@ public sealed class AnnotateWindow : Window
         Background = Brushes.Transparent;
         TransparencyLevelHint = [];
 
-        var toolbar = BuildToolbar();
-        var inkHost = new Border { Background = Brushes.Transparent }; // Transparent 笔刷 = 可命中
+        var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // InkCanvas fills the entire screen
+        _ink.HorizontalAlignment = AloLayout.HorizontalAlignment.Stretch;
+        _ink.VerticalAlignment = AloLayout.VerticalAlignment.Stretch;
+        Grid.SetRow(_ink, 0);
+        Grid.SetRowSpan(_ink, 2); // Draw behind toolbar
+        grid.Children.Add(_ink);
+
+        // Transparent hit-test layer on top for pointer events
+        var inkHost = new Border
+        {
+            Background = Brushes.Transparent,
+            HorizontalAlignment = AloLayout.HorizontalAlignment.Stretch,
+            VerticalAlignment = AloLayout.VerticalAlignment.Stretch,
+        };
         inkHost.PointerPressed += (_, e) =>
         {
             var p = e.GetCurrentPoint(inkHost);
             if (!p.Properties.IsLeftButtonPressed) return;
             _ink.BeginStroke(p.Position, e.Pointer);
-            e.Handled = true; // Pointer 统一: 触屏/笔/鼠标 (D1 根修)
+            e.Handled = true;
         };
         inkHost.PointerMoved += (_, e) =>
         {
@@ -165,10 +181,16 @@ public sealed class AnnotateWindow : Window
             _ink.EndStroke();
             e.Handled = true;
         };
-        Content = new Panel
-        {
-            Children = { inkHost, _ink, toolbar },
-        };
+        Grid.SetRow(inkHost, 0);
+        Grid.SetRowSpan(inkHost, 2);
+        grid.Children.Add(inkHost);
+
+        var toolbar = BuildToolbar();
+        Grid.SetRow(toolbar, 1);
+        grid.Children.Add(toolbar);
+
+        Content = grid;
+
         KeyDown += (_, args) =>
         {
             if (args.Key == Key.Escape) Close();
