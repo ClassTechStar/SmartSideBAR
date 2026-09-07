@@ -5,18 +5,18 @@
 ; 签名: CI 在打包前对 exe 执行 signtool (证书从 secrets 注入, 绝不入库 §7.4)
 
 !define APP_NAME "SmartSideBAR"
-!define APP_VERSION "2.0.0"
+!define APP_VERSION "1.3.0"
 !define APP_PUBLISHER "Seewo Sidekick Team"
 !define APP_EXE "SmartSideBAR.exe"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\dist\SmartSideBAR-安装包-${APP_VERSION}.exe"
+OutFile "..\dist\SmartSideBAR-安装包-v1.3.exe"
 InstallDir "$LOCALAPPDATA\${APP_NAME}"
 RequestExecutionLevel user       ; per-user 安装, 无需管理员 (P1-10 语义)
 SetCompressor /SOLID lzma
 Unicode true
 
-VIProductVersion "${APP_VERSION}.0"
+VIProductVersion "1.3.0.0"
 VIAddVersionKey /LANG=2052 "ProductName" "${APP_NAME}"
 VIAddVersionKey /LANG=2052 "FileVersion" "${APP_VERSION}"
 VIAddVersionKey /LANG=2052 "LegalCopyright" "Apache-2.0"
@@ -28,8 +28,8 @@ UninstPage instfiles
 
 Section "安装"
   SetOutPath "$INSTDIR"
-  File /oname=${APP_EXE} "..\artifacts\app\SmartSideBAR.Avalonia.exe"
-  File "..\artifacts\app\*.dll"
+  File /oname=${APP_EXE} "..\artifacts\v1.3\SmartSideBAR.Avalonia.exe"
+  File "..\artifacts\v1.3\*.dll"
 
   ; 可选信任脚本 (自签名链, 默认不执行 —— 最小信任面 §7.4)
   File "..\cert\install-trust.cmd"

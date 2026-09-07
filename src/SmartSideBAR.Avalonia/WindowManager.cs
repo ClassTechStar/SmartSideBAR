@@ -129,6 +129,27 @@ public sealed class WindowManager(
             log.LogDebug("[Window] AppBar 几何: ({X},{Y}) {W}x{H}px", g.Rect.X, g.Rect.Y, g.Rect.W, g.Rect.H);
         });
 
+        // K3: 全屏应用在场自动收缩为 dock 方块; 退出后自动恢复 (v1.1 同语义)
+        bus.Subscribe<FullscreenAppChanged>(e =>
+        {
+            if (e.Active)
+            {
+                if (!_docked)
+                {
+                    log.LogInformation("[Window] 检测到全屏应用 → 自动收缩侧栏");
+                    SetDocked(true);
+                }
+            }
+            else
+            {
+                if (_docked)
+                {
+                    log.LogInformation("[Window] 全屏应用退出 → 自动展开侧栏");
+                    SetDocked(false);
+                }
+            }
+        });
+
         log.LogInformation("[Window] 侧栏窗口已创建 ({Side} 侧, rail={Rail} DIP, 胶囊高度=工作区 84%)", side, RailWidthDip);
         return win;
     }
