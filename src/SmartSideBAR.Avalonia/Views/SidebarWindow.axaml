@@ -19,50 +19,66 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Width" Value="44"/>
         <Setter Property="Height" Value="44"/>
-        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="CornerRadius" Value="22"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
       </Style.Setters>
     </Style>
     <Style Selector="Button.railBtn:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#0F000000"/>
+      <Setter Property="Background" Value="#14FFFFFF"/>
     </Style>
     <Style Selector="Button.railBtn:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="#1A000000"/>
+      <Setter Property="Background" Value="#28FFFFFF"/>
     </Style>
     <Style Selector="Button.linkBtn">
       <Style.Setters>
-        <Setter Property="Background" Value="#142B6EE0"/>
-        <Setter Property="Foreground" Value="#2B6EE0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#111111"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="12,8"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
       </Style.Setters>
     </Style>
+    <Style Selector="Button.linkBtn:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#0F2B6EE0"/>
+    </Style>
   </Window.Styles>
 
   <Panel>
-    <!-- ====== 常规形态: 悬浮玻璃胶囊 (上下 8% 边距由 AppBar/窗口几何保证) ====== -->
-    <Border IsVisible="{Binding !IsDocked}" CornerRadius="16" BoxShadow="0 8 32 #26000000" VerticalAlignment="Stretch">
+    <!-- ====== 常规形态: 液态玻璃胶囊 (v1.1 v7配方: blur21 saturate2.2 + radial tint + 边光环) ====== -->
+    <Border IsVisible="{Binding !IsDocked}" CornerRadius="28"
+            BoxShadow="0 12 40 #40000000, 0 0 0 0.5 #80FFFFFF, 0 1 3 #40FFFFFF"
+            VerticalAlignment="Stretch" Margin="0,48,0,48">
+      <!-- v1.1 v7: radial-gradient at 18% 0% 白色高光 + linear 143deg 半透明白底 -->
       <Border.Background>
-        <LinearGradientBrush StartPoint="30%,0%" EndPoint="70%,100%">
-          <GradientStop Color="#73FAFCFF" Offset="0"/>
-          <GradientStop Color="#59F3F7FD" Offset="0.5"/>
-          <GradientStop Color="#66FFFFFF" Offset="1"/>
+        <LinearGradientBrush StartPoint="18%,0%" EndPoint="82%,100%">
+          <GradientStop Color="#9EFFFFFF" Offset="0"/>
+          <GradientStop Color="#66FFFFFF" Offset="0.46"/>
+          <GradientStop Color="#47FFFFFF" Offset="1"/>
         </LinearGradientBrush>
       </Border.Background>
-      <Border BorderBrush="#1A000000" BorderThickness="0,0,1,0" CornerRadius="16">
-        <DockPanel Margin="0,10,0,8">
+      <!-- v1.1 v7 边光环: 1.5px 白色渐变环 (mask-composite exclude 在 Avalonia 用 BorderBrush 近似) -->
+      <Border BorderThickness="1.5" CornerRadius="28">
+        <Border.BorderBrush>
+          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Color="#D9FFFFFF" Offset="0"/>
+            <GradientStop Color="#47FFFFFF" Offset="0.18"/>
+            <GradientStop Color="#14FFFFFF" Offset="0.4"/>
+            <GradientStop Color="#29FFFFFF" Offset="0.62"/>
+            <GradientStop Color="#99FFFFFF" Offset="1"/>
+          </LinearGradientBrush>
+        </Border.BorderBrush>
+        <DockPanel Margin="0,8,0,6">
           <!-- dock 切换 (v1.1: ↓ 收起到底部小方块; docked 后 ↑ 展开) -->
-          <Button Classes="railBtn" DockPanel.Dock="Bottom" Command="{Binding DockCommand}" ToolTip.Tip="收起侧边栏">
-            <Path Data="M 12 5 L 12 19 M 6 13 L 12 19 L 18 13"
-                  Stroke="#666666" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+          <Button Classes="railBtn" DockPanel.Dock="Bottom" Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}">
+            <Path Data="{Binding DockArrowPath}"
+                  Stroke="#333333" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
                   Width="24" Height="24" Stretch="Uniform"/>
           </Button>
           <ScrollViewer Padding="0,2">
-            <StackPanel HorizontalAlignment="Center" Spacing="4">
+            <StackPanel HorizontalAlignment="Center" Spacing="6">
               <Button Classes="railBtn" Command="{Binding ToggleImeCommand}" ToolTip.Tip="输入法切换">
                 <Panel>
                   <Image Width="22" Height="22" Tag="svg:ime"/>

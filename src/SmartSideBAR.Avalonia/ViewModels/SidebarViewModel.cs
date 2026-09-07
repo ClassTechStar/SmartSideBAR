@@ -71,6 +71,8 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
             _isDocked = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDocked)));
             if (value) PanelOpen = false;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DockTooltip)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DockArrowPath)));
         }
     }
 
@@ -87,7 +89,10 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
 
     public ObservableCollection<LinkItem> Links { get; }
 
-    public string AppBarState => _appBar.IsRegistered ? "AppBar 已注册" : "Topmost 回退";
+    public string DockTooltip => IsDocked ? "展开侧边栏" : "收起侧边栏";
+    public string DockArrowPath => IsDocked
+        ? "M 12 19 L 12 5 M 6 11 L 12 5 L 18 11"
+        : "M 12 5 L 12 19 M 6 13 L 12 19 L 18 13";
 
     public Action<string> Dispatch { get; }
     public ICommand TogglePanelCommand { get; }
