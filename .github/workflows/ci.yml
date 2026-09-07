@@ -42,7 +42,7 @@ jobs:
   dotnet:
     name: Avalonia (Core/Windows/Avalonia 三层)
     runs-on: windows-latest
-if: hashFiles('SmartSideBAR.sln') != ''
+    if: hashFiles('SmartSideBAR.sln') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -52,6 +52,8 @@ if: hashFiles('SmartSideBAR.sln') != ''
         run: dotnet restore SmartSideBAR.sln
       - name: Build
         run: dotnet build SmartSideBAR.sln -c Release --no-restore
+      - name: Format check (Wave D 代码格式门禁)
+        run: dotnet format SmartSideBAR.sln --verify-no-changes --no-restore
       - name: Test (覆盖率采集)
         run: dotnet test SmartSideBAR.sln -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
       # 覆盖率门禁：Wave A 先落机制、阈值 0；Wave D（§10.1）提升至 80

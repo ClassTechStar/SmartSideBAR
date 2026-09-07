@@ -11,6 +11,7 @@ namespace SmartSideBAR.Avalonia.Ui;
 
 public sealed class FloatBallWindow : Window
 {
+    private readonly ConfigService _config;
     private readonly string[] _actions;
     private readonly Action<string> _dispatch;
     private readonly Action _toggleSidebar;
@@ -27,8 +28,9 @@ public sealed class FloatBallWindow : Window
     private PixelPoint _pressWindowPos;
     private DateTime _lastTap = DateTime.MinValue;
 
-    public FloatBallWindow(FloatBallConfig cfg, RectLike workPx, Action<string> dispatch, Action toggleSidebar)
+    public FloatBallWindow(ConfigService config, FloatBallConfig cfg, RectLike workPx, Action<string> dispatch, Action toggleSidebar)
     {
+        _config = config;
         _actions = [.. cfg.Actions];
         _dispatch = dispatch;
         _toggleSidebar = toggleSidebar;
@@ -120,6 +122,9 @@ public sealed class FloatBallWindow : Window
             var snapped = FloatBallLayout.SnapToEdges(
                 (Position.X, Position.Y), (_size, _size), _workPx, _snapThreshold);
             Position = new PixelPoint(snapped.X, snapped.Y);
+            // 持久化位置到配置 (P1: 悬浮球位置持久化)
+            _ = _config.Set("floatBall.x", snapped.X);
+            _ = _config.Set("floatBall.y", snapped.Y);
             return;
         }
         // 双击的第一击: 250ms 内第二击由 DoubleTapped 处理

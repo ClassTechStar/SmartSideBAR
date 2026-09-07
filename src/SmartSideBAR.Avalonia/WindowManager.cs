@@ -286,7 +286,7 @@ public sealed class WindowManager(
         if (_floatBall is { IsVisible: true }) return;
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
         var wa = Windows.Native.Win32Display.PrimaryWorkAreaPx();
-        _floatBall = new FloatBallWindow(config.Current.FloatBall,
+        _floatBall = new FloatBallWindow(config, config.Current.FloatBall,
             new Core.FloatBall.RectLike(wa.X, wa.Y, wa.W, wa.H), Dispatch, ToggleSidebar);
         _floatBall.Show();
     }
