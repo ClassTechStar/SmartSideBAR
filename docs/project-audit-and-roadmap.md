@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SmartSideBAR 项目体检与开发路线建议
 
 > 分析对象：`C:\Users\18948\Documents\GitHub\SmartSideBAR`（git HEAD `d24b693` v1.1 液态玻璃 UI 更新）
@@ -237,3 +238,6 @@
 | 2026-08-31 | **P2-2 快捷键槽位**：新增 `services/hotkey.ts`（HotkeyService 管理 3 槽位 + 注册失败返回替代建议）；截图/批注/长截图抽为 `runRegionCapture`/`runAnnotate`/`runLongshot` 独立函数供热键复用；`capture.annotateHotkey`/`capture.longshotHotkey` 配置 + 设置表单 3 个热键输入 + `hotkey:getState` 通道 | P2-2、D13 |
 | 2026-08-31 | **C5 输入法常驻化 + P2-10 巨型组件重构 + P2-8 性能清单**：C5 将 ime.ts 从「每次 spawn PS」改为常驻 PowerShell 守护进程（stdin 命令 + stdout JSON + FIFO 队列），进程数从「每次 1 个」降为「全程 1 个」。P2-10 拆分 AnnotateApp（813→213 行，抽 `composables/useAnnotate.ts` + `AnnotateToolbar.vue`）与 CapturePanel（602→255 行，抽 `composables/useCaptureActions.ts` + `LongshotWindowSelect.vue` + `RecentFilesList.vue`）。P2-8 性能核对清单补入 `docs/testing.md`（4 项空格待真机实测）。顺手修正 `env.d.ts` `longshot.selectWindow`/`start` 返回类型 | C5、P2-8、P2-10 |
 | 2026-08-31 | **Windows AppBar API 集成**：新增 `src/native/appbar.cc`（N-API 原生模块，封装 `SHAppBarMessage` 的 `ABM_NEW`/`ABM_REMOVE`/`ABM_QUERYPOS`/`ABM_SETPOS`/`ABM_GETTASKBARPOS`）。`WindowManager.createSidebar` 注册侧边栏为 AppBar，系统自动从 WorkArea 预留空间，最大化窗口不会遮挡侧边栏。`resizeMain`/`onDisplayChanged`/`dockMain`/`undockMain` 同步更新 AppBar 位置。`before-quit` 调用 `WindowManager.destroy()` 注销。`alwaysOnTop: true` 保留为 fallback（非 Windows 或原生模块加载失败时）。构建链路：`binding.gyp` + `electron-rebuild` + `electron-vite` 自动复制 `.node` 到 `out/main/` + `electron-builder` `asarUnpack` | 新增原生模块 |
+=======
+
+>>>>>>> e2a74b87cab407618c300304caee370b66f9295c

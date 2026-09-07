@@ -1,0 +1,130 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SmartSideBAR.Avalonia.ViewModels"
+        xmlns:svgc="using:Avalonia.Svg.Skia"
+        x:Class="SmartSideBAR.Avalonia.Views.SidebarWindow"
+        x:DataType="vm:SidebarViewModel"
+        Title="SmartSideBAR"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        CanResize="False"
+        ShowActivated="False"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur"
+        Width="52" Height="800">
+
+  <Window.Styles>
+    <Style Selector="Button.railBtn">
+      <Style.Setters>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="44"/>
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+      </Style.Setters>
+    </Style>
+    <Style Selector="Button.railBtn:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#0F000000"/>
+    </Style>
+    <Style Selector="Button.railBtn:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="#1A000000"/>
+    </Style>
+    <Style Selector="Button.linkBtn">
+      <Style.Setters>
+        <Setter Property="Background" Value="#142B6EE0"/>
+        <Setter Property="Foreground" Value="#2B6EE0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      </Style.Setters>
+    </Style>
+  </Window.Styles>
+
+  <Panel>
+    <!-- ====== 常规形态: 悬浮玻璃胶囊 (上下 8% 边距由 AppBar/窗口几何保证) ====== -->
+    <Border IsVisible="{Binding !IsDocked}" CornerRadius="16" BoxShadow="0 8 32 #26000000" VerticalAlignment="Stretch">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="30%,0%" EndPoint="70%,100%">
+          <GradientStop Color="#73FAFCFF" Offset="0"/>
+          <GradientStop Color="#59F3F7FD" Offset="0.5"/>
+          <GradientStop Color="#66FFFFFF" Offset="1"/>
+        </LinearGradientBrush>
+      </Border.Background>
+      <Border BorderBrush="#1A000000" BorderThickness="0,0,1,0" CornerRadius="16">
+        <DockPanel Margin="0,10,0,8">
+          <!-- dock 切换 (v1.1: ↓ 收起到底部小方块; docked 后 ↑ 展开) -->
+          <Button Classes="railBtn" DockPanel.Dock="Bottom" Command="{Binding DockCommand}" ToolTip.Tip="收起侧边栏">
+            <Path Data="M 12 5 L 12 19 M 6 13 L 12 19 L 18 13"
+                  Stroke="#666666" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                  Width="24" Height="24" Stretch="Uniform"/>
+          </Button>
+          <ScrollViewer Padding="0,2">
+            <StackPanel HorizontalAlignment="Center" Spacing="4">
+              <Button Classes="railBtn" Command="{Binding ToggleImeCommand}" ToolTip.Tip="输入法切换">
+                <Panel>
+                  <Image Width="22" Height="22" Tag="svg:ime"/>
+                  <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                          CornerRadius="6" Background="#2B6EE0" Padding="3,1">
+                    <TextBlock Text="{Binding ImeState}" FontSize="9" Foreground="White"/>
+                  </Border>
+                </Panel>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding CaptureCommand}" ToolTip.Tip="区域截图">
+                <Image Width="22" Height="22" Tag="svg:capture"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding AnnotateCommand}" ToolTip.Tip="批注">
+                <Image Width="22" Height="22" Tag="svg:annotate"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding LongshotCommand}" ToolTip.Tip="长截图">
+                <Image Width="22" Height="22" Tag="svg:longshot"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding RecordCommand}" ToolTip.Tip="录屏 (MP4)">
+                <Image Width="22" Height="22" Tag="svg:record"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding UsbCommand}" ToolTip.Tip="USB 监控">
+                <Image Width="22" Height="22" Tag="svg:usb"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding PrinterCommand}" ToolTip.Tip="打印机">
+                <Image Width="22" Height="22" Tag="svg:printer"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding OpenTaskMgrCommand}" ToolTip.Tip="任务管理器">
+                <Image Width="22" Height="22" Tag="svg:taskmgr"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding TogglePanelCommand}" ToolTip.Tip="快捷链接">
+                <Image Width="22" Height="22" Tag="svg:link"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding ReminderCommand}" ToolTip.Tip="定时提醒">
+                <Image Width="22" Height="22" Tag="svg:bell"/>
+              </Button>
+              <Button Classes="railBtn" Command="{Binding SettingsCommand}" ToolTip.Tip="设置">
+                <Image Width="22" Height="22" Tag="svg:settings"/>
+              </Button>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Border>
+
+    <!-- 展开面板: 白底蓝字 (仅常规形态) -->
+    <Border IsVisible="{Binding PanelOpen}" HorizontalAlignment="Right" Width="380"
+            Background="#FFFFFF" CornerRadius="0,16,16,0" Padding="18,14" BoxShadow="-4 0 20 #1A000000">
+      <StackPanel Spacing="8">
+        <TextBlock Text="快捷链接" FontSize="16" FontWeight="SemiBold" Foreground="#1A1A1A"/>
+        <ItemsControl ItemsSource="{Binding Links}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Classes="linkBtn" Margin="0,0,0,4"
+                      Command="{Binding $parent[Window].((vm:SidebarViewModel)DataContext).OpenLinkCommand}"
+                      CommandParameter="{Binding}">
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+  </Panel>
+</Window>

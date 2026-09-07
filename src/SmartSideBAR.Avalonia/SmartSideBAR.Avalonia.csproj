@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- UI 层: Avalonia 11.x (ADR-M2)。窗口形态: 侧栏 AppBar 轨 / 透明置顶 / 点击穿透 -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>SmartSideBAR.Avalonia</RootNamespace>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Svg.Skia" Version="11.3.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/icons/**/*.svg" />
+    <AvaloniaResource Include="Assets/icons-white/**/*.svg" />
+    <AvaloniaResource Include="Assets/floatball-icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartSideBAR.Core\SmartSideBAR.Core.csproj" />
+    <ProjectReference Include="..\SmartSideBAR.Windows\SmartSideBAR.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

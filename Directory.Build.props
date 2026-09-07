@@ -1,0 +1,11 @@
+<Project>
+  <!-- Wave A 骨架: 方案 §4.1 / 代码风格约定见方案 §0 (file-scoped ns / sealed / nullable 全开) -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Version>2.0.0-waveA</Version>
+  </PropertyGroup>
+</Project>
