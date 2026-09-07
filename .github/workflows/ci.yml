@@ -42,7 +42,7 @@ jobs:
   dotnet:
     name: Avalonia (Core/Windows/Avalonia 三层)
     runs-on: windows-latest
-    if: hashFiles('SmartSideBAR.sln') != ''
+if: hashFiles('SmartSideBAR.sln') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -65,10 +65,11 @@ jobs:
           Write-Host "Line coverage: $line%"
           $min = 0 # TODO(Wave D): 80
           if ([double]$line -lt $min) { throw "coverage $line% < $min%" }
-      - name: Publish (自包含单文件)
+      - name: Publish (自包含单文件, 部分裁剪+压缩 —— 实测 14.7MB 冒烟全绿)
         run: >
           dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64
           --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true
+          -p:TrimMode=partial -p:EnableCompressionInSingleFile=true
           -o artifacts/app
       - uses: actions/upload-artifact@v4
         with:

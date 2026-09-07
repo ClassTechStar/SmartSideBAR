@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartSideBAR.Avalonia/SmartSideBAR.Avalonia.csproj" />
+    <Project Path="src/SmartSideBAR.Core/SmartSideBAR.Core.csproj" />
+    <Project Path="src/SmartSideBAR.Windows/SmartSideBAR.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartSideBAR.Core.Tests/SmartSideBAR.Core.Tests.csproj" />
+    <Project Path="tests/SmartSideBAR.Windows.Tests/SmartSideBAR.Windows.Tests.csproj" />
+  </Folder>
+</Solution>
