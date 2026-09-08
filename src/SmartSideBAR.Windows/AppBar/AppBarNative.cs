@@ -92,6 +92,15 @@ internal static partial class AppBarNative
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool MoveWindow(nint hWnd, int x, int y, int w, int h, [MarshalAs(UnmanagedType.Bool)] bool repaint);
 
+    // ---- SetWindowPos flags ----
+    public const uint SWP_NOZORDER = 0x0004;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_FRAMECHANGED = 0x0020;
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
+
     [LibraryImport("user32.dll")]
     internal static partial nint MonitorFromWindow(nint hwnd, uint flags);
 
