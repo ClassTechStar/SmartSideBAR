@@ -45,8 +45,10 @@ public partial class SidebarWindow : Window
             var name = tag[prefix.Length..];
             try
             {
-                var uri = new Uri($"avares://SmartSideBAR.Avalonia/Assets/{dir}/{name}.svg");
-                image.Source = new global::Avalonia.Svg.Skia.SvgImage { Source = new global::Avalonia.Svg.Skia.SvgSource(uri) };
+                // Avalonia.Svg.Skia 11.x: new SvgSource(uri) 已被废弃，须使用静态 SvgSource.Load
+                var baseUri = new Uri("avares://SmartSideBAR.Avalonia/");
+                var source = global::Avalonia.Svg.Skia.SvgSource.Load($"Assets/{dir}/{name}.svg", baseUri, null);
+                image.Source = new global::Avalonia.Svg.Skia.SvgImage { Source = source };
             }
             catch
             {
