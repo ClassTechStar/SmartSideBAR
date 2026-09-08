@@ -111,7 +111,10 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
     public bool MoveWindow(nint hwnd, AppBarRect rect)
     {
         using var scope = new PhysicalDpiScope();
-        return AppBarNative.MoveWindow(hwnd, rect.X, rect.Y, rect.W, rect.H, true);
+        // SetWindowPos + SWP_FRAMECHANGED: 透明/无装饰窗口必须发 WM_NCCALCSIZE 重算帧,
+        // 否则 Avalonia 渲染层不同步 Win32 尺寸变更 (K4 勘误)。
+        const uint flags = AppBarNative.SWP_NOZORDER | AppBarNative.SWP_NOACTIVATE | AppBarNative.SWP_FRAMECHANGED;
+        return AppBarNative.SetWindowPos(hwnd, 0, rect.X, rect.Y, rect.W, rect.H, flags);
     }
 
     public TaskbarInfo? GetTaskbarPos()

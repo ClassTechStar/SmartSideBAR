@@ -122,11 +122,19 @@ public sealed class WindowManager(
         bus.Subscribe<LongshotCompleted>(e =>
             ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error"));
 
-        // 几何事件: 面板宽度以系统授予为准
+        // 几何事件: 面板宽度以系统授予为准 + 同步 Avalonia 窗口几何
         bus.Subscribe<AppBarGeometryChanged>(g =>
         {
             win.OnAppBarGeometry(g.Rect.W);
-            log.LogDebug("[Window] AppBar 几何: ({X},{Y}) {W}x{H}px", g.Rect.X, g.Rect.Y, g.Rect.W, g.Rect.H);
+            // 关键: Avalonia 窗口管理器不知道 Win32 层 SetWindowPos 的尺寸/位置变更,
+            // 必须同步 Avalonia Position/Width/Height, 否则窗口停留在 XAML 默认位置 (居中)。
+            var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
+            if (scale <= 0) scale = 1.0;
+            win.Width = g.Rect.W / scale;
+            win.Height = g.Rect.H / scale;
+            win.Position = new PixelPoint(g.Rect.X, g.Rect.Y);
+            log.LogDebug("[Window] AppBar 几何: ({X},{Y}) {W}x{H}px → {Wdip:F0}x{Hdip:F0} DIP",
+                g.Rect.X, g.Rect.Y, g.Rect.W, g.Rect.H, win.Width, win.Height);
         });
 
         // K3: 全屏应用在场自动收缩为 dock 方块; 退出后自动恢复 (v1.1 同语义)
