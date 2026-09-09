@@ -18,6 +18,7 @@ import { LongshotService } from './services/longshot'
 import { TrayService } from './services/tray'
 import { HotkeyService } from './services/hotkey'
 import { AppearanceService } from './services/appearance'
+import { FullscreenService } from './services/fullscreen'
 import { WindowManager } from './windows/manager'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { SidekickConfig, ReminderSoundConfig, AppearanceConfig } from '../shared/types'
@@ -51,7 +52,7 @@ let activeOverlayWin: BrowserWindow | null = null
 let activeAnnotatorWin: BrowserWindow | null = null
 
 async function bootstrap() {
-  log.info('[BOOT] Seewo Sidekick v1.1.0 starting...')
+  log.info('[BOOT] SmartSideBAR v1.3.0 starting...')
 
   try {
     // ① 配置先行
@@ -131,6 +132,28 @@ async function bootstrap() {
 
     // ⑨ 系统托盘 (F10: 退出入口 + 通知归属)
     TrayService.init()
+
+    // ⑩ v1.3: 全屏应用监听 —— 授课/视频应用全屏时自动收缩侧边栏, 退出恢复。
+    // GetWindowRect 返回物理像素, Electron 显示器 bounds 为 DIP, 需乘 scaleFactor。
+    FullscreenService.start({
+      getMonitorRect: () => {
+        try {
+          const t = DisplayService.sidebarTarget()
+          if (!t) return null
+          const sf = t.scaleFactor || 1
+          return {
+            x: Math.round(t.bounds.x * sf),
+            y: Math.round(t.bounds.y * sf),
+            width: Math.round(t.bounds.width * sf),
+            height: Math.round(t.bounds.height * sf)
+          }
+        } catch {
+          return null
+        }
+      },
+      onEnter: () => WindowManager.hideMainForFullscreen(),
+      onLeave: (owned) => WindowManager.restoreMainAfterFullscreen(owned)
+    })
   } catch (e) {
     log.error('[BOOT] Fatal bootstrap error:', e)
     app.quit()

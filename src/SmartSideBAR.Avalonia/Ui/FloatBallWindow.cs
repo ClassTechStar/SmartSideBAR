@@ -198,22 +198,47 @@ public sealed class FloatBallWindow : Window
                 Height = 46,
                 Tag = "svgw:" + action,
                 CornerRadius = new CornerRadius(23),
-                Background = new SolidColorBrush(Color.FromArgb(215, 24, 32, 44)),
                 Padding = new Thickness(0),
                 HorizontalContentAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
                 VerticalContentAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
-                // v1.1 扇形菜单: 白色 SVG 图标 + 玻璃边光环
+                // v1.2 扇形菜单: 白色 SVG 图标
                 Content = new Image
                 {
-                    Width = 22,
-                    Height = 22,
+                    Width = 26,
+                    Height = 26,
                     Tag = "svgw:" + action,
                     HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
                     VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
                 },
             };
-            item.BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255));
-            item.BorderThickness = new Thickness(1);
+            // v1.2 v7: linear-gradient(135deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.12) 42%, rgba(255,255,255,0.05) 58%, rgba(255,255,255,0.22) 100%)
+            item.Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops =
+                {
+                    new GradientStop(Color.Parse("#57FFFFFF"), 0),
+                    new GradientStop(Color.Parse("#1FFFFFFF"), 0.42),
+                    new GradientStop(Color.Parse("#0DFFFFFF"), 0.58),
+                    new GradientStop(Color.Parse("#38FFFFFF"), 1),
+                },
+            };
+            // v1.2 v7 边光环: 1.5px 白色渐变环 (Button 无 BoxShadow, 靠 BorderBrush 近似)
+            item.BorderBrush = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops =
+                {
+                    new GradientStop(Color.Parse("#D9FFFFFF"), 0),
+                    new GradientStop(Color.Parse("#47FFFFFF"), 0.18),
+                    new GradientStop(Color.Parse("#14FFFFFF"), 0.4),
+                    new GradientStop(Color.Parse("#29FFFFFF"), 0.62),
+                    new GradientStop(Color.Parse("#99FFFFFF"), 1),
+                },
+            };
+            item.BorderThickness = new Thickness(1.5);
             item.Click += (_, _) =>
             {
                 CollapseFan();
