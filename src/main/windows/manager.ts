@@ -278,6 +278,23 @@ export const WindowManager = {
     }
   },
 
+  /** v1.3: 全屏应用在场时收缩侧边栏。返回 true 表示本次隐藏由全屏监听器触发 */
+  hideMainForFullscreen(): boolean {
+    if (sidebarWin && !sidebarWin.isDestroyed() && sidebarWin.isVisible()) {
+      sidebarWin.hide()
+      return true
+    }
+    return false
+  },
+
+  /** v1.3: 全屏结束后恢复侧边栏 (showInactive, 不抢授课应用焦点) */
+  restoreMainAfterFullscreen(shouldRestore: boolean): void {
+    if (!shouldRestore) return
+    if (sidebarWin && !sidebarWin.isDestroyed() && !sidebarWin.isVisible()) {
+      sidebarWin.showInactive()
+    }
+  },
+
   /** 切换侧边栏显隐 (悬浮球「侧边栏」动作用) */
   toggleMain(): void {
     if (sidebarWin && !sidebarWin.isDestroyed()) {

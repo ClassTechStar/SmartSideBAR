@@ -17,19 +17,22 @@
     <Style Selector="Button.railBtn">
       <Style.Setters>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Width" Value="44"/>
-        <Setter Property="Height" Value="44"/>
-        <Setter Property="CornerRadius" Value="22"/>
+        <Setter Property="Width" Value="52"/>
+        <Setter Property="Height" Value="52"/>
+        <Setter Property="CornerRadius" Value="26"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
       </Style.Setters>
     </Style>
     <Style Selector="Button.railBtn:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#14FFFFFF"/>
+      <Setter Property="Background" Value="#140F172A"/>
     </Style>
     <Style Selector="Button.railBtn:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="#28FFFFFF"/>
+      <Setter Property="Background" Value="#210F172A"/>
+    </Style>
+    <Style Selector="Button.railBtn.active /template/ ContentPresenter">
+      <Setter Property="Background" Value="#210F172A"/>
     </Style>
     <Style Selector="Button.linkBtn">
       <Style.Setters>
@@ -47,100 +50,151 @@
   </Window.Styles>
 
   <Panel>
-    <!-- ====== 常规形态: 液态玻璃胶囊 (v1.1 v7配方: blur21 saturate2.2 + radial tint + 边光环) ====== -->
+    <!-- ====== 尸规态: 液态玻璃胶囊 (v1.2 v7: radial tint + linear gradient + blur21 saturate2.2 + 边光环) ====== -->
     <Border IsVisible="{Binding !IsDocked}" CornerRadius="28"
             BoxShadow="0 12 40 #40000000, 0 0 0 0.5 #80FFFFFF, 0 1 3 #40FFFFFF"
             VerticalAlignment="Stretch" Margin="0,48,0,48">
-      <!-- v1.1 v7: radial-gradient at 18% 0% 白色高光 + linear 143deg 半透明白底 -->
+      <!-- v1.2 v7: linear-gradient(143deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.4) 46%, rgba(255,255,255,0.28) 100%) -->
       <Border.Background>
-        <LinearGradientBrush StartPoint="18%,0%" EndPoint="82%,100%">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
           <GradientStop Color="#9EFFFFFF" Offset="0"/>
           <GradientStop Color="#66FFFFFF" Offset="0.46"/>
           <GradientStop Color="#47FFFFFF" Offset="1"/>
         </LinearGradientBrush>
       </Border.Background>
-      <!-- v1.1 v7 边光环: 1.5px 白色渐变环 (mask-composite exclude 在 Avalonia 用 BorderBrush 近似) -->
-      <Border BorderThickness="1.5" CornerRadius="28">
-        <Border.BorderBrush>
-          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-            <GradientStop Color="#D9FFFFFF" Offset="0"/>
-            <GradientStop Color="#47FFFFFF" Offset="0.18"/>
-            <GradientStop Color="#14FFFFFF" Offset="0.4"/>
-            <GradientStop Color="#29FFFFFF" Offset="0.62"/>
-            <GradientStop Color="#99FFFFFF" Offset="1"/>
-          </LinearGradientBrush>
-        </Border.BorderBrush>
-        <DockPanel Margin="0,8,0,6">
-          <!-- dock 切换 (v1.1: ↓ 收起到底部小方块; docked 后 ↑ 展开) -->
-          <Button Classes="railBtn" DockPanel.Dock="Bottom" Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}">
-            <Path Data="{Binding DockArrowPath}"
-                  Stroke="#333333" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
-                  Width="24" Height="24" Stretch="Uniform"/>
-          </Button>
-          <ScrollViewer Padding="0,2">
-            <StackPanel HorizontalAlignment="Center" Spacing="6">
-              <Button Classes="railBtn" Command="{Binding ToggleImeCommand}" ToolTip.Tip="输入法切换">
-                <Panel>
-                  <Image Width="22" Height="22" Tag="svg:ime"/>
-                  <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                          CornerRadius="6" Background="#2B6EE0" Padding="3,1">
-                    <TextBlock Text="{Binding ImeState}" FontSize="9" Foreground="White"/>
-                  </Border>
-                </Panel>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding CaptureCommand}" ToolTip.Tip="区域截图">
-                <Image Width="22" Height="22" Tag="svg:capture"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding AnnotateCommand}" ToolTip.Tip="批注">
-                <Image Width="22" Height="22" Tag="svg:annotate"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding LongshotCommand}" ToolTip.Tip="长截图">
-                <Image Width="22" Height="22" Tag="svg:longshot"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding RecordCommand}" ToolTip.Tip="录屏 (MP4)">
-                <Image Width="22" Height="22" Tag="svg:record"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding UsbCommand}" ToolTip.Tip="USB 监控">
-                <Image Width="22" Height="22" Tag="svg:usb"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding PrinterCommand}" ToolTip.Tip="打印机">
-                <Image Width="22" Height="22" Tag="svg:printer"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding OpenTaskMgrCommand}" ToolTip.Tip="任务管理器">
-                <Image Width="22" Height="22" Tag="svg:taskmgr"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding TogglePanelCommand}" ToolTip.Tip="快捷链接">
-                <Image Width="22" Height="22" Tag="svg:link"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding ReminderCommand}" ToolTip.Tip="定时提醒">
-                <Image Width="22" Height="22" Tag="svg:bell"/>
-              </Button>
-              <Button Classes="railBtn" Command="{Binding SettingsCommand}" ToolTip.Tip="设置">
-                <Image Width="22" Height="22" Tag="svg:settings"/>
-              </Button>
-            </StackPanel>
-          </ScrollViewer>
-        </DockPanel>
-      </Border>
+      <Grid>
+        <!-- v1.2 v7: radial-gradient(120% 90% at 18% 0%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.14) 42%, transparent 68%) -->
+        <Rectangle>
+          <Rectangle.Fill>
+            <RadialGradientBrush Center="0.18,0" RadiusX="1.2" RadiusY="0.9">
+              <GradientStop Color="#80FFFFFF" Offset="0"/>
+              <GradientStop Color="#24FFFFFF" Offset="0.42"/>
+              <GradientStop Color="#00FFFFFF" Offset="0.68"/>
+            </RadialGradientBrush>
+          </Rectangle.Fill>
+        </Rectangle>
+        <!-- v1.2 v7 边光环: 1.5px 白色渐变环 -->
+        <Border BorderThickness="1.5" CornerRadius="28">
+          <Border.BorderBrush>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+              <GradientStop Color="#D9FFFFFF" Offset="0"/>
+              <GradientStop Color="#47FFFFFF" Offset="0.18"/>
+              <GradientStop Color="#14FFFFFF" Offset="0.4"/>
+              <GradientStop Color="#29FFFFFF" Offset="0.62"/>
+              <GradientStop Color="#99FFFFFF" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.BorderBrush>
+          <DockPanel Margin="0,8,0,6">
+            <!-- dock 切换 (v1.2: 圆形玻璃钮, 白色渐变底 v6) -->
+            <Button Classes="railBtn" DockPanel.Dock="Bottom" Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}">
+              <Button.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                  <GradientStop Color="#C7FFFFFF" Offset="0"/>
+                  <GradientStop Color="#73FFFFFF" Offset="1"/>
+                </LinearGradientBrush>
+              </Button.Background>
+              <Path Data="{Binding DockArrowPath}"
+                    Stroke="#333333" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                    Width="24" Height="24" Stretch="Uniform"/>
+            </Button>
+            <ScrollViewer Padding="0,2">
+              <StackPanel HorizontalAlignment="Center" Spacing="6">
+                <Button Classes="railBtn" Command="{Binding ToggleImeCommand}" ToolTip.Tip="输入法切换">
+                  <Panel>
+                    <Image Width="28" Height="28" Tag="svg:ime"/>
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            CornerRadius="8" Width="16" Height="16" Background="#D1FFFFFF" Padding="0">
+                      <TextBlock Text="{Binding ImeState}" FontSize="10" FontWeight="SemiBold"
+                                 Foreground="#2A2F38" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                  </Panel>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding CaptureCommand}" ToolTip.Tip="区域截图">
+                  <Image Width="28" Height="28" Tag="svg:capture"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding AnnotateCommand}" ToolTip.Tip="批注">
+                  <Image Width="28" Height="28" Tag="svg:annotate"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding LongshotCommand}" ToolTip.Tip="长截图">
+                  <Image Width="28" Height="28" Tag="svg:longshot"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding RecordCommand}" ToolTip.Tip="录屏 (MP4)">
+                  <Image Width="28" Height="28" Tag="svg:record"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding UsbCommand}" ToolTip.Tip="USB 监控">
+                  <Image Width="28" Height="28" Tag="svg:usb"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding PrinterCommand}" ToolTip.Tip="打印机">
+                  <Image Width="28" Height="28" Tag="svg:printer"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding OpenTaskMgrCommand}" ToolTip.Tip="任务管理器">
+                  <Image Width="28" Height="28" Tag="svg:taskmgr"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding TogglePanelCommand}" ToolTip.Tip="快捷链接">
+                  <Image Width="28" Height="28" Tag="svg:link"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding ReminderCommand}" ToolTip.Tip="定时提醒">
+                  <Image Width="28" Height="28" Tag="svg:bell"/>
+                </Button>
+                <Button Classes="railBtn" Command="{Binding SettingsCommand}" ToolTip.Tip="设置">
+                  <Image Width="28" Height="28" Tag="svg:settings"/>
+                </Button>
+              </StackPanel>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+      </Grid>
     </Border>
 
-    <!-- 展开面板: 白底蓝字 (仅常规形态) -->
+    <!-- 展开面板: 玻璃体 (v1.2 v7: radial tint + linear gradient + blur + 边光环) -->
     <Border IsVisible="{Binding PanelOpen}" HorizontalAlignment="Right" Width="380"
-            Background="#FFFFFF" CornerRadius="0,16,16,0" Padding="18,14" BoxShadow="-4 0 20 #1A000000">
-      <StackPanel Spacing="8">
-        <TextBlock Text="快捷链接" FontSize="16" FontWeight="SemiBold" Foreground="#1A1A1A"/>
-        <ItemsControl ItemsSource="{Binding Links}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <Button Classes="linkBtn" Margin="0,0,0,4"
-                      Command="{Binding $parent[Window].((vm:SidebarViewModel)DataContext).OpenLinkCommand}"
-                      CommandParameter="{Binding}">
-                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
+            CornerRadius="0,28,28,0" BoxShadow="0 12 40 #40000000, 0 0 0 0.5 #80FFFFFF, 0 1 3 #40FFFFFF">
+      <!-- v1.2 v7: linear-gradient(143deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.55) 46%, rgba(255,255,255,0.66) 100%) -->
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#C7FFFFFF" Offset="0"/>
+          <GradientStop Color="#8CFFFFFF" Offset="0.46"/>
+          <GradientStop Color="#A8FFFFFF" Offset="1"/>
+        </LinearGradientBrush>
+      </Border.Background>
+      <Grid>
+        <!-- v1.2 v7: radial-gradient(120% 70% at 20% 0%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.12) 45%, transparent 70%) -->
+        <Rectangle>
+          <Rectangle.Fill>
+            <RadialGradientBrush Center="0.2,0" RadiusX="1.2" RadiusY="0.7">
+              <GradientStop Color="#80FFFFFF" Offset="0"/>
+              <GradientStop Color="#1EFFFFFF" Offset="0.45"/>
+              <GradientStop Color="#00FFFFFF" Offset="0.70"/>
+            </RadialGradientBrush>
+          </Rectangle.Fill>
+        </Rectangle>
+        <!-- v1.2 v7 边光环 -->
+        <Border BorderThickness="1.5" CornerRadius="0,28,28,0">
+          <Border.BorderBrush>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+              <GradientStop Color="#D9FFFFFF" Offset="0"/>
+              <GradientStop Color="#47FFFFFF" Offset="0.18"/>
+              <GradientStop Color="#14FFFFFF" Offset="0.4"/>
+              <GradientStop Color="#29FFFFFF" Offset="0.62"/>
+              <GradientStop Color="#99FFFFFF" Offset="1"/>
+            </LinearGradientBrush>
+          </Border.BorderBrush>
+          <StackPanel Spacing="8" Margin="18,14">
+            <TextBlock Text="快捷链接" FontSize="16" FontWeight="SemiBold" Foreground="#1A1A1A"/>
+            <ItemsControl ItemsSource="{Binding Links}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Classes="linkBtn" Margin="0,0,0,4"
+                          Command="{Binding $parent[Window].((vm:SidebarViewModel)DataContext).OpenLinkCommand}"
+                          CommandParameter="{Binding}">
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
     </Border>
   </Panel>
 </Window>
