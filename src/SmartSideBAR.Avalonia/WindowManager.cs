@@ -33,8 +33,8 @@ public sealed class WindowManager(
     IEventBus bus,
     ILogger<WindowManager> log)
 {
-    // v1.1 设计基准 (DIP): rail 52 + 面板 380, dock 收起方块 52×52; 物理像素 = DIP × 窗口 DPI 缩放
-    public const double RailWidthDip = 52;
+    // v1.2 设计基准 (DIP): rail 72 + 面板 380, dock 收起方块 52×52; 物理像素 = DIP × 窗口 DPI 缩放
+    public const double RailWidthDip = 72;
     public const double PanelWidthDip = 380;
     public const double DockSizeDip = 52;
 
