@@ -104,7 +104,7 @@
     <section class="settings-section">
       <h3>关于</h3>
       <div class="about-info">
-        <p>希沃侧边快捷键工具 v1.1.0</p>
+        <p>希沃侧边快捷键工具 v1.3.0</p>
         <p class="muted">Electron + Vue 3</p>
       </div>
     </section>
