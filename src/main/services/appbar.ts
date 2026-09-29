@@ -11,12 +11,12 @@ import { app, BrowserWindow } from 'electron'
 import log from 'electron-log'
 
 /** 从 Electron BrowserWindow 提取原生 Win32 HWND。
- *  注: 1.2 版在 64 位下直接透传 BigInt 给 N-API Number 形参, 触发类型不匹配错误,
- *  导致 AppBar 从未注册成功。恢复此行为以保持 1.2 版「右侧屏幕可用」的体验,
- *  侧边栏依靠 alwaysOnTop 保持置顶, 不占用系统 WorkArea 预留空间。 */
+ *  B2: 修复 BigInt→Number 类型谎言 —— 64 位下用显式 Number() 转换,
+ *  不再用 as unknown as number 伪装 (正是 1.2 版 AppBar 注册静默失败的根因)。
+ *  侧边栏依靠 alwaysOnTop 保持置顶。 */
 export function getHwnd(win: BrowserWindow): number {
   const buf = win.getNativeWindowHandle()
-  return process.arch === 'ia32' ? buf.readInt32LE(0) : buf.readBigUInt64LE(0) as unknown as number
+  return process.arch === 'ia32' ? buf.readInt32LE(0) : Number(buf.readBigUInt64LE(0))
 }
 
 // ---- 原生模块加载 ----

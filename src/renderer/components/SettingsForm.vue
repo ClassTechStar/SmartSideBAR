@@ -104,7 +104,7 @@
     <section class="settings-section">
       <h3>关于</h3>
       <div class="about-info">
-        <p>希沃侧边快捷键工具 v1.3.0</p>
+        <p>希沃侧边快捷键工具 v{{ appVersion }}</p>
         <p class="muted">Electron + Vue 3</p>
       </div>
     </section>
@@ -115,6 +115,10 @@
 // P1-6: 统一设置表单 —— 原 SettingsApp(窗口) 与 SettingsPanel(侧边) 两套字段漂移,
 // 现抽取为单一实现, 供设置窗口嵌入; 侧边栏面板保留快捷入口 + 诊断, 不再重复表单字段。
 import { ref, onMounted } from 'vue'
+
+// A3: 构建期注入的版本号 (由 electron.vite.config.ts define 注入)
+declare const __APP_VERSION__: string
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
 

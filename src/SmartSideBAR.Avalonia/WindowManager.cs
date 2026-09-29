@@ -306,15 +306,18 @@ public sealed class WindowManager(
         var dir = config.Current.Recorder.Dir;
         Directory.CreateDirectory(dir);
         var fps = Math.Clamp(config.Current.Recorder.Fps, 5, 60);
+        var mic = config.Current.Recorder.Mic;
         var path = Path.Combine(dir, $"record_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
-        await recorder.StartAsync(new RecorderOptions(path, fps, 2000));
+        // B5: 传递麦克风配置 (config.recorder.mic 已有配置, 此前未消费)
+        await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
     }
 
     public void ShowFloatBall()
     {
         if (_floatBall is { IsVisible: true }) return;
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
-        var wa = Windows.Native.Win32Display.PrimaryWorkAreaPx();
+        // R4 修复: 悬浮球定位改用侧栏所在目标屏 (原来固定用主屏, 多显示器时偏差)
+        var wa = GetSidebarWorkArea();
         _floatBall = new FloatBallWindow(config, config.Current.FloatBall,
             new Core.FloatBall.RectLike(wa.X, wa.Y, wa.W, wa.H), Dispatch, ToggleSidebar);
         _floatBall.Show();
@@ -346,7 +349,8 @@ public sealed class WindowManager(
             {
                 _dockWindow = new DockWindow(() => SetDocked(false));
             }
-            var wa = Windows.Native.Win32Display.PrimaryWorkAreaPx();
+            // R4 修复: dock 定位也用目标屏而非主屏
+            var wa = GetSidebarWorkArea();
             var sizePx = (int)Math.Round(DockSizeDip * Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd));
             var x = _side == AppBarEdge.Right ? wa.X + wa.W - sizePx : wa.X;
             _dockWindow.Position = new PixelPoint(x, wa.Y + wa.H - sizePx);
@@ -357,7 +361,15 @@ public sealed class WindowManager(
         {
             _dockWindow?.Hide();
             sidebar.Show();
-            _ = appBar.Attach(_attachInfo.Hwnd, _side, _attachInfo.RailPx, _attachInfo.ExpandedPx);
+            // C4-⑤: fire-and-forget 改为同步调用并记录失败 (Attach 内部已有异常保护)
+            try
+            {
+                appBar.Attach(_attachInfo.Hwnd, _side, _attachInfo.RailPx, _attachInfo.ExpandedPx);
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "[Window] AppBar 重新 Attach 失败");
+            }
             sidebar.Topmost = !appBar.IsRegistered; // Attach 失败回退置顶
             log.LogInformation("[Window] 侧栏已展开为玻璃胶囊");
         }
@@ -401,5 +413,24 @@ public sealed class WindowManager(
             ? string.Join('\n', usb.ListRemovable().Select(d => $"{d.Drive}  {d.Label ?? "(无卷标)"}  {d.SizeGb}GB")) is { Length: > 0 } s ? s : "未检测到可移动盘"
             : string.Join('\n', printer.Query().Select(p => $"{p.Name}: {p.WireState}")) is { Length: > 0 } s2 ? s2 : "无打印机";
         ToastService.Instance.Show(info, "info");
+    }
+
+    /// <summary>
+    /// R4 修复: 获取侧栏所在显示器的工作区 (物理像素)。
+    /// 原来固定用主屏 PrimaryWorkAreaPx, 多显示器时悬浮球/dock 定位偏差。
+    /// 优先取侧栏窗口所在屏, 无侧栏时回退主屏。
+    /// </summary>
+    private (int X, int Y, int W, int H) GetSidebarWorkArea()
+    {
+        // 尝试从侧栏 HWND 获取所在显示器的工作区
+        if (_attachInfo.Hwnd != 0)
+        {
+            try
+            {
+                return Windows.Native.Win32Display.WorkAreaFromHwnd(_attachInfo.Hwnd);
+            }
+            catch { /* fallback */ }
+        }
+        return Windows.Native.Win32Display.PrimaryWorkAreaPx();
     }
 }

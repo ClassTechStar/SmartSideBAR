@@ -24,6 +24,22 @@ public static partial class Win32Display
         return (mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H);
     }
 
+    /// <summary>R4: 从 HWND 获取所在显示器的工作区 (物理像素)。多显示器时悬浮球/dock 正确定位。</summary>
+    public static (int X, int Y, int W, int H) WorkAreaFromHwnd(nint hwnd)
+    {
+        if (hwnd == 0) return PrimaryWorkAreaPx();
+        var hMonitor = MonitorFromWindow(hwnd, 2 /*MONITOR_DEFAULTTONEAREST*/);
+        var mi = new MONITORINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(hMonitor, ref mi))
+        {
+            return PrimaryWorkAreaPx();
+        }
+        return (mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H);
+    }
+
+    [LibraryImport("user32.dll")]
+    private static partial nint MonitorFromWindow(nint hwnd, uint flags);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct MONITORINFO
     {

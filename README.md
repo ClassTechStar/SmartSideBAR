@@ -17,6 +17,28 @@
 
 针对教师触屏场景优化，无需键盘快捷键，单手即可操作。内置完整的首次体验引导（OOBE），让非技术教师在 3 分钟内完成上手。
 
+## 双栈架构与当前发布形态
+
+> **决策 (ADR-001)**：Avalonia (C# / .NET 10) 为主线栈。Electron 栈已冻结，仅保安全修复。
+
+| 栈 | 技术 | 状态 | 发布物 |
+|----|------|------|--------|
+| **Avalonia（主线）** | C# .NET 10 + Avalonia 11 | 活跃开发 | **是**（Inno Setup 安装包） |
+| Electron（冻结） | Electron 30 + Vue 3 + TS | 仅安全修复 | 否 |
+
+**实际安装产物**是 Avalonia 版 `SmartSideBAR.Avalonia.exe`，通过 Inno Setup 打包为 `SmartSideBAR-v{version}-Setup.exe`。
+
+构建主线（Avalonia）：
+```bash
+dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
+  --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true \
+  -p:TrimMode=partial -p:EnableCompressionInSingleFile=true \
+  -o artifacts/app
+# 然后用 Inno Setup 编译安装器
+```
+
+版本号单一事实源：`VERSION` 文件 → `scripts/sync-version.mjs` 同步到所有位置。
+
 ## 适用场景
 
 - **希沃交互智能平板** / Windows OPS 教学一体机
@@ -43,23 +65,32 @@
 
 ## 安装方法
 
-### 方法一：NSIS 安装包（推荐）
+### 方法一：下载安装包（推荐）
+
+从 [GitHub Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下载 `SmartSideBAR-v{version}-Setup.exe`，双击安装。
+
+> 安装包由 CI 从源码自动构建（`dotnet publish` + Inno Setup），已签名。目标电脑需先运行 `cert/install-trust.cmd` 导入自签名证书信任。
+
+### 方法二：从源码构建
 
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/ClassTechStar/SmartSideBAR.git
 cd SmartSideBAR
 
-# 2. 安装依赖
-npm install
+# 2. 构建 Avalonia 主线
+dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
+  --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true \
+  -p:TrimMode=partial -p:EnableCompressionInSingleFile=true \
+  -o artifacts/app
 
-# 3. 一键验证构建（类型检查 + 测试 + 打包 + 产出安装包）
-npm run verify-build
+# 3. 编译安装器 (需要 Inno Setup 7)
+"C:\Program Files (x86)\Inno Setup 7\ISCC.exe" installer\SmartSideBAR-v1.3.iss
 ```
 
-构建完成后，在 `dist/` 目录下找到 `SmartSideBAR-安装包-{version}.exe`，双击即可安装。
+安装包输出在 `dist/SmartSideBAR-v{version}-Setup.exe`。
 
-### 方法二：开发模式运行
+### 方法三：Electron 开发模式（冻结栈，仅用于开发调试）
 
 ```bash
 npm install
@@ -95,16 +126,23 @@ npm run dev
 
 ## 技术栈
 
+### Avalonia 主线（当前发布）
+
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| 框架 | [Electron](https://www.electronjs.org/) v30 | 桌面应用主框架 |
-| 渲染层 | [Vue 3](https://vuejs.org/) + Composition API | UI 组件与响应式状态 |
-| 构建工具 | [electron-vite](https://electron-vite.org/) | 主进程/Preload/渲染层统一构建 |
-| 打包 | [electron-builder](https://www.electron.build/) | NSIS 单文件安装包 |
+| UI 框架 | [Avalonia](https://avaloniaui.net/) 11.x | 跨平台 .NET UI |
+| 运行时 | .NET 10 (self-contained single-file) | 14.7MB 自包含 |
+| 平台层 | P/Invoke + WinRT | AppBar/热键/截图/录屏 |
+| 测试 | xUnit | 40+ 用例 (Core/Windows) |
+
+### Electron 冻结栈（历史维护）
+
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| 框架 | [Electron](https://www.electronjs.org/) v30 | 桌面应用框架 |
+| 渲染层 | [Vue 3](https://vuejs.org/) + Composition API | UI 组件 |
+| 构建工具 | [electron-vite](https://electron-vite.org/) | 统一构建 |
 | 类型安全 | TypeScript 5.4 | 全栈类型覆盖 |
-| 图像处理 | sharp | 截图裁剪与格式转换 |
-| 日志 | electron-log | 文件日志轮转 |
-| 测试 | Vitest | 单元测试 |
 
 ## 开发命令
 

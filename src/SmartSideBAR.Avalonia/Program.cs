@@ -37,6 +37,7 @@ internal static class Program
         services.AddSingleton<SchedulerService>();
 
         // Windows 互操作层 (接口 + 实现成对注册, 测试可替换)
+        // D1: 重服务延迟加载 —— 录屏/长截图模块只在首次使用时构造
         services.AddSingleton<IWndProcHook, WndProcHook>();
         services.AddSingleton<IAppBarApi, AppBarApi>();
         services.AddSingleton<AppBarService>();
@@ -48,8 +49,9 @@ internal static class Program
         services.AddSingleton<IShellService, ShellService>();
         services.AddSingleton<ISoundService, SoundService>();
         services.AddSingleton<ICaptureApi, GdiCapture>();
-        services.AddSingleton<ILongshotService, LongshotService>();
-        services.AddSingleton<IRecorderApi, GraphicsCaptureRecorder>();
+        // D1: 录屏与长截图延迟初始化 (首次调用时才构造 WinRT COM 对象)
+        services.AddSingleton<ILongshotService>(sp => ActivatorUtilities.CreateInstance<LongshotService>(sp));
+        services.AddSingleton<IRecorderApi>(sp => ActivatorUtilities.CreateInstance<GraphicsCaptureRecorder>(sp));
         services.AddSingleton<IDiagnosticsService, DiagnosticsService>();
 
         // UI 层

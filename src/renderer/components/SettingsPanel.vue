@@ -133,13 +133,17 @@
     </div>
 
     <div class="about">
-      <span class="version">v{{ diagResult?.version || '1.3.0' }}</span>
+      <span class="version">v{{ diagResult?.version || appVersion }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+
+// A3: 构建期注入的版本号
+declare const __APP_VERSION__: string
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
 
 // P1-6/E3: autoLaunch 初值不再硬编码 true, 改为 onMounted 时读取系统登录项真实状态
 const autoLaunch = ref(false)
@@ -186,7 +190,7 @@ async function runDiagnostics() {
     console.error('Diagnostics failed:', e)
     diagResult.value = {
       timestamp: new Date().toLocaleString('zh-CN'),
-      version: '1.1.0',
+      version: appVersion,
       system: {
         os: 'unknown', osVersion: '诊断失败', platform: '', arch: '', electron: '', chrome: '', node: '',
         uptime: 0,
