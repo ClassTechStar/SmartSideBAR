@@ -66,6 +66,15 @@ public sealed class FakeAppBarApi : IAppBarApi
     public TaskbarInfo? GetTaskbarPos() => new(AppBarNative.ABE_BOTTOM, new AppBarRect(0, 1040, 1920, 40));
 
     public MonitorRects GetMonitorOf(nint hwnd) => new(Monitor, Work);
+
+    // B4: 自动隐藏
+    public List<(nint Hwnd, uint Edge, bool Enable)> AutoHideCalls { get; } = [];
+    public bool SetAutoHideBar(nint hwnd, uint edge, bool enable)
+    {
+        Ops.Add("SETAUTOHIDEBAR");
+        AutoHideCalls.Add((hwnd, edge, enable));
+        return true;
+    }
 }
 
 /// <summary>假 WndProc 钩子: 捕获回调, 测试可直接注入系统消息。</summary>

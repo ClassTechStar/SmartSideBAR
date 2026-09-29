@@ -74,6 +74,28 @@ public sealed class AppBarService(
         Reposition(CurrentWidthPx);
     }
 
+    /// <summary>
+    /// B4: 自动隐藏 AppBar —— 注册 ABM_SETAUTOHIDEBAR, 全屏时不遮挡, 鼠标贴边唤出。
+    /// 这是 913dc35 用户抱怨「右侧屏幕被 AppBar 占用」的正面解:
+    /// 既不偷 WorkArea, 又能在全屏应用下通过贴边唤出。
+    /// </summary>
+    public bool SetAutoHide(bool enable)
+    {
+        if (!_registered || _hwnd == 0) return false;
+        _autoHide = enable;
+        var ok = api.SetAutoHideBar(_hwnd, _edge, enable);
+        if (ok)
+        {
+            log?.LogInformation("[AppBar] 自动隐藏已{State}", enable ? "启用" : "禁用");
+        }
+        else
+        {
+            log?.LogWarning("[AppBar] 自动隐藏设置失败");
+        }
+        return ok;
+    }
+    private bool _autoHide;
+
     /// <summary>v1.1 dock 语义: docked = 指定边距尺寸的小方块停靠在工作区底角。</summary>
     public void SetDocked(bool docked, int dockSizePx)
     {

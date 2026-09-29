@@ -2,8 +2,13 @@
 # 结构按《优化方案_Master_MLP_v1.md》§7.3/§7.4：
 #   1) secrets-scan  : gitleaks 前置门禁（G1 防再犯：*.pfx/*password* 永不入库）
 #   2) electron      : v1.2.0 冻结维护期的门禁（typecheck + lint + test）
-#   3) dotnet        : Avalonia 版（avalonia 分支）构建 + 测试 + 覆盖率门禁
-#   4) release       : v2* tag 触发 —— 发布单文件自包含 exe（签名证书从 secrets 注入，绝不入库）
+#   3) dotnet        : Avalonia 主线（Core/Windows/Avalonia 三层）构建 + 测试 + 覆盖率门禁
+#   4) release       : v2* tag 触发 —— 发布安装包（签名证书从 secrets 注入，绝不入库）
+#
+# A2 修复记录:
+#   - hashFiles('SmartSideBAR.sln') → SmartSideBAR.slnx（实际文件名, dotnet 10 支持 slnx）
+#   - installer/SmartSideBar.iss → installer/SmartSideBAR-v1.3.iss（真实文件名, 见 A4 统一）
+#   - 覆盖率阈值随 C1 分阶段提升
 name: CI
 
 on:
@@ -12,6 +17,9 @@ on:
     tags: ['v2*']
   pull_request:
   workflow_dispatch:
+  # D3: 每周性能基准（冷启动/内存/CPU）
+  schedule:
+    - cron: '0 2 * * 1'  # 每周一 02:00 UTC
 
 jobs:
   secrets-scan:
@@ -26,7 +34,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   electron:
-    name: Electron v1.2.0 (冻结维护门禁)
+    name: Electron (冻结维护门禁)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,21 +50,22 @@ jobs:
   dotnet:
     name: Avalonia (Core/Windows/Avalonia 三层)
     runs-on: windows-latest
-    if: hashFiles('SmartSideBAR.sln') != ''
+    # A2: hashFiles 匹配实际文件名 SmartSideBAR.slnx
+    if: hashFiles('SmartSideBAR.slnx') != ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
       - name: Restore
-        run: dotnet restore SmartSideBAR.sln
+        run: dotnet restore SmartSideBAR.slnx
       - name: Build
-        run: dotnet build SmartSideBAR.sln -c Release --no-restore
+        run: dotnet build SmartSideBAR.slnx -c Release --no-restore
       - name: Format check (Wave D 代码格式门禁)
-        run: dotnet format SmartSideBAR.sln --verify-no-changes --no-restore
+        run: dotnet format SmartSideBAR.slnx --verify-no-changes --no-restore
       - name: Test (覆盖率采集)
-        run: dotnet test SmartSideBAR.sln -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
-      # 覆盖率门禁：Wave A 先落机制、阈值 0；Wave D（§10.1）提升至 80
+        run: dotnet test SmartSideBAR.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+      # C1: 覆盖率门禁 —— 逐步提升: 基线 0 → 40 → 80
       - name: Coverage gate
         shell: pwsh
         run: |
@@ -65,21 +74,52 @@ jobs:
           $txt = Get-Content cover/Summary.txt -Raw
           $line = [regex]::Match($txt, 'Line coverage:\s+([\d.]+)%').Groups[1].Value
           Write-Host "Line coverage: $line%"
-          $min = 0 # TODO(Wave D): 80
+          # C1 阶段: 当前 40%, 达标后提升至 80
+          $min = 40
           if ([double]$line -lt $min) { throw "coverage $line% < $min%" }
-      - name: Publish (自包含单文件, 部分裁剪+压缩 —— 实测 14.7MB 冒烟全绿)
+      - name: Publish (自包含单文件, ReadyToRun+裁剪+压缩 —— D1 冷启动优化)
         run: >
           dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64
           --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true
           -p:TrimMode=partial -p:EnableCompressionInSingleFile=true
+          -p:PublishReadyToRun=true
           -o artifacts/app
       - uses: actions/upload-artifact@v4
         with:
           name: app-win-x64
           path: artifacts/app
 
+  # D3: 每周性能基准 —— 仅 schedule 触发
+  perf-bench:
+    name: Perf Bench (每周)
+    if: github.event_name == 'schedule'
+    needs: [dotnet]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-win-x64
+          path: artifacts/app
+      - name: Run bench-p28
+        shell: pwsh
+        run: |
+          if (Test-Path scripts/bench-p28.mjs) {
+            node scripts/bench-p28.mjs --exe artifacts/app/SmartSideBAR.Avalonia.exe
+          } else {
+            Write-Host "bench-p28.mjs not found, skipping"
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-bench-report
+          path: |
+            bench-results/**
+            TestResults/**
+          retention-days: 90
+
   release:
-    name: Release (v2* tag → NSIS + 签名)
+    name: Release (v2* tag → Inno 安装包 + 签名)
     needs: [dotnet]
     if: startsWith(github.ref, 'refs/tags/v2')
     runs-on: windows-latest
@@ -89,6 +129,9 @@ jobs:
         with:
           name: app-win-x64
           path: artifacts/app
+      - name: Sync version from VERSION file (A3)
+        shell: pwsh
+        run: node scripts/sync-version.mjs
       - name: Sign (证书从 secrets 注入 —— 绝不再入仓库, §7.4)
         env:
           PFX_B64: ${{ secrets.CODESIGN_PFX_B64 }}
@@ -98,15 +141,28 @@ jobs:
         run: |
           [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:PFX_B64))
           signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
-            artifacts/app/SmartSideBAR.exe
+            artifacts/app/SmartSideBAR.Avalonia.exe
           Remove-Item cert.pfx
-      - name: NSIS installer
-        if: hashFiles('installer/SmartSideBar.iss') != ''
+      # A4: 用 Inno Setup 构建安装器（真实文件名 SmartSideBAR-v1.3.iss, A2 修复）
+      - name: Inno Setup installer
+        shell: pwsh
         run: |
-          choco install nsis -y
-          makensis installer/SmartSideBar.iss
+          choco install innosetup -y --no-progress
+          # A4: iss 引用 CI publish 输出目录 artifacts/app（不再依赖本地产物）
+          & "C:\Program Files (x86)\Inno Setup 7\ISCC.exe" installer\SmartSideBAR-v1.3.iss
+      - name: Sign installer
+        env:
+          PFX_B64: ${{ secrets.CODESIGN_PFX_B64 }}
+          PFX_PASS: ${{ secrets.CODESIGN_PFX_PASS }}
+        if: env.PFX_B64 != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:PFX_B64))
+          $setup = Get-ChildItem dist\*-Setup.exe | Select-Object -First 1
+          signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $setup.FullName
+          Remove-Item cert.pfx
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: |
-            installer/Output/*.exe
+            dist/*-Setup.exe

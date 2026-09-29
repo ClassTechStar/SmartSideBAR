@@ -17,7 +17,7 @@ using WinGraphics = global::Windows.Graphics;
 
 namespace SmartSideBAR.Windows.Recording;
 
-public sealed record RecorderOptions(string FilePath, int Fps, int BitrateKbps);
+public sealed record RecorderOptions(string FilePath, int Fps, int BitrateKbps, long MonitorHandle = 0, bool Microphone = false);
 
 public sealed record RecorderStatusChanged(bool Recording, string? FilePath, string? Error);
 
@@ -57,8 +57,10 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         if (_recording) throw new InvalidOperationException("已在录制中");
         if (!IsSupported()) throw new PlatformNotSupportedException("系统不支持 Windows.Graphics.Capture (需 Win10 1803+)");
 
-        // 主屏物理尺寸 (PMv2 上下文; TFM 已含 WinRT 投影)
-        var hMonitor = GraphicsCaptureItemProbe.PrimaryMonitorHandle();
+        // B5: 多显示器支持 —— 优先用指定 MonitorHandle, 否则默认主屏
+        var hMonitor = opt.MonitorHandle != 0
+            ? opt.MonitorHandle
+            : GraphicsCaptureItemProbe.PrimaryMonitorHandle();
         var item = GraphicsCaptureItemProbe.CreateForMonitor(hMonitor);
         var size = item.Size;
         _filePath = opt.FilePath;
@@ -68,7 +70,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _framePool = WinCapture.Direct3D11CaptureFramePool.CreateFreeThreaded(
             device, WinDirectX.DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, size);
 
-        // MP4 容器 + H.264 视频轨 (无音频轨; mic 混流为 Wave D 增强)
+        // MP4 容器 + H.264 视频轨 + 可选音频轨 (B5: 麦克风混流)
         var profile = WinProps.MediaEncodingProfile.CreateMp4(
             WinProps.VideoEncodingQuality.HD720p);
         profile.Video = WinProps.VideoEncodingProperties.CreateH264();
@@ -77,14 +79,42 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         profile.Video.Bitrate = (uint)Math.Max(500_000, opt.BitrateKbps * 1000);
         profile.Video.FrameRate.Numerator = (uint)_fps;
         profile.Video.FrameRate.Denominator = 1;
-        profile.Audio = null;
 
-        var props = WinProps.VideoEncodingProperties.CreateUncompressed(
-            WinProps.MediaEncodingSubtypes.Rgb32, (uint)size.Width, (uint)size.Height);
-        _mss = new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(props))
+        // B5: 麦克风混流 —— 启用时添加 AAC 音频轨
+        WinMediaCore.AudioStreamDescriptor? audioDesc = null;
+        if (opt.Microphone)
         {
-            BufferTime = TimeSpan.Zero,
-        };
+            try
+            {
+                var audioProps = WinProps.AudioEncodingProperties.CreateAac(
+                    44100, 1, 128000);
+                profile.Audio = audioProps;
+                audioDesc = new WinMediaCore.AudioStreamDescriptor(audioProps);
+                log?.LogInformation("[Recorder] 麦克风混流已启用 (AAC 44.1kHz/128kbps)");
+            }
+            catch (Exception ex)
+            {
+                log?.LogWarning(ex, "[Recorder] 麦克风初始化失败, 继续纯视频录制");
+                profile.Audio = null;
+                audioDesc = null;
+            }
+        }
+        else
+        {
+            profile.Audio = null;
+        }
+
+        var videoProps = WinProps.VideoEncodingProperties.CreateUncompressed(
+            WinProps.MediaEncodingSubtypes.Rgb32, (uint)size.Width, (uint)size.Height);
+        _mss = audioDesc is not null
+            ? new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps), audioDesc)
+            {
+                BufferTime = TimeSpan.Zero,
+            }
+            : new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps))
+            {
+                BufferTime = TimeSpan.Zero,
+            };
         _mss.Starting += OnStarting;
         _mss.SampleRequested += OnSampleRequested;
 
@@ -268,6 +298,25 @@ internal static partial class GraphicsCaptureItemProbe
         var hmon = MonitorFromPoint(new NativePoint { x = 0, y = 0 }, 1 /*MONITOR_DEFAULTTOPRIMARY*/);
         return hmon;
     }
+
+    /// <summary>B5: 枚举所有显示器句柄, 供 UI 选屏。</summary>
+    public static List<long> EnumerateMonitorHandles()
+    {
+        var handles = new List<long>();
+        EnumDisplayMonitors(0, 0, (hmon, _, _, _) =>
+        {
+            handles.Add(hmon);
+            return true;
+        }, 0);
+        return handles;
+    }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool EnumDisplayMonitors(
+        nint hdc, nint lprcClip, MonitorEnumProc lpfnEnum, nint dwData);
+
+    private delegate bool MonitorEnumProc(nint hMonitor, nint hdc, nint lprc, nint dwData);
 
     public static WinCapture.GraphicsCaptureItem CreateForMonitor(long hMonitor)
     {

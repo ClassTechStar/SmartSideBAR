@@ -143,6 +143,24 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
             new AppBarRect(mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H));
     }
 
+    /// <summary>B4: ABM_SETAUTOHIDEBAR —— 注册/注销自动隐藏 AppBar。</summary>
+    public bool SetAutoHideBar(nint hwnd, uint edge, bool enable)
+    {
+        if (hwnd == 0) return false;
+        using var scope = new PhysicalDpiScope();
+        var abd = new AppBarNative.APPBARDATA
+        {
+            cbSize = (uint)Marshal.SizeOf<AppBarNative.APPBARDATA>(),
+            hWnd = hwnd,
+            uEdge = edge,
+            lParam = enable ? 1 : 0,
+        };
+        var ok = AppBarNative.SHAppBarMessage(AppBarNative.ABM_SETAUTOHIDEBAR, ref abd) != 0;
+        log?.LogInformation("[AppBar] ABM_SETAUTOHIDEBAR hwnd=0x{Hwnd:X} edge={Edge} enable={Enable} → {Ok}",
+            hwnd, edge, enable, ok);
+        return ok;
+    }
+
     private static uint InferEdge(AppBarRect rect)
     {
         var hMonitor = AppBarNative.MonitorFromPoint(new AppBarNative.POINT(rect.X, rect.Y), 1 /*MONITOR_DEFAULTTOPRIMARY*/);

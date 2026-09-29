@@ -38,4 +38,7 @@ public interface IAppBarApi
 
     /// <summary>hwnd 所在显示器的全屏矩形与工作区矩形 (物理像素)。</summary>
     MonitorRects GetMonitorOf(nint hwnd);
+
+    /// <summary>B4: ABM_SETAUTOHIDEBAR —— 注册自动隐藏 AppBar。lParam 非零启用自动隐藏。</summary>
+    bool SetAutoHideBar(nint hwnd, uint edge, bool enable);
 }

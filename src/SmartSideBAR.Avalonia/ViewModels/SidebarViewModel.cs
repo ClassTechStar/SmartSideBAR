@@ -128,9 +128,10 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         {
             _shell.OpenExternal(new Uri(link.Url));
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // 白名单外域名拒绝 (B2); UI 提示于 Wave C 通知系统
+            // C4-④: 异常不再静默吞掉, 给用户可见反馈
+            Ui.ToastService.Instance.Show($"无法打开链接「{link.Name}」: {ex.Message}", "error");
         }
     }
 }

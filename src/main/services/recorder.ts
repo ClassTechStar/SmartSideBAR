@@ -86,6 +86,7 @@ export const RecorderService = {
 
       // ========== 关键修复: 先注册监听器,再加载页面 ==========
       // 这样页面加载完成发出的 ready 信号不会丢失
+      // C4-①: 用 once + 显式清理, 防止监听器泄漏 (原来成功路径从不移除 recorder:ready 上的 handler)
       let pageReadyResolve: (() => void) | null = null
       let pageReadyReject: ((err: Error) => void) | null = null
 
@@ -120,7 +121,8 @@ export const RecorderService = {
       try {
         await pageReadyPromise
         clearTimeout(loadTimeout)
-        ipcMain.removeListener(IPC_CHANNELS['overlay:ready'], readyHandler)
+        // C4-① 修复: 正确移除 recorder:ready 上的 handler (原来错写为 overlay:ready)
+        ipcMain.removeListener(IPC_CHANNELS['recorder:ready'], readyHandler)
       } catch (e: any) {
         this.cleanup()
         isStarting = false

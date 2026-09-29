@@ -1,7 +1,11 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
-import { copyFileSync, existsSync } from 'fs'
+import { copyFileSync, existsSync, readFileSync } from 'fs'
+
+// A3: 从 package.json 读取版本号, 构建期注入 __APP_VERSION__
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'))
+const appVersion: string = pkg.version
 
 // 原生模块复制插件: 构建时将 native/build/Release/appbar.node 复制到 out/main/
 function nativeModulePlugin(): any {
@@ -21,6 +25,9 @@ function nativeModulePlugin(): any {
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin(), nativeModulePlugin()],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion)
+    },
     build: {
       outDir: 'out/main',
       rollupOptions: {
@@ -38,6 +45,9 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion)
+    },
     build: {
       outDir: 'out/preload',
       rollupOptions: {
@@ -49,6 +59,9 @@ export default defineConfig({
   },
   renderer: {
     plugins: [vue()],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion)
+    },
     root: resolve(__dirname, 'src/renderer'),
     build: {
       outDir: 'out/renderer',

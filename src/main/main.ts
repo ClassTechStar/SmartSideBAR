@@ -52,7 +52,7 @@ let activeOverlayWin: BrowserWindow | null = null
 let activeAnnotatorWin: BrowserWindow | null = null
 
 async function bootstrap() {
-  log.info('[BOOT] SmartSideBAR v1.3.0 starting...')
+  log.info(`[BOOT] SmartSideBAR v${app.getVersion()} starting...`)
 
   try {
     // ① 配置先行

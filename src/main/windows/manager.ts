@@ -114,25 +114,7 @@ function getRendererPath(view: string): string {
   return join(__dirname, `../renderer/index.html`)
 }
 
-/** 辅助: 更新 AppBar 预留空间 (物理像素) */
-function updateAppBarPos(win: BrowserWindow, dipWidth: number, dipHeight: number): void {
-  if (!AppBarService.isAvailable()) return
-  try {
-    const target = DisplayService.sidebarTarget()
-    const side = (ConfigService.get().display.sidebarSide) === 'right' ? 'right' : 'left'
-    const edge = side === 'right' ? EDGE_RIGHT : EDGE_LEFT
-    const hwnd = getHwnd(win)
-    const physW = Math.round(dipWidth * target.scaleFactor)
-    const physH = Math.round(dipHeight * target.scaleFactor)
-    const physX = side === 'right'
-      ? Math.round(target.bounds.x + target.bounds.width - physW)
-      : Math.round(target.bounds.x)
-    const physY = Math.round(target.bounds.y)
-    AppBarService.queryAndSetPos(hwnd, edge, physX, physY, physW, physH)
-  } catch (e: any) {
-    log.warn('[AppBar] updateAppBarPos failed:', e.message)
-  }
-}
+// B2: updateAppBarPos 已删除 —— AppBar 注册已随 ADR-001 禁用 (Electron 冻结)。
 
 
 
@@ -195,28 +177,8 @@ export const WindowManager = {
       log.info(`[Window] Sidebar ready (${railWidth} DIP x ${sidebarHeight} DIP, uiScale=${uiScale})`)
       AppearanceService.register(sidebarWin!, 'sidebar')
 
-      // v1.3: 禁用 AppBar 注册, 恢复 1.2 版行为。
-      // 1.2 版中 getHwnd() BigInt→Number 类型不匹配导致 AppBar 注册静默失败,
-      // 实际效果为 alwaysOnTop 保持置顶, 不占用系统 WorkArea 空间。
-      // 用户反馈右侧屏幕区域因 AppBar 预留空间而无法使用, 故恢复此行为。
-      // 代码保留以备未来需要时再启用。
-      if (false && AppBarService.isAvailable()) {
-        try {
-          const hwnd = getHwnd(sidebarWin!)
-          AppBarService.register(hwnd)
-          // 用物理像素告知系统预留空间, Electron 窗口随后用 DIP 定位
-          const physW = Math.round(railWidth * target.scaleFactor)
-          const physH = Math.round(sidebarHeight * target.scaleFactor)
-          const physX = side === 'right'
-            ? Math.round(target.bounds.x + target.bounds.width - physW)
-            : Math.round(target.bounds.x)
-          const physY = Math.round(target.bounds.y)
-          AppBarService.queryAndSetPos(hwnd, edge, physX, physY, physW, physH)
-          log.info(`[AppBar] Sidebar registered as AppBar (edge=${edge}, physW=${physW}, physH=${physH})`)
-        } catch (e: any) {
-          log.warn('[AppBar] Registration failed, using alwaysOnTop fallback:', e.message)
-        }
-      }
+      // B2: AppBar 注册已随 ADR-001 删除 (Electron 冻结)。
+      // 侧边栏仅靠 alwaysOnTop 置顶, 不占用系统 WorkArea。
     })
 
     sidebarWin.on('closed', () => {
@@ -803,8 +765,6 @@ export const WindowManager = {
         height: height > 0 ? Math.round(height * uiScale) : Math.round(cfg.workArea.height * (1 - SIDEBAR_MARGIN_RATIO * 2))
       }, true)
       const bh = height > 0 ? Math.round(height * uiScale) : Math.round(cfg.workArea.height * (1 - SIDEBAR_MARGIN_RATIO * 2))
-      // AppBar 已禁用(v1.3), 无需更新系统 WorkArea 预留
-      // updateAppBarPos(sidebarWin, railedWidth, bh)
     }
   },
 
@@ -901,8 +861,6 @@ export const WindowManager = {
         width: railWidth,
         height: dockHeight
       }, true)
-      // AppBar 已禁用(v1.3), 无需更新
-      // updateAppBarPos(sidebarWin, railWidth, dockHeight)
       log.info(`[Window] Docked sidebar repositioned: ${railWidth}x${dockHeight} @ (${x}, ${dockY}) uiScale=${uiScale}`)
       return
     }
@@ -915,8 +873,6 @@ export const WindowManager = {
       width: railWidth,
       height: bodyHeight
     }, true)
-    // AppBar 已禁用(v1.3), 无需更新
-    // updateAppBarPos(sidebarWin, railWidth, bodyHeight)
     log.info(`[Window] Sidebar repositioned: ${railWidth}x${bodyHeight} @ (${x}, ${bodyY}) uiScale=${uiScale}`)
   },
 
