@@ -195,7 +195,12 @@ export const WindowManager = {
       log.info(`[Window] Sidebar ready (${railWidth} DIP x ${sidebarHeight} DIP, uiScale=${uiScale})`)
       AppearanceService.register(sidebarWin!, 'sidebar')
 
-      if (AppBarService.isAvailable()) {
+      // v1.3: 禁用 AppBar 注册, 恢复 1.2 版行为。
+      // 1.2 版中 getHwnd() BigInt→Number 类型不匹配导致 AppBar 注册静默失败,
+      // 实际效果为 alwaysOnTop 保持置顶, 不占用系统 WorkArea 空间。
+      // 用户反馈右侧屏幕区域因 AppBar 预留空间而无法使用, 故恢复此行为。
+      // 代码保留以备未来需要时再启用。
+      if (false && AppBarService.isAvailable()) {
         try {
           const hwnd = getHwnd(sidebarWin!)
           AppBarService.register(hwnd)
@@ -798,8 +803,8 @@ export const WindowManager = {
         height: height > 0 ? Math.round(height * uiScale) : Math.round(cfg.workArea.height * (1 - SIDEBAR_MARGIN_RATIO * 2))
       }, true)
       const bh = height > 0 ? Math.round(height * uiScale) : Math.round(cfg.workArea.height * (1 - SIDEBAR_MARGIN_RATIO * 2))
-      // 更新 AppBar 预留空间
-      updateAppBarPos(sidebarWin, railedWidth, bh)
+      // AppBar 已禁用(v1.3), 无需更新系统 WorkArea 预留
+      // updateAppBarPos(sidebarWin, railedWidth, bh)
     }
   },
 
@@ -896,7 +901,8 @@ export const WindowManager = {
         width: railWidth,
         height: dockHeight
       }, true)
-      updateAppBarPos(sidebarWin, railWidth, dockHeight)
+      // AppBar 已禁用(v1.3), 无需更新
+      // updateAppBarPos(sidebarWin, railWidth, dockHeight)
       log.info(`[Window] Docked sidebar repositioned: ${railWidth}x${dockHeight} @ (${x}, ${dockY}) uiScale=${uiScale}`)
       return
     }
@@ -909,7 +915,8 @@ export const WindowManager = {
       width: railWidth,
       height: bodyHeight
     }, true)
-    updateAppBarPos(sidebarWin, railWidth, bodyHeight)
+    // AppBar 已禁用(v1.3), 无需更新
+    // updateAppBarPos(sidebarWin, railWidth, bodyHeight)
     log.info(`[Window] Sidebar repositioned: ${railWidth}x${bodyHeight} @ (${x}, ${bodyY}) uiScale=${uiScale}`)
   },
 

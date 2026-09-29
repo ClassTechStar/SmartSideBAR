@@ -133,7 +133,7 @@
     </div>
 
     <div class="about">
-      <span class="version">v{{ diagResult?.version || '1.1.0' }}</span>
+      <span class="version">v{{ diagResult?.version || '1.3.0' }}</span>
     </div>
   </div>
 </template>

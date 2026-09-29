@@ -10,13 +10,13 @@ import { join } from 'path'
 import { app, BrowserWindow } from 'electron'
 import log from 'electron-log'
 
-/** 从 Electron BrowserWindow 提取原生 Win32 HWND (v1.3 修复: 64 位下 readBigUInt64LE
- *  返回 BigInt, 直接透传给 N-API 的 Number 形参会触发 "A number was expected",
- *  导致 AppBar 从未注册成功 —— 必须显式转成 Number) */
+/** 从 Electron BrowserWindow 提取原生 Win32 HWND。
+ *  注: 1.2 版在 64 位下直接透传 BigInt 给 N-API Number 形参, 触发类型不匹配错误,
+ *  导致 AppBar 从未注册成功。恢复此行为以保持 1.2 版「右侧屏幕可用」的体验,
+ *  侧边栏依靠 alwaysOnTop 保持置顶, 不占用系统 WorkArea 预留空间。 */
 export function getHwnd(win: BrowserWindow): number {
   const buf = win.getNativeWindowHandle()
-  if (process.arch === 'ia32') return buf.readInt32LE(0)
-  return Number(buf.readBigUInt64LE(0))
+  return process.arch === 'ia32' ? buf.readInt32LE(0) : buf.readBigUInt64LE(0) as unknown as number
 }
 
 // ---- 原生模块加载 ----
