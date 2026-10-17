@@ -56,13 +56,17 @@ public sealed class PrinterMonitor(
         {
             using var searcher = new ManagementObjectSearcher(
                 "SELECT Name, PrinterStatus, DetectedErrorState FROM Win32_Printer");
-            foreach (var mo in searcher.Get())
+            using var results = searcher.Get(); // B20: 集合不释放 = 每次轮询泄漏一个 WMI 句柄
+            foreach (ManagementObject mo in results)
             {
-                var name = mo["Name"] as string ?? "(未知)";
-                uint? detected = mo["DetectedErrorState"] is null ? null : Convert.ToUInt32(mo["DetectedErrorState"]);
-                ushort? status = mo["PrinterStatus"] is null ? null : Convert.ToUInt16(mo["PrinterStatus"]);
-                var state = PrinterStateMapper.Map(detected, status);
-                list.Add(new PrinterInfo(name, state, PrinterStateMapper.ToWire(state)));
+                using (mo)
+                {
+                    var name = mo["Name"] as string ?? "(未知)";
+                    uint? detected = mo["DetectedErrorState"] is null ? null : Convert.ToUInt32(mo["DetectedErrorState"]);
+                    ushort? status = mo["PrinterStatus"] is null ? null : Convert.ToUInt16(mo["PrinterStatus"]);
+                    var state = PrinterStateMapper.Map(detected, status);
+                    list.Add(new PrinterInfo(name, state, PrinterStateMapper.ToWire(state)));
+                }
             }
         }
         catch (Exception ex)
@@ -79,8 +83,17 @@ public sealed class PrinterMonitor(
         {
             var printers = Query();
             var hash = string.Join("|", printers.Select(p => $"{p.Name}:{p.WireState}"));
-            if (hash == _lastHash) return; // 变更检测: 无变化不广播
-            _lastHash = hash;
+            lock (_gate)
+            {
+                // 首轮只建立基线: 否则每次启动都会把「当前所有异常打印机」当成变更弹一堆 Toast
+                if (_lastHash.Length == 0)
+                {
+                    _lastHash = hash;
+                    return;
+                }
+                if (hash == _lastHash) return; // 变更检测: 无变化不广播
+                _lastHash = hash;
+            }
             bus.Publish(new PrinterChanged(printers));
             log?.LogInformation("[Printer] 状态变化: {Count} 台", printers.Count);
         }

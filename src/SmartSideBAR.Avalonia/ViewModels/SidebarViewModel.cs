@@ -23,7 +23,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         _ime = ime;
         _shell = shell;
         Dispatch = dispatch;
-        Links = [.. links.Where(l => l.Enabled)];
+        Links = [.. links.Where(l => l.Enabled).Select(l => new LinkRow(l, row => OpenLink(row.Source)))];
         TogglePanelCommand = new RelayCommand(_ => TogglePanel());
         OpenLinkCommand = new RelayCommand(p =>
         {
@@ -87,7 +87,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         }
     }
 
-    public ObservableCollection<LinkItem> Links { get; }
+    public ObservableCollection<LinkRow> Links { get; }
 
     public string DockTooltip => IsDocked ? "展开侧边栏" : "收起侧边栏";
     public string DockArrowPath => IsDocked

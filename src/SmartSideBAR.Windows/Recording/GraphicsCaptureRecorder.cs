@@ -80,44 +80,25 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         profile.Video.FrameRate.Numerator = (uint)_fps;
         profile.Video.FrameRate.Denominator = 1;
 
-        // B5: 麦克风混流 —— 启用时添加 AAC 音频轨
-        WinMediaCore.AudioStreamDescriptor? audioDesc = null;
+        // B9 根修: 原实现声明了 AAC 音频轨却没有音频采样源 —— 转码器为音频流索取 sample 时
+        // OnSampleRequested 只能返回视频帧或 null, 音频流立即 EOF, 整段转码提前结束
+        // (录屏变成 0 字节或毫秒级文件)。本版本统一走「纯视频」, 麦克风偏好仅落配置。
         if (opt.Microphone)
         {
-            try
-            {
-                var audioProps = WinProps.AudioEncodingProperties.CreateAac(
-                    44100, 1, 128000);
-                profile.Audio = audioProps;
-                audioDesc = new WinMediaCore.AudioStreamDescriptor(audioProps);
-                log?.LogInformation("[Recorder] 麦克风混流已启用 (AAC 44.1kHz/128kbps)");
-            }
-            catch (Exception ex)
-            {
-                log?.LogWarning(ex, "[Recorder] 麦克风初始化失败, 继续纯视频录制");
-                profile.Audio = null;
-                audioDesc = null;
-            }
+            log?.LogWarning("[Recorder] 麦克风混流尚未实现 (无音频采样源), 本次仅录制画面");
         }
-        else
-        {
-            profile.Audio = null;
-        }
+        profile.Audio = null;
 
         var videoProps = WinProps.VideoEncodingProperties.CreateUncompressed(
             WinProps.MediaEncodingSubtypes.Rgb32, (uint)size.Width, (uint)size.Height);
-        _mss = audioDesc is not null
-            ? new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps), audioDesc)
-            {
-                BufferTime = TimeSpan.Zero,
-            }
-            : new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps))
-            {
-                BufferTime = TimeSpan.Zero,
-            };
+        _mss = new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps))
+        {
+            BufferTime = TimeSpan.Zero,
+        };
         _mss.Starting += OnStarting;
         _mss.SampleRequested += OnSampleRequested;
 
+        // 注意: 不能在 StartAsync 作用域内 using 释放 —— PrepareTranscodeResult 仍在使用该转码器
         var transcoder = new WinTranscoding.MediaTranscoder { HardwareAccelerationEnabled = true };
         _pending = null;
         _stopRequested = false;
@@ -225,6 +206,11 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
             if (_framePool is { } pool) pool.FrameArrived -= OnFrameArrived;
             _session?.Dispose();
             _framePool?.Dispose();
+            lock (_gate)
+            {
+                _pending?.Dispose();
+                _pending = null;
+            }
         }
         catch (Exception ex)
         {

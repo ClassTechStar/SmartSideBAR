@@ -22,7 +22,7 @@ public sealed class SettingsWindow : Window
     private readonly TextBox _captureDir = new() { Watermark = "{Pictures}/Sidekick" };
     private readonly TextBox _recorderDir = new() { Watermark = "{Videos}/Sidekick" };
     private readonly NumericUpDown _fps = new() { Value = 15, Minimum = 5, Maximum = 60 };
-    private readonly CheckBox _mic = new() { Content = "录制系统麦克风 (Wave D)" };
+    private readonly CheckBox _mic = new() { Content = "录制麦克风 (当前版本仅录画面)" };
     private readonly CheckBox _usbEnabled = new() { Content = "启用 U 盘监控" };
     private readonly NumericUpDown _printerSec = new() { Value = 10, Minimum = 3, Maximum = 300 };
     private readonly TextBox _hkCapture = new();
@@ -84,15 +84,26 @@ public sealed class SettingsWindow : Window
             {
                 global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    _diagResult.Text = string.Join('\n', t.Result.Select(kv => $"{kv.Key}: {kv.Value}"));
+                    _diagResult.Text = t.IsFaulted
+                        ? $"诊断失败: {t.Exception?.GetBaseException().Message}"
+                        : string.Join('\n', t.Result.Select(kv => $"{kv.Key}: {kv.Value}"));
                 });
-            });
+            }, TaskScheduler.Default);
         };
         var exportDiag = new Button { Content = "导出诊断包", Margin = new Thickness(8, 0, 0, 0) };
         exportDiag.Click += (_, _) =>
         {
-            var path = _diag.ExportPack(Path.GetTempPath());
-            ToastService.Instance.Show($"诊断包: {path}", "success");
+            // B13 根修: 日志文件被占用时 ZipFile 会抛 IOException; 点击处理器无保护
+            // → UI 线程未处理异常, 与 B1 同级别 (直接杀进程)。
+            try
+            {
+                var path = _diag.ExportPack(Path.GetTempPath());
+                ToastService.Instance.Show($"诊断包: {path}", "success");
+            }
+            catch (Exception ex)
+            {
+                ToastService.Instance.Show($"导出诊断包失败: {ex.Message}", "error");
+            }
         };
 
         var scroll = new ScrollViewer
@@ -139,6 +150,7 @@ public sealed class SettingsWindow : Window
         _ = _config.Set("capture.dir", string.IsNullOrWhiteSpace(_captureDir.Text) ? c.Capture.Dir : _captureDir.Text.Trim());
         _ = _config.Set("recorder.dir", string.IsNullOrWhiteSpace(_recorderDir.Text) ? c.Recorder.Dir : _recorderDir.Text.Trim());
         _ = _config.Set("recorder.fps", (int)(_fps.Value ?? 15));
+        _ = _config.Set("recorder.mic", _mic.IsChecked == true); // B8 根修: 此前漏写, 勾选后重开即丢
         _ = _config.Set("usb.enabled", _usbEnabled.IsChecked == true);
         _ = _config.Set("printer.pollIntervalSec", (int)(_printerSec.Value ?? 10));
         _ = _config.Set("capture.hotkey", _hkCapture.Text?.Trim());

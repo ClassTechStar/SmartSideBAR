@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
 using AvaloniaVisual = global::Avalonia.Visual;
 using Avalonia.VisualTree;
 using SmartSideBAR.Avalonia.ViewModels;
@@ -17,6 +18,7 @@ public partial class SidebarWindow : Window
     {
         _side = side;
         InitializeComponent();
+        ApplySide();
     }
 
     /// <summary>系统最近授予的总宽度 (物理像素, 含 rail)。</summary>
@@ -27,33 +29,47 @@ public partial class SidebarWindow : Window
         LastGrantedWidthPx = grantedWidthPx;
     }
 
+    /// <summary>
+    /// B16 根修: XAML 里 rail 固定 Right / 面板固定 Left, 侧栏配到左侧时展开态会把 rail 甩到
+    /// 屏幕内侧、面板盖住 rail。这里按停靠边镜像两者的对齐方式。
+    /// </summary>
+    private void ApplySide()
+    {
+        var rail = this.FindControl<Border>("RailCapsule");
+        var panel = this.FindControl<Border>("PanelHost");
+        if (rail is not null)
+        {
+            rail.HorizontalAlignment = _side == AppBarEdge.Left
+                ? HorizontalAlignment.Left
+                : HorizontalAlignment.Right;
+        }
+        if (panel is not null)
+        {
+            panel.HorizontalAlignment = _side == AppBarEdge.Left
+                ? HorizontalAlignment.Right
+                : HorizontalAlignment.Left;
+        }
+    }
+
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
         LoadSvgIcons(this);
-        if (DataContext is ViewModels.SidebarViewModel vm) vm.RefreshIme();
+        if (DataContext is SidebarViewModel vm) vm.RefreshIme();
     }
 
-    /// <summary>Tag="svg:名称" → Assets/icons/名称.svg (1.1 图标, 深色); "svgw:" → 白色变体。</summary>
+    /// <summary>Tag="svg:名称" → Assets/icons/名称.svg (1.1 图标, 深色); "svgw:" → 白色变体。
+    /// 仅用于 XAML 静态标记的图标; 代码构造的控件请直接调用 SvgIcons.Load。</summary>
     internal static void LoadSvgIcons(AvaloniaVisual root)
     {
+        if (!root.IsAttachedToVisualTree()) return;
         foreach (var image in root.GetVisualDescendants().OfType<Image>())
         {
             if (image.Tag is not string tag) continue;
-            var (prefix, dir) = tag.StartsWith("svgw:") ? ("svgw:", "icons-white") : ("svg:", "icons");
+            var (prefix, white) = tag.StartsWith("svgw:") ? ("svgw:", true) : ("svg:", false);
             if (!tag.StartsWith(prefix)) continue;
-            var name = tag[prefix.Length..];
-            try
-            {
-                // Avalonia.Svg.Skia 11.x: new SvgSource(uri) 已被废弃，须使用静态 SvgSource.Load
-                var baseUri = new Uri("avares://SmartSideBAR.Avalonia/");
-                var source = global::Avalonia.Svg.Skia.SvgSource.Load($"Assets/{dir}/{name}.svg", baseUri, null);
-                image.Source = new global::Avalonia.Svg.Skia.SvgImage { Source = source };
-            }
-            catch
-            {
-                // 图标缺失不阻断 UI
-            }
+            var source = Ui.SvgIcons.Load(tag[prefix.Length..], white);
+            if (source is not null) image.Source = source;
         }
     }
 }

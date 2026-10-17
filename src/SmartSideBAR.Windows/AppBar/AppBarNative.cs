@@ -107,6 +107,21 @@ internal static partial class AppBarNative
     [LibraryImport("user32.dll")]
     internal static partial nint MonitorFromPoint(POINT pt, uint flags);
 
+    // ---- 全屏判定 (K3 误报修正: ABN_FULLSCREENAPP 对最大化窗口也会上报 TRUE) ----
+    public const int GWL_STYLE = -16;
+    public const int WS_MAXIMIZE = 0x01000000;
+
+    [LibraryImport("user32.dll")]
+    internal static partial nint GetForegroundWindow();
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetWindowRect(nint hWnd, out RECT lpRect);
+
+    /// <summary>注意: user32 没有名为 GetWindowLong 的导出 (那是宏), x64 下必须用 GetWindowLongPtrW。</summary>
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    internal static partial nint GetWindowLongPtr(nint hWnd, int nIndex);
+
     [LibraryImport("user32.dll", EntryPoint = "GetMonitorInfoW", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);

@@ -134,7 +134,8 @@ public static class TestEnv
         bus.Subscribe<AppBarGeometryChanged>(geometry.Add);
         bus.Subscribe<FullscreenAppChanged>(fullscreen.Add);
         bus.Subscribe<WindowArrangePending>(arrange.Add);
-        var svc = new AppBarService(api, hook, bus);
+        // K3 全屏判定注入: 单测不依赖真实桌面前台窗口 (最大化窗口会被真实探针判为「非全屏」)
+        var svc = new AppBarService(api, hook, bus, fullscreenProbe: () => true);
         return (svc, api, hook, bus, geometry, fullscreen, arrange);
     }
 }

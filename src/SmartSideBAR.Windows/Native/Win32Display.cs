@@ -24,6 +24,18 @@ public static partial class Win32Display
         return (mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H);
     }
 
+    /// <summary>主屏完整矩形 (物理像素, 含任务栏) —— 全屏覆盖层用。</summary>
+    public static (int X, int Y, int W, int H) PrimaryMonitorRectPx()
+    {
+        var hMonitor = MonitorFromPoint(new NativePoint { x = 0, y = 0 }, 1 /*MONITOR_DEFAULTTOPRIMARY*/);
+        var mi = new MONITORINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(hMonitor, ref mi))
+        {
+            return (0, 0, 1920, 1080);
+        }
+        return (mi.rcMonitor.Left, mi.rcMonitor.Top, mi.rcMonitor.W, mi.rcMonitor.H);
+    }
+
     /// <summary>R4: 从 HWND 获取所在显示器的工作区 (物理像素)。多显示器时悬浮球/dock 正确定位。</summary>
     public static (int X, int Y, int W, int H) WorkAreaFromHwnd(nint hwnd)
     {

@@ -197,7 +197,8 @@ public sealed class UsbDeviceWatcher(
             // Part A: DriveType=2(Removable) or 5(CDRom) 直接检测
             using var diskSearcher = new ManagementObjectSearcher(
                 "SELECT DeviceID, VolumeName, DriveType, Size FROM Win32_LogicalDisk WHERE DriveType=2 OR DriveType=5");
-            foreach (var obj in diskSearcher.Get().Cast<ManagementObject>())
+            using var diskResults = diskSearcher.Get();
+            foreach (var obj in diskResults.Cast<ManagementObject>())
             {
                 using (obj)
                 {
@@ -214,7 +215,8 @@ public sealed class UsbDeviceWatcher(
             // Part B: USB 物理磁盘 CIM 关联 (覆盖 USB 3.0 SATA 桥接芯片, DriveType=Fixed 的移动硬盘)
             using var usbSearcher = new ManagementObjectSearcher(
                 "SELECT * FROM Win32_DiskDrive WHERE InterfaceType='USB' OR PNPDeviceID LIKE '%USB%' OR PNPDeviceID LIKE '%USBSTOR%' OR MediaType='Removable media' OR MediaType='External hard disk media'");
-            foreach (var disk in usbSearcher.Get().Cast<ManagementObject>())
+            using var usbResults = usbSearcher.Get();
+            foreach (var disk in usbResults.Cast<ManagementObject>())
             {
                 using (disk)
                 {

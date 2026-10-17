@@ -103,15 +103,19 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
         {
             handled = true;
             var id = (int)wParam;
+            string? slot = null;
             lock (_gate)
             {
-                foreach (var (slot, entry) in _active)
+                foreach (var (s, entry) in _active)
                 {
                     if (entry.Id != id) continue;
-                    _bus.Publish(new HotkeyPressed(slot));
+                    slot = s;
                     break;
                 }
             }
+            // 广播必须在锁外: 处理链会同步回到 Dispatch, 再进 Register/Unregister 时
+            // 会撞上同一把不可重入锁 (死锁隐患)
+            if (slot is not null) _bus.Publish(new HotkeyPressed(slot));
             return 0;
         }
         return 0; // 不拦截其余消息
