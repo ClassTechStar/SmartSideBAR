@@ -93,9 +93,12 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
                     frame = captured;
                 }
 
-                var tailHashes = RowHashes(canvas, Math.Min(canvas.Height, frame.Height));
-                var frameHashes = RowHashes(frame, frame.Height);
-                var overlap = LongshotStitcher.FindOverlap(tailHashes, frameHashes, Math.Min(tailHashes.Length, frame.Height));
+                // B6 根修: 参与比对的必须是「已拼图的尾部若干行」, 原来传的是 RowHashes(canvas, n)
+                // —— 即画布顶部 n 行, 与「尾部重叠」语义相反。
+                var overlapWindow = Math.Min(canvas.Height, frame.Height);
+                var tailHashes = RowHashes(canvas, canvas.Height - overlapWindow, overlapWindow);
+                var frameHashes = RowHashes(frame, 0, frame.Height);
+                var overlap = LongshotStitcher.FindOverlap(tailHashes, frameHashes, overlapWindow);
                 if (overlap >= frame.Height)
                 {
                     frame.Dispose();
@@ -153,18 +156,21 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
         return stitched;
     }
 
-    /// <summary>行哈希: 逐行采样求和 (快而稳; 完全一致才计重叠)。</summary>
-    internal static long[] RowHashes(Bitmap bmp, int rowCount)
+    /// <summary>行哈希: 逐行采样求和 (快而稳; 完全一致才计重叠)。
+    /// startRow 允许只取图像的一段 (例如「尾部若干行」), 供重叠判定使用。</summary>
+    internal static long[] RowHashes(Bitmap bmp, int startRow, int rowCount)
     {
-        var hashes = new long[rowCount];
-        var rect = new Rectangle(0, 0, bmp.Width, Math.Min(rowCount, bmp.Height));
+        var count = Math.Max(0, Math.Min(rowCount, bmp.Height - startRow));
+        var hashes = new long[count];
+        if (count == 0) return hashes;
+        var rect = new Rectangle(0, startRow, bmp.Width, count);
         var data = bmp.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         unsafe
         {
             var stride = data.Stride;
             var basePtr = (byte*)data.Scan0;
             var step = Math.Max(1, bmp.Width / 64); // 每行最多采样 64 点
-            for (var y = 0; y < rowCount; y++)
+            for (var y = 0; y < count; y++)
             {
                 long h = 0;
                 var row = basePtr + y * stride;

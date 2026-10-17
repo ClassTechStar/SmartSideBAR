@@ -53,6 +53,8 @@ public partial class App : Application
             {
                 appBar.Detach();
                 scheduler.Stop();
+                _tray?.Dispose(); // 托盘图标不释放会在资源管理器里留下幽灵图标
+                _tray = null;
             };
 
             ConfigureSmokeExit(desktop);
@@ -99,7 +101,9 @@ public partial class App : Application
         return new WindowIcon(rtb);
     }
 
-    /// <summary>测试钩子: SSB_AUTO_UNDOCK_MS&gt;0 时 N 毫秒后自动展开侧栏 (undock 回归)。</summary>
+    /// <summary>测试钩子: SSB_AUTO_UNDOCK_MS&gt;0 时 N 毫秒后自动展开侧栏 (undock 回归)。
+    /// B17 根修: 原来调 Dispatch("dock") —— 那是「切换」, 未收起时反而把侧栏收起来,
+    /// 与钩子语义相反。这里直接置为未收起。</summary>
     private void ConfigureAutoUndock(WindowManager wm)
     {
         if (!int.TryParse(Environment.GetEnvironmentVariable("SSB_AUTO_UNDOCK_MS"), out var ms) || ms <= 0) return;
@@ -107,7 +111,7 @@ public partial class App : Application
         timer.Tick += (_, _) =>
         {
             timer.Stop();
-            wm.Dispatch("dock"); // _docked=true → 取反为 undock
+            wm.SetDocked(false);
         };
         timer.Start();
     }

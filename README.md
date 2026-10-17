@@ -85,7 +85,7 @@ dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
   -o artifacts/app
 
 # 3. 编译安装器 (需要 Inno Setup 7)
-"C:\Program Files (x86)\Inno Setup 7\ISCC.exe" installer\SmartSideBAR-v1.3.iss
+"C:\Program Files\Inno Setup 7\ISCC.exe" installer\SmartSideBAR-v1.3.iss
 ```
 
 安装包输出在 `dist/SmartSideBAR-v{version}-Setup.exe`。

@@ -28,7 +28,7 @@ SmartSideBAR v2.0 将底层架构从 Electron 迁移到 .NET Avalonia，带来:
 1. **卸载旧版** (推荐, 但非必须):
    - 设置 → 应用 → SmartSideBAR → 卸载
    - 或控制面板 → 程序和功能
-2. **下载新版**: 从 [Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下载 `SmartSideBAR-v2.0.0-Setup.exe`
+2. **下载新版**: 从 [Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下载 `SmartSideBAR-v1.3.0-Setup.exe`
 3. **安装**: 双击运行, 按向导操作
 4. **验证**: 首次启动后, 检查侧边栏、自定义链接、提醒是否正常
 

@@ -5,13 +5,13 @@
 ; CI 编译: 由 .github/workflows/ci.yml release job 自动执行
 
 #define AppName "SmartSideBAR"
-#define AppVersion "2.0.0"
+#define AppVersion "1.3.0"
 #define AppPublisher "Seewo Sidekick Team"
 #define AppExe "SmartSideBAR.Avalonia.exe"
 #define SetupIconFile "..\build\icon.ico"
 
 [Setup]
-AppId={{6F3A9C21-7B4E-4D8A-9C13-2E5F81B0D7AA}}
+AppId={{6F3A9C21-7B4E-4D8A-9C13-2E5F81B0D7AA}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
@@ -19,7 +19,7 @@ AppPublisher={#AppPublisher}
 DefaultDirName={localappdata}\Programs\smartsidebar
 DefaultGroupName={#AppName}
 OutputDir=..\dist
-OutputBaseFilename=SmartSideBAR-v2.0.0-Setup
+OutputBaseFilename=SmartSideBAR-v1.3.0-Setup
 SetupIconFile={#SetupIconFile}
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2/max
@@ -29,12 +29,17 @@ DisableWelcomePage=no
 DisableDirPage=no
 DisableProgramGroupPage=yes
 DisableReadyPage=no
-VersionInfoVersion=2.0.0.0
+WizardStyle=modern
+; 录屏走 Windows.Graphics.Capture, 需 Win10 1803+ (17763)
+MinVersion=10.0.17763
+; 发布产物为 win-x64, 不允许在 ARM64/x86 上误装
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+VersionInfoVersion=1.3.0.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoCopyright=Apache-2.0
-VersionInfoProductVersion=2.0.0.0
+VersionInfoProductVersion=1.3.0.0
 VersionInfoProductName={#AppName}
-WizardStyle=modern
 
 [Messages]
 WelcomeLabel2=这将安装 [name/ver] 到你的电脑。%n%n基于 1.2 版本开发：悬浮球圆形镜头样式与展开扇形菜单、全屏自动收缩侧边栏。%n%n建议先卸载旧版本再继续。
@@ -49,12 +54,23 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"
+; 自启独立成任务: 原来绑在 desktopicon 上 —— 不建桌面图标就没有自启, 且与应用内
+; 「开机自启动」开关 (.NET Registry Run, 值带 /silent) 互相覆盖。
+Name: "autostart"; Description: "开机自动启动 {#AppName}"; GroupDescription: "附加任务:"; Flags: unchecked
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#AppExe}"""; Flags: uninsdeletevalue; Tasks: desktopicon
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#AppName}"; ValueData: """{app}\{#AppExe}"" /silent"; Flags: uninsdeletevalue; Tasks: autostart
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "启动 {#AppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+
+[Code]
+{ 应用内设置页也能写同一个 Run 值; 用户取消勾选自启时安装器不该在卸载前留下它。 }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+    RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#AppName}');
+end;

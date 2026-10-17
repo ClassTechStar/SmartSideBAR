@@ -48,10 +48,13 @@ public sealed class InkCanvas : Control
         StrokesChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>导出仅笔迹 (透明底)。width/height 为物理像素, DIP 笔迹按 scale 放大。</summary>
+    /// <summary>导出仅笔迹 (透明底)。width/height 为物理像素, DIP 笔迹按 scale 放大。
+    /// B26 根修: 位图 DPI 固定 96 (1 DIP = 1 px), 缩放只由 PushTransform 施加一次。
+    /// 原来位图 DPI 也乘了 scale, 与 PushTransform 叠加 → 笔迹被放大 scale² 倍,
+    /// 与背景图错位 (实测 1.5 缩放下落在 (145,145) 而非 (100,100))。</summary>
     public Bitmap ExportStrokesOnly(int width, int height, double scale)
     {
-        var rtb = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96 * scale, 96 * scale));
+        var rtb = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
         using (var ctx = rtb.CreateDrawingContext())
         {
             using (ctx.PushTransform(Matrix.CreateScale(scale, scale)))
@@ -97,11 +100,14 @@ public sealed class InkCanvas : Control
 
     // ---- 由宿主 Border (Background=Transparent, 保证可命中) 驱动的笔画 API ----
 
-    public void BeginStroke(Point p, IPointer pointer)
+    public void BeginStroke(Point p, IPointer pointer, IInputElement? captureTarget = null)
     {
         _current = new Stroke { Color = _color, Width = _width };
         _current.Points.Add(p);
-        pointer.Capture(this);
+        // B5 根修: 捕获目标必须是「挂载了 Pointer 处理器的元素」。原来固定捕获 InkCanvas 本身,
+        // 指针事件随后只会路由到 InkCanvas 及其祖先, 而处理器挂在兄弟节点 inkHost 上,
+        // 结果是每次按下只留下一个点, Moved/Released 永不触发。
+        pointer.Capture(captureTarget ?? this);
     }
 
     public void ExtendStroke(Point p)
@@ -134,20 +140,40 @@ public sealed class AnnotateWindow : Window
         _backgroundPng = backgroundPng;
         _dir = dir;
         _format = format;
-    }
 
-    protected override void OnOpened(EventArgs e)
-    {
+        // B25 根修: 透明/无边框/置顶必须在 Show 之前设定。原先写在 OnOpened 里,
+        // 此时平台窗口已按主题背景创建 (不透明白), 再改 Background 不会重新生成
+        // 分层窗口 —— 结果是整屏纯白, 用户看不见正在批注的桌面。
+        // 另: 不用 WindowState.FullScreen —— 该状态会丢掉分层透明, 改为显式铺满显示器。
         Topmost = true;
-        WindowState = WindowState.FullScreen;
+        WindowStartupLocation = WindowStartupLocation.Manual;
         SystemDecorations = SystemDecorations.None;
         ShowInTaskbar = false;
+        CanResize = false;
+        ShowActivated = true;
         Background = Brushes.Transparent;
         TransparencyLevelHint = [];
 
         var grid = new Grid();
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // B25 根修: 以打开瞬间的屏幕快照作底 —— 大面积窗口的分层透明在 Win32 上不可靠
+        // (实测整屏纯白, 看不到要批注的桌面)。底图与「保存(含背景)」用的是同一张, 所见即所得。
+        var backdrop = new Image { Stretch = Stretch.Fill, IsHitTestVisible = false };
+        if (_backgroundPng is not null)
+        {
+            using var bgStream = new MemoryStream(_backgroundPng);
+            backdrop.Source = new Bitmap(bgStream);
+        }
+        else
+        {
+            backdrop.Source = null;
+            grid.Background = new SolidColorBrush(Color.FromArgb(255, 32, 38, 48));
+        }
+        Grid.SetRow(backdrop, 0);
+        Grid.SetRowSpan(backdrop, 2);
+        grid.Children.Add(backdrop);
 
         // InkCanvas fills the entire screen
         _ink.HorizontalAlignment = AloLayout.HorizontalAlignment.Stretch;
@@ -167,18 +193,20 @@ public sealed class AnnotateWindow : Window
         {
             var p = e.GetCurrentPoint(inkHost);
             if (!p.Properties.IsLeftButtonPressed) return;
-            _ink.BeginStroke(p.Position, e.Pointer);
+            _ink.BeginStroke(p.Position, e.Pointer, inkHost); // 捕获到 inkHost 自身 (B5)
             e.Handled = true;
         };
         inkHost.PointerMoved += (_, e) =>
         {
-            if (e.Pointer.Captured is null) return;
+            if (e.Pointer.Captured != inkHost) return;
             _ink.ExtendStroke(e.GetCurrentPoint(inkHost).Position);
             e.Handled = true;
         };
         inkHost.PointerReleased += (_, e) =>
         {
+            if (e.Pointer.Captured != inkHost) return;
             _ink.EndStroke();
+            e.Pointer.Capture(null);
             e.Handled = true;
         };
         Grid.SetRow(inkHost, 0);
@@ -195,7 +223,23 @@ public sealed class AnnotateWindow : Window
         {
             if (args.Key == Key.Escape) Close();
         };
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
         base.OnOpened(e);
+        FillPrimaryMonitor();
+    }
+
+    /// <summary>铺满主屏 (物理像素 → DIP)。用显式几何替代 FullScreen, 保住分层透明。</summary>
+    private void FillPrimaryMonitor()
+    {
+        var (x, y, w, h) = Win32Display.PrimaryMonitorRectPx();
+        var scale = Win32Display.GetScaling(TryGetPlatformHandle()?.Handle ?? 0);
+        if (scale <= 0) scale = 1.0;
+        Position = new PixelPoint(x, y);
+        Width = w / scale;
+        Height = h / scale;
     }
 
     private Control BuildToolbar()
@@ -259,7 +303,7 @@ public sealed class AnnotateWindow : Window
             {
                 using var bg = new Bitmap(new MemoryStream(_backgroundPng));
                 using var strokes = _ink.ExportStrokesOnly(w, h, scale);
-                using var composite = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96 * scale, 96 * scale));
+                using var composite = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96, 96));
                 using (var ctx = composite.CreateDrawingContext())
                 {
                     ctx.DrawImage(bg, new Rect(0, 0, w, h));

@@ -18,7 +18,8 @@ public sealed class AppBarService(
     IAppBarApi api,
     IWndProcHook hook,
     IEventBus bus,
-    ILogger<AppBarService>? log = null) : IDisposable
+    ILogger<AppBarService>? log = null,
+    Func<bool?>? fullscreenProbe = null) : IDisposable
 {
     /// <summary>v1.1 悬浮玻璃胶囊: 上下各留 8% 工作区高度 (不顶到屏幕上下缘)。</summary>
     public const double CapsuleMarginRatio = 0.08;
@@ -31,6 +32,7 @@ public sealed class AppBarService(
     private bool _fullscreen;      // K3: 全屏应用在场标志
     private bool _userExpanded;    // 用户偏好; 全屏结束后据此恢复 (V5)
     private bool _docked;          // v1.1 dock 语义: 收起为角落小方块
+    private readonly Func<bool?> _fullscreenProbe = fullscreenProbe ?? ProbeForegroundFullscreen;
 
     public bool IsRegistered => _registered;
     public AppBarRect? GrantedRect { get; private set; }
@@ -155,6 +157,17 @@ public sealed class AppBarService(
             _ => new AppBarRect(mon.Monitor.X, mon.Monitor.Y + mon.Monitor.H - widthPx, mon.Monitor.W, widthPx),
         };
         var granted = api.QueryAndSetPos(_hwnd, _edge, want); // 系统审批 (避让任务栏/他栏)
+        // B24 根修: ABM_REMOVE 之后系统 WorkArea 的恢复滞后一拍。若侧栏刚从 dock 形态恢复,
+        // 首次 QUERYPOS 仍会按「旧占位」把区间向内裁掉一个自身宽度 (实测 108px),
+        // 之后再 SETPOS 就把这条缝永久留了下来。未贴边 → 注销并重注册后再协商一次。
+        for (var attempt = 0; attempt < 3 && !IsAnchored(granted, mon.Monitor); attempt++)
+        {
+            api.Remove(_hwnd);
+            if (!api.Register(_hwnd, AppBarNative.AppBarCallbackMsg)) break;
+            granted = api.QueryAndSetPos(_hwnd, _edge, want);
+            log?.LogInformation("[AppBar] 贴边自愈重协商 #{Attempt} → ({X},{Y}) {W}x{H}px",
+                attempt + 1, granted.X, granted.Y, granted.W, granted.H);
+        }
         api.WindowPosChanged(_hwnd);                          // K2: 位置变更上报
         if (!api.MoveWindow(_hwnd, granted))                  // K4: 物理像素直达, 无 DIP 换算
         {
@@ -178,7 +191,9 @@ public sealed class AppBarService(
                     break;
 
                 case AppBarNative.ABN_FULLSCREENAPP: // 授课视频等全屏应用开/关 (K3)
-                    _fullscreen = lParam != 0;
+                    // K3 勘误: 系统对「最大化窗口」同样上报 TRUE —— 直接采信会让侧栏在普通桌面
+                    // 使用中被反复收进角落。此处用前台窗口实际几何复核, 只认真正铺满显示器的窗口。
+                    _fullscreen = lParam != 0 && (_fullscreenProbe() ?? true);
                     bus.Publish(new FullscreenAppChanged(_fullscreen));
                     // 策略: 全屏在场保持注册 (教师仍可唤出) 但先收起为 rail; 关闭后按用户偏好恢复 (V5)
                     Reposition(_fullscreen ? _railPx : CurrentWidthPx);
@@ -218,6 +233,40 @@ public sealed class AppBarService(
     }
 
     public void Dispose() => Detach();
+
+    /// <summary>授予区间是否真的贴在显示器外缘 (LEFT/RIGHT 判 X, TOP/BOTTOM 判 Y)。</summary>
+    private bool IsAnchored(AppBarRect granted, AppBarRect monitor)
+    {
+        const int tol = 2;
+        return _edge switch
+        {
+            AppBarNative.ABE_LEFT => Math.Abs(granted.X - monitor.X) <= tol,
+            AppBarNative.ABE_RIGHT => Math.Abs(granted.X + granted.W - (monitor.X + monitor.W)) <= tol,
+            AppBarNative.ABE_TOP => Math.Abs(granted.Y - monitor.Y) <= tol,
+            _ => Math.Abs(granted.Y + granted.H - (monitor.Y + monitor.H)) <= tol,
+        };
+    }
+
+    /// <summary>前台窗口是否真的铺满其所在显示器 (最大化窗口不算)。
+    /// 返回 null = 无法判定 (无前台窗口 / 查询失败), 调用方沿用系统上报。</summary>
+    private static bool? ProbeForegroundFullscreen()
+    {
+        using var scope = new AppBarApi.PhysicalDpiScope();
+        var fg = AppBarNative.GetForegroundWindow();
+        if (fg == 0) return null;
+        if ((AppBarNative.GetWindowLongPtr(fg, AppBarNative.GWL_STYLE).ToInt64() & AppBarNative.WS_MAXIMIZE) != 0) return false;
+        if (!AppBarNative.GetWindowRect(fg, out var wr)) return null;
+        var hMon = AppBarNative.MonitorFromWindow(fg, AppBarNative.MONITOR_DEFAULTTONEAR);
+        var mi = new AppBarNative.MONITORINFO
+        {
+            cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<AppBarNative.MONITORINFO>(),
+        };
+        if (!AppBarNative.GetMonitorInfo(hMon, ref mi)) return null;
+        return Math.Abs(wr.Left - mi.rcMonitor.Left) <= 2
+            && Math.Abs(wr.Top - mi.rcMonitor.Top) <= 2
+            && Math.Abs(wr.Right - mi.rcMonitor.Right) <= 2
+            && Math.Abs(wr.Bottom - mi.rcMonitor.Bottom) <= 2;
+    }
 
     private static uint Map(AppBarEdge edge) => edge switch
     {

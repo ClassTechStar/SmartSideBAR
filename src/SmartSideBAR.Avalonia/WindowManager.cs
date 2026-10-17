@@ -8,6 +8,7 @@ using SmartSideBAR.Avalonia.Views;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
+using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Capture;
 using SmartSideBAR.Windows.Devices;
@@ -30,6 +31,7 @@ public sealed class WindowManager(
     ILongshotService longshot,
     IRecorderApi recorder,
     IDiagnosticsService diagnostics,
+    SchedulerService scheduler,
     IEventBus bus,
     ILogger<WindowManager> log)
 {
@@ -42,7 +44,7 @@ public sealed class WindowManager(
     private DockWindow? _dockWindow;
     private FloatBallWindow? _floatBall;
     private SettingsWindow? _settings;
-    private int _dockPx = 78;
+    private ReminderWindow? _reminder;
     private bool _docked;
     private AppBarEdge _side = AppBarEdge.Right;
     private (nint Hwnd, int RailPx, int ExpandedPx) _attachInfo;
@@ -71,7 +73,6 @@ public sealed class WindowManager(
             var scale = Windows.Native.Win32Display.GetScaling(hwnd);
             var railPx = (int)Math.Round(RailWidthDip * scale);
             var expandedPx = (int)Math.Round((RailWidthDip + PanelWidthDip) * scale);
-            _dockPx = (int)Math.Round(DockSizeDip * scale);
             _attachInfo = (hwnd, railPx, expandedPx);
 
             // §5.4: AppBar 注册失败回退 alwaysOnTop (v1.2.0 同策略)
@@ -121,6 +122,10 @@ public sealed class WindowManager(
             ToastService.Instance.Show(e.Recording ? $"开始录屏: {e.FilePath}" : $"录屏完成: {e.FilePath}", e.Recording ? "info" : "success"));
         bus.Subscribe<LongshotCompleted>(e =>
             ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error"));
+
+        // B7 根修: 提醒到点必须有可见反馈 (此前只播声音, 教师戴着耳麦听不到就等于没提醒)
+        bus.Subscribe<ReminderDue>(e =>
+            ToastService.Instance.Show($"提醒: {e.Note ?? "时间到了"}", "warn"));
 
         // 几何事件: 面板宽度以系统授予为准 + 同步 Avalonia 窗口几何
         bus.Subscribe<AppBarGeometryChanged>(g =>
@@ -230,6 +235,10 @@ public sealed class WindowManager(
                     OpenSettings();
                     break;
 
+                case "reminder":
+                    OpenReminder();
+                    break;
+
                 case "usb" or "printer":
                     ShowDiagnostics(action);
                     break;
@@ -318,8 +327,9 @@ public sealed class WindowManager(
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
         // R4 修复: 悬浮球定位改用侧栏所在目标屏 (原来固定用主屏, 多显示器时偏差)
         var wa = GetSidebarWorkArea();
+        var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
         _floatBall = new FloatBallWindow(config, config.Current.FloatBall,
-            new Core.FloatBall.RectLike(wa.X, wa.Y, wa.W, wa.H), Dispatch, ToggleSidebar);
+            new Core.FloatBall.RectLike(wa.X, wa.Y, wa.W, wa.H), scale, Dispatch, ToggleSidebar);
         _floatBall.Show();
     }
 
@@ -371,6 +381,19 @@ public sealed class WindowManager(
                 log.LogError(ex, "[Window] AppBar 重新 Attach 失败");
             }
             sidebar.Topmost = !appBar.IsRegistered; // Attach 失败回退置顶
+            // B24: dock 期间 WorkArea 归还 / 窗口隐藏, undock 后 Avalonia 与系统几何会差一拍。
+            // 事件循环空转后再协商一次, 把位置钉回显示器外缘 (否则栏位会内缩一个自身宽度)。
+            global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+            {
+                if (_docked) return;
+                appBar.Reposition(appBar.CurrentWidthPx);
+                var want = appBar.GrantedRect;
+                if (want is { } w && (Math.Abs(sidebar.Position.X - w.X) > 2 || Math.Abs(sidebar.Position.Y - w.Y) > 2))
+                {
+                    log.LogWarning("[Window] undock 几何偏差已纠正: 实际 ({AX},{AY}) → 期望 ({EX},{EY})",
+                        sidebar.Position.X, sidebar.Position.Y, w.X, w.Y);
+                }
+            }, TimeSpan.FromMilliseconds(180));
             log.LogInformation("[Window] 侧栏已展开为玻璃胶囊");
         }
     }
@@ -397,6 +420,14 @@ public sealed class WindowManager(
         _settings = new SettingsWindow(config, shell, hotkeys, diagnostics);
         _settings.Closed += (_, _) => RegisterConfiguredHotkeys(); // 热键改动即时生效
         _settings.Show();
+    }
+
+    /// <summary>定时提醒入口 (rail 铃铛 / 后续热键共用)。</summary>
+    public void OpenReminder()
+    {
+        if (_reminder is { IsVisible: true }) return;
+        _reminder = new ReminderWindow(scheduler);
+        _reminder.Show();
     }
 
     public void ShowOobe()

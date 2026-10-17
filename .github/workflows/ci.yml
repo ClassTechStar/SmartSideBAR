@@ -3,7 +3,7 @@
 #   1) secrets-scan  : gitleaks 前置门禁（G1 防再犯：*.pfx/*password* 永不入库）
 #   2) electron      : v1.2.0 冻结维护期的门禁（typecheck + lint + test）
 #   3) dotnet        : Avalonia 主线（Core/Windows/Avalonia 三层）构建 + 测试 + 覆盖率门禁
-#   4) release       : v2* tag 触发 —— 发布安装包（签名证书从 secrets 注入，绝不入库）
+#   4) release       : v1.3* tag 触发 —— 发布安装包（签名证书从 secrets 注入，绝不入库）
 #
 # A2 修复记录:
 #   - hashFiles('SmartSideBAR.sln') → SmartSideBAR.slnx（实际文件名, dotnet 10 支持 slnx）
@@ -14,7 +14,7 @@ name: CI
 on:
   push:
     branches: [main, avalonia]
-    tags: ['v2*']
+    tags: ['v1.3*']
   pull_request:
   workflow_dispatch:
   # D3: 每周性能基准（冷启动/内存/CPU）
@@ -119,9 +119,9 @@ jobs:
           retention-days: 90
 
   release:
-    name: Release (v2* tag → Inno 安装包 + 签名)
+    name: Release (v1.3* tag → Inno 安装包 + 签名)
     needs: [dotnet]
-    if: startsWith(github.ref, 'refs/tags/v2')
+    if: startsWith(github.ref, 'refs/tags/v1.3')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

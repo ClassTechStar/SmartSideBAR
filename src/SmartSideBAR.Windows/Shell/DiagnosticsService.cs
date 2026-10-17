@@ -48,7 +48,7 @@ public sealed partial class DiagnosticsService(
             result["autolaunch"] = shell.GetAutoLaunch() ? "已启用" : "未启用";
             result["captureDir"] = ProbeWritable(ExpandDir(config.Current.Capture.Dir));
             result["recorderDir"] = ProbeWritable(ExpandDir(config.Current.Recorder.Dir));
-            result["configPath"] = config.Current.Version.ToString();
+            result["configVersion"] = config.Current.Version.ToString(); // B19: 原来挂在 configPath 下, 名实不符
         }
         catch (Exception ex)
         {
@@ -72,13 +72,20 @@ public sealed partial class DiagnosticsService(
         Directory.CreateDirectory(reportPath);
         File.WriteAllText(Path.Combine(reportPath, "report.json"), json, Encoding.UTF8);
 
-        // 日志打包 (7d 滚动目录整体复制)
+        // 日志打包 (7d 滚动目录整体复制) —— 日志文件可能正被写入, 失败不影响已导出的 report.json
         var logsDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SmartSideBAR", "logs");
         if (Directory.Exists(logsDir))
         {
             var zipPath = Path.Combine(reportPath, "logs.zip");
-            ZipFile.CreateFromDirectory(logsDir, zipPath);
+            try
+            {
+                ZipFile.CreateFromDirectory(logsDir, zipPath);
+            }
+            catch (Exception ex)
+            {
+                log?.LogWarning(ex, "[Diag] 日志打包失败 (已跳过)");
+            }
         }
         log?.LogInformation("[Diag] 诊断包已导出 {Path}", reportPath);
         return reportPath;
