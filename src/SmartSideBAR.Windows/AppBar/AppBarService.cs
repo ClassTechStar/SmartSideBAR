@@ -112,6 +112,24 @@ public sealed class AppBarService(
     /// 每次 Reposition 都会向屏幕内侧漂移一个带宽 —— 对方案 §5.3 蓝本的勘误。
     /// 垂直范围 = 工作区高度 84% 的悬浮胶囊 (上下各留 8%, 对齐 v1.1 玻璃胶囊设计);
     /// 水平锚定显示器边缘, 沿边裁剪交给 ABM_QUERYPOS。</summary>
+    /// <summary>
+    /// 把一个动作挪出 WndProc 调用栈。默认同步（单测直接调用 Reposition 时行为不变）；
+    /// Avalonia 侧注入 Dispatcher.Post。理由：在窗口过程里同步做
+    /// ABM_REMOVE / ABM_SETPOS / MoveWindow 是与 shell 的重入式交互，偶发原生崩溃
+    /// （无托管异常、无崩溃日志，进程直接消失）。
+    /// </summary>
+    public Action<Action>? Defer { get; set; }
+
+    private bool _inHook;
+
+    private void DeferReposition(int widthPx) => Dispatch(() => Reposition(widthPx));
+
+    private void Dispatch(Action action)
+    {
+        if (Defer is { } post && _inHook) post(action);
+        else action();
+    }
+
     public void Reposition(int widthPx)
     {
         if (!_registered || _hwnd == 0) return;
@@ -181,13 +199,26 @@ public sealed class AppBarService(
     /// <summary>WndProc 状态机 —— K1/K2/K3/K7 的通知闭环。</summary>
     private nint OnWndProc(nint hwnd, uint msg, nuint wParam, nint lParam, ref bool handled)
     {
+        _inHook = true;
+        try
+        {
+            return OnWndProcCore(hwnd, msg, wParam, lParam, ref handled);
+        }
+        finally
+        {
+            _inHook = false;
+        }
+    }
+
+    private nint OnWndProcCore(nint hwnd, uint msg, nuint wParam, nint lParam, ref bool handled)
+    {
         if (msg == AppBarNative.AppBarCallbackMsg)
         {
             handled = true;
             switch (wParam)
             {
                 case AppBarNative.ABN_POSCHANGED: // 任务栏换边/他栏变化/WorkArea 变
-                    Reposition(CurrentWidthPx);
+                    DeferReposition(CurrentWidthPx);
                     break;
 
                 case AppBarNative.ABN_FULLSCREENAPP: // 授课视频等全屏应用开/关 (K3)
@@ -197,11 +228,11 @@ public sealed class AppBarService(
                     if (_fullscreen) log?.LogInformation("[AppBar] 判定全屏: 前台窗口 {Class}", DescribeForeground());
                     bus.Publish(new FullscreenAppChanged(_fullscreen));
                     // 策略: 全屏在场保持注册 (教师仍可唤出) 但先收起为 rail; 关闭后按用户偏好恢复 (V5)
-                    Reposition(_fullscreen ? _railPx : CurrentWidthPx);
+                    DeferReposition(_fullscreen ? _railPx : CurrentWidthPx);
                     break;
 
                 case AppBarNative.ABN_STATECHANGE: // 任务栏「自动隐藏/总在顶部」切换
-                    Reposition(CurrentWidthPx);
+                    DeferReposition(CurrentWidthPx);
                     break;
 
                 case AppBarNative.ABN_WINDOWARRANGE: // 层叠/平铺: TRUE=即将排列 FALSE=完成
@@ -218,7 +249,7 @@ public sealed class AppBarService(
         }
         else if (msg is AppBarNative.WM_DISPLAYCHANGE or AppBarNative.WM_DPICHANGED)
         {
-            Reposition(CurrentWidthPx); // K7: 分辨率/DPI 变化重协商 (ABN_POSCHANGED 通常已带一次, 幂等)
+            DeferReposition(CurrentWidthPx); // K7: 分辨率/DPI 变化重协商 (ABN_POSCHANGED 通常已带一次, 幂等)
         }
         return 0; // handled=false → 其余消息交还原窗口过程
     }

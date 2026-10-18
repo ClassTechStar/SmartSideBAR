@@ -10,6 +10,7 @@ using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
+using SmartSideBAR.Windows.Audio;
 using SmartSideBAR.Windows.Capture;
 using SmartSideBAR.Windows.Devices;
 using SmartSideBAR.Windows.Input;
@@ -30,6 +31,7 @@ public sealed class WindowManager(
     ICaptureApi capture,
     ILongshotService longshot,
     IRecorderApi recorder,
+    ISoundService sound,
     IDiagnosticsService diagnostics,
     SchedulerService scheduler,
     IEventBus bus,
@@ -56,7 +58,11 @@ public sealed class WindowManager(
         _side = side;
 
         // 面板体系需要设备/调度等服务（v1.2 各 Panel 经 IPC 取数，此处同进程直调）
-        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, Dispatch);
+        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, recorder, sound, Dispatch);
+        // 把 AppBar 的窗口几何操作挪出 WndProc 调用栈（重入 shell 调用是本项目原生崩溃的来源之一）
+        appBar.Defer = action =>
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(action, global::Avalonia.Threading.DispatcherPriority.Background);
+
         var win = new SidebarWindow(side, services);
         _sidebar = win;
         win.Opened += (_, _) =>

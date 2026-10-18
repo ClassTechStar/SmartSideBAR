@@ -9,7 +9,7 @@
         CanResize="False"
         ShowActivated="False"
         Background="Transparent"
-        TransparencyLevelHint="AcrylicBlur"
+        TransparencyLevelHint="Transparent"
         Width="72" Height="800">
 
   <Window.Resources>
@@ -65,6 +65,8 @@
             Width="72" HorizontalAlignment="Right" VerticalAlignment="Stretch">
       <Grid>
         <Rectangle x:Name="RailGlowRect"/>
+        <!-- 液态玻璃高光层: 镜面高光跟随光标 + R/G/B 色散内描边 -->
+        <Canvas x:Name="RailSheen" IsHitTestVisible="False"/>
         <!-- 边光环 -->
         <Border x:Name="RailRim" BorderThickness="1.5" CornerRadius="28">
           <DockPanel Margin="0,12,0,8">
@@ -111,7 +113,10 @@
     <!-- ====== 展开面板 ====== -->
     <Border x:Name="PanelHost" IsVisible="{Binding PanelOpen}" HorizontalAlignment="Left" Width="380"
             CornerRadius="28" BoxShadow="0 12 40 #40000000">
-      <DockPanel>
+      <Grid>
+        <!-- 高光层置于内容之下，避免白色叠加冲淡文字 -->
+        <Canvas x:Name="PanelSheen" IsHitTestVisible="False"/>
+        <DockPanel>
         <Border x:Name="PanelHeader" DockPanel.Dock="Top" Height="52" Padding="16,0"
                 BorderThickness="0,0,0,1">
           <Grid ColumnDefinitions="*,Auto">
@@ -126,7 +131,8 @@
         <ScrollViewer x:Name="PanelScroll" Padding="16,12" HorizontalScrollBarVisibility="Disabled">
           <ContentControl x:Name="PanelBody" HorizontalContentAlignment="Stretch"/>
         </ScrollViewer>
-      </DockPanel>
+        </DockPanel>
+      </Grid>
     </Border>
   </Panel>
 </Window>

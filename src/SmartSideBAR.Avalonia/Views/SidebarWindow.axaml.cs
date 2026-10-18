@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -19,6 +20,8 @@ public partial class SidebarWindow : Window
     private readonly Palette _palette;
     private readonly DispatcherTimer _collapseTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private SidebarPanel? _panel;
+    private GlassSheen? _railSheen;
+    private GlassSheen? _panelSheen;
 
     // 供运行时 XAML 加载器可达; 应用路径一律走带 edge 的构造
     public SidebarWindow() : this(AppBarEdge.Right, null!) { }
@@ -42,9 +45,27 @@ public partial class SidebarWindow : Window
 
         ApplyTheme();
 
+        // 液态玻璃高光：镜面光跟随光标（v1.2 --lg-mx/--lg-my）+ 色散边（v1.2 aberration）
+        var appearance = services.Config.Current.Appearance;
+        _railSheen = new GlassSheen(RailSheen, _palette, 28, appearance.Aberration, appearance.Specular);
+        _panelSheen = new GlassSheen(PanelSheen, _palette, 28, appearance.Aberration, appearance.Specular);
+        AddHandler(PointerMovedEvent, OnSheenPointerMoved, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+        AddHandler(PointerExitedEvent, (_, _) =>
+        {
+            _railSheen?.Track(0, 0);
+            _panelSheen?.Track(0, 0);
+        }, RoutingStrategies.Tunnel | RoutingStrategies.Bubble);
+
         _collapseTimer.Tick += (_, _) =>
         {
             _collapseTimer.Stop();
+            // 指针仍在窗口内就不收起 —— 合成/快速移动的指针事件会误触发 PointerExited，
+            // 只靠离开事件判断会把正在操作的面板关掉。
+            if (IsPointerOver)
+            {
+                _collapseTimer.Start();
+                return;
+            }
             // 截图/批注覆盖层在场时不收起（v1.2 __keepSidebarOpen 同语义），稍后重试
             if (OverlayGate.AnyOpen)
             {
@@ -161,7 +182,24 @@ public partial class SidebarWindow : Window
             foreach (var item in vm.RailItems) item.SetIconDark(p.Dark);
         }
 
+        _railSheen?.Apply(p);
+        _panelSheen?.Apply(p);
         _panel?.Refresh();
+    }
+
+    private void OnSheenPointerMoved(object? sender, PointerEventArgs e)
+    {
+        Track(RailCapsule, _railSheen, e);
+        if (Vm.PanelOpen) Track(PanelHost, _panelSheen, e);
+    }
+
+    private static void Track(Control host, GlassSheen? sheen, PointerEventArgs e)
+    {
+        if (sheen is null) return;
+        var bounds = host.Bounds;
+        if (bounds.Width <= 0 || bounds.Height <= 0) return;
+        var local = e.GetPosition(host);
+        sheen.Track(local.X / bounds.Width * 2 - 1, local.Y / bounds.Height * 2 - 1);
     }
 
     private void ShowPanel(PanelKind kind)

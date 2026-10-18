@@ -28,6 +28,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // 平台已就绪，此时才能安全挂 UI 线程的未处理异常取证
+        CrashLog.InstallDispatcher();
+
         if (_sp is not null && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var scheduler = _sp.GetRequiredService<SchedulerService>();
