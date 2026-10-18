@@ -138,6 +138,7 @@ public sealed class AnnotateWindow : Window
     public AnnotateWindow(byte[]? backgroundPng, string dir, string format)
     {
         _backgroundPng = backgroundPng;
+        OverlayGate.Enter();
         _dir = dir;
         _format = format;
 
@@ -223,6 +224,12 @@ public sealed class AnnotateWindow : Window
         {
             if (args.Key == Key.Escape) Close();
         };
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        OverlayGate.Exit();
+        base.OnClosed(e);
     }
 
     protected override void OnOpened(EventArgs e)

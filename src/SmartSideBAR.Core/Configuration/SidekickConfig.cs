@@ -64,6 +64,8 @@ public sealed record DisplayConfig
     public string SidebarMonitor { get; init; } = "primary";
     public SidebarSide SidebarSide { get; init; } = SidebarSide.Right;
     public bool FitWindowsToWorkArea { get; init; } = true;
+    /// <summary>检测到真正全屏的应用时自动把侧栏收成底角方块（教室演示场景默认开启）。</summary>
+    public bool AutoCollapseOnFullscreen { get; init; } = true;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SidebarSide>))]

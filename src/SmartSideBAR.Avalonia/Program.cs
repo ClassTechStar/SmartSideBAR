@@ -25,6 +25,14 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // 单实例：v1.2 用 app.requestSingleInstanceLock()，Avalonia 版此前缺失，
+        // 双击两次图标会起两个进程（两个 AppBar 抢边缘、热键互抢、双托盘图标）。
+        if (!SingleInstance.Acquire())
+        {
+            SingleInstance.Signal();
+            return 0;
+        }
+
         var services = new ServiceCollection();
 
         // Core 层 (100% 可单测)
@@ -74,6 +82,10 @@ internal static class Program
             "SmartSideBAR (Avalonia Wave B) 启动 — config v{Version}, 侧栏 {Side} 侧, 链接 {Links} 条, 提醒 {Reminders} 条",
             config.Current.Version, config.Current.Display.SidebarSide,
             config.Current.Links.Count, config.Current.Reminders.Count);
+
+        // 第二次启动时唤醒已有实例：提示 + 展开侧栏
+        var manager = sp.GetRequiredService<WindowManager>();
+        SingleInstance.Listen(manager.NotifyAlreadyRunning);
 
         return AppBuilder.Configure(() => new App(sp))
             .UsePlatformDetect()

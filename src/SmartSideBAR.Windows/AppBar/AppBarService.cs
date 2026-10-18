@@ -32,7 +32,7 @@ public sealed class AppBarService(
     private bool _fullscreen;      // K3: 全屏应用在场标志
     private bool _userExpanded;    // 用户偏好; 全屏结束后据此恢复 (V5)
     private bool _docked;          // v1.1 dock 语义: 收起为角落小方块
-    private readonly Func<bool?> _fullscreenProbe = fullscreenProbe ?? ProbeForegroundFullscreen;
+    private readonly Func<bool?> _fullscreenProbe = fullscreenProbe ?? new Func<bool?>(ProbeForegroundFullscreen);
 
     public bool IsRegistered => _registered;
     public AppBarRect? GrantedRect { get; private set; }
@@ -194,6 +194,7 @@ public sealed class AppBarService(
                     // K3 勘误: 系统对「最大化窗口」同样上报 TRUE —— 直接采信会让侧栏在普通桌面
                     // 使用中被反复收进角落。此处用前台窗口实际几何复核, 只认真正铺满显示器的窗口。
                     _fullscreen = lParam != 0 && (_fullscreenProbe() ?? true);
+                    if (_fullscreen) log?.LogInformation("[AppBar] 判定全屏: 前台窗口 {Class}", DescribeForeground());
                     bus.Publish(new FullscreenAppChanged(_fullscreen));
                     // 策略: 全屏在场保持注册 (教师仍可唤出) 但先收起为 rail; 关闭后按用户偏好恢复 (V5)
                     Reposition(_fullscreen ? _railPx : CurrentWidthPx);
@@ -247,6 +248,16 @@ public sealed class AppBarService(
         };
     }
 
+    /// <summary>前台窗口类名 —— 排查"误判全屏"时用（无边框工具窗口也会铺满屏幕）。</summary>
+    private static string DescribeForeground()
+    {
+        var fg = AppBarNative.GetForegroundWindow();
+        if (fg == 0) return "?";
+        Span<char> cls = stackalloc char[128];
+        var n = AppBarNative.GetClassName(fg, cls, cls.Length);
+        return n > 0 ? new string(cls[..n]) : "?";
+    }
+
     /// <summary>前台窗口是否真的铺满其所在显示器 (最大化窗口不算)。
     /// 返回 null = 无法判定 (无前台窗口 / 查询失败), 调用方沿用系统上报。</summary>
     private static bool? ProbeForegroundFullscreen()
@@ -254,6 +265,10 @@ public sealed class AppBarService(
         using var scope = new AppBarApi.PhysicalDpiScope();
         var fg = AppBarNative.GetForegroundWindow();
         if (fg == 0) return null;
+        // 自家窗口（截图/批注覆盖层本身也是全屏）不得判定为"全屏应用"，
+        // 否则一开覆盖层就把侧栏收进角落、面板被强制关闭。
+        _ = AppBarNative.GetWindowThreadProcessId(fg, out var fgPid);
+        if (fgPid == (uint)Environment.ProcessId) return false;
         if ((AppBarNative.GetWindowLongPtr(fg, AppBarNative.GWL_STYLE).ToInt64() & AppBarNative.WS_MAXIMIZE) != 0) return false;
         if (!AppBarNative.GetWindowRect(fg, out var wr)) return null;
         var hMon = AppBarNative.MonitorFromWindow(fg, AppBarNative.MONITOR_DEFAULTTONEAR);

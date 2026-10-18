@@ -55,10 +55,9 @@ public sealed class WindowManager(
         var side = cfg.Display.SidebarSide == SidebarSide.Left ? AppBarEdge.Left : AppBarEdge.Right;
         _side = side;
 
-        var win = new SidebarWindow(side)
-        {
-            DataContext = new ViewModels.SidebarViewModel(appBar, ime, shell, links.List(), Dispatch),
-        };
+        // 面板体系需要设备/调度等服务（v1.2 各 Panel 经 IPC 取数，此处同进程直调）
+        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, Dispatch);
+        var win = new SidebarWindow(side, services);
         _sidebar = win;
         win.Opened += (_, _) =>
         {
@@ -143,24 +142,21 @@ public sealed class WindowManager(
         });
 
         // K3: 全屏应用在场自动收缩为 dock 方块; 退出后自动恢复 (v1.1 同语义)
-        bus.Subscribe<FullscreenAppChanged>(e =>
+        // 全屏自适应：先延迟 1.2 s 再确认。系统通知在窗口切换/动画期会抖动，
+        // 立即采信会让侧栏莫名其妙收缩（命令行、无边框工具窗口铺满屏幕时尤其明显）。
+        bus.Subscribe<FullscreenAppChanged>(_ =>
         {
-            if (e.Active)
+            if (!config.Current.Display.AutoCollapseOnFullscreen) return;
+            global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>
             {
-                if (!_docked)
-                {
-                    log.LogInformation("[Window] 检测到全屏应用 → 自动收缩侧栏");
-                    SetDocked(true);
-                }
-            }
-            else
-            {
-                if (_docked)
-                {
-                    log.LogInformation("[Window] 全屏应用退出 → 自动展开侧栏");
-                    SetDocked(false);
-                }
-            }
+                if (!config.Current.Display.AutoCollapseOnFullscreen) return;
+                var active = appBar.FullscreenActive;
+                if (active == _docked) return;
+                log.LogInformation(active
+                    ? "[Window] 确认全屏应用在场 → 自动收缩侧栏"
+                    : "[Window] 全屏应用已退出 → 自动展开侧栏");
+                SetDocked(active);
+            }, TimeSpan.FromMilliseconds(1200));
         });
 
         log.LogInformation("[Window] 侧栏窗口已创建 ({Side} 侧, rail={Rail} DIP, 胶囊高度=工作区 84%)", side, RailWidthDip);
@@ -414,11 +410,23 @@ public sealed class WindowManager(
         }
     }
 
+    /// <summary>第二次启动被唤醒时的反馈（单实例守卫回调，已在 UI 线程）。</summary>
+    public void NotifyAlreadyRunning()
+    {
+        ToastService.Instance.Show("SmartSideBAR 已在运行", "info");
+        if (_docked) SetDocked(false);
+        _sidebar?.Show();
+    }
+
     public void OpenSettings()
     {
         if (_settings is { IsVisible: true }) return;
         _settings = new SettingsWindow(config, shell, hotkeys, diagnostics);
-        _settings.Closed += (_, _) => RegisterConfiguredHotkeys(); // 热键改动即时生效
+        _settings.Closed += (_, _) =>
+        {
+            RegisterConfiguredHotkeys();   // 热键改动即时生效
+            _sidebar?.ApplyTheme();        // 主题/强调色改动即时生效
+        };
         _settings.Show();
     }
 

@@ -119,6 +119,12 @@ internal static partial class AppBarNative
     internal static partial bool GetWindowRect(nint hWnd, out RECT lpRect);
 
     /// <summary>注意: user32 没有名为 GetWindowLong 的导出 (那是宏), x64 下必须用 GetWindowLongPtrW。</summary>
+    [LibraryImport("user32.dll")]
+    internal static partial uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetClassNameW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int GetClassName(nint hWnd, Span<char> lpClassName, int nMaxCount);
+
     [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     internal static partial nint GetWindowLongPtr(nint hWnd, int nIndex);
 
