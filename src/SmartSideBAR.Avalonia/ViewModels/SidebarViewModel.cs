@@ -18,6 +18,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     private string _imeState = "中";
     private RailItem? _imeItem;
     private PanelKind _pendingPanel = PanelKind.None;
+    private int _panelEpoch;
 
     public SidebarViewModel(SidebarServices services, IReadOnlyList<LinkItem> links)
     {
@@ -137,6 +138,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
 
     public void OpenPanel(PanelKind kind, RailItem? source)
     {
+        _panelEpoch++;   // 作废所有在途的关闭回调
         if (source is not null) _activeRail = source;
         if (_isDocked)
         {
@@ -152,8 +154,18 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     public void ClosePanel()
     {
         if (_activePanel == PanelKind.None) return;
-        ActivePanel = PanelKind.None;
+
+        // 顺序很关键：先缩窗口（面板内容仍在，只是被裁剪），再卸载内容树。
+        // 反过来做（先 Content=null 再缩窗口）会在"销毁内容 + 改 Win32 尺寸"的同一帧里
+        // 与 shell/DWM 的布局回调打交叉，偶发原生崩溃（无托管异常、无 crash.log）。
+        var epoch = ++_panelEpoch;
         _services.AppBar.SetExpanded(false);
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            // 期间用户又点了别的面板 → 本次关闭作废（否则会把新面板顶掉，
+            // 并留下"窗口在展开位置却只有 rail 宽"的错位状态）
+            if (epoch == _panelEpoch) ActivePanel = PanelKind.None;
+        }, global::Avalonia.Threading.DispatcherPriority.Background);
     }
 
     public void ToggleIme()
@@ -197,10 +209,12 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         }
         if (On("capture"))
         {
-            items.Add(NewItem("capture", PanelKind.Capture, "截图与批注", item => OpenPanel(PanelKind.Capture, item), "capture"));
-            items.Add(NewItem("annotate", PanelKind.Capture, "批注", item => OpenPanel(PanelKind.Capture, item), "annotate"));
-            items.Add(NewItem("longshot", PanelKind.Capture, "长截图", item => OpenPanel(PanelKind.Capture, item), "longshot"));
-            items.Add(NewItem("record", PanelKind.Capture, "录屏", item => OpenPanel(PanelKind.Capture, item), "record"));
+            // 与 v1.2 一致：rail 图标只负责打开"截图与批注"面板，具体动作在面板磁贴里执行。
+            // （此前图标同时触发动作，会立刻盖一层全屏覆盖层，把刚打开的面板压在下面。）
+            items.Add(NewItem("capture", PanelKind.Capture, "截图与批注"));
+            items.Add(NewItem("annotate", PanelKind.Capture, "批注"));
+            items.Add(NewItem("longshot", PanelKind.Capture, "长截图"));
+            items.Add(NewItem("record", PanelKind.Capture, "录屏"));
         }
         if (On("usb")) items.Add(NewItem("usb", PanelKind.Usb, "USB 监控"));
         if (On("printer")) items.Add(NewItem("printer", PanelKind.Printer, "打印机"));

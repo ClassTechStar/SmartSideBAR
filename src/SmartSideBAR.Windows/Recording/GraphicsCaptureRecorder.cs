@@ -27,11 +27,15 @@ public interface IRecorderApi
     Task StartAsync(RecorderOptions opt, CancellationToken ct = default);
     Task<string?> StopAsync();
     bool IsRecording { get; }
+
+    /// <summary>本次录屏的开始时刻 (本地时间); 未录制时为 null。面板据此显示计时。</summary>
+    DateTimeOffset? StartedAt { get; }
 }
 
 public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptureRecorder>? log = null)
     : IRecorderApi, IDisposable
 {
+    private DateTimeOffset? _startedAt;
     private readonly SemaphoreSlim _frameAvailable = new(0);
     private readonly object _gate = new();
     private WinCapture.Direct3D11CaptureFramePool? _framePool;
@@ -43,6 +47,8 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
     private volatile bool _recording;
     private volatile bool _stopRequested;
     private int _fps = 15;
+
+    public DateTimeOffset? StartedAt => _startedAt;
 
     public bool IsRecording => _recording;
 
@@ -103,6 +109,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _pending = null;
         _stopRequested = false;
         _recording = true;
+        _startedAt = DateTimeOffset.Now;
         _session = _framePool.CreateCaptureSession(item);
         _session.IsCursorCaptureEnabled = true;
         _framePool.FrameArrived += OnFrameArrived;
@@ -164,6 +171,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         {
             args.Request.Sample = null; // 收尾信号 → TranscodeAsync 完成
             _recording = false;
+            _startedAt = null;
             return;
         }
         try
@@ -177,6 +185,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
                 {
                     args.Request.Sample = null;
                     _recording = false;
+                    _startedAt = null;
                     return;
                 }
                 var sample = WinMediaCore.MediaStreamSample.CreateFromDirect3D11Surface(
@@ -191,6 +200,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
             log?.LogWarning(ex, "[Recorder] 取帧失败, 提前收尾");
             args.Request.Sample = null;
             _recording = false;
+            _startedAt = null;
         }
     }
 

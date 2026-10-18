@@ -5,7 +5,9 @@ using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Devices;
+using SmartSideBAR.Windows.Audio;
 using SmartSideBAR.Windows.Input;
+using SmartSideBAR.Windows.Recording;
 using SmartSideBAR.Windows.Shell;
 
 namespace SmartSideBAR.Avalonia.ViewModels;
@@ -18,4 +20,6 @@ public sealed record SidebarServices(
     IUsbWatcher Usb,
     IPrinterMonitor Printer,
     SchedulerService Scheduler,
+    IRecorderApi Recorder,
+    ISoundService Sound,
     Action<string> Dispatch);

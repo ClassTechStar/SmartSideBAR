@@ -33,6 +33,9 @@ internal static class Program
             return 0;
         }
 
+        // 静默退出取证：任何一层未处理异常都落盘到 logs/crash.log
+        CrashLog.InstallProcessWide();
+
         var services = new ServiceCollection();
 
         // Core 层 (100% 可单测)
