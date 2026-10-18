@@ -7,5 +7,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/SmartSideBAR.Core.Tests/SmartSideBAR.Core.Tests.csproj" />
     <Project Path="tests/SmartSideBAR.Windows.Tests/SmartSideBAR.Windows.Tests.csproj" />
+    <Project Path="tests/SmartSideBAR.Avalonia.Tests/SmartSideBAR.Avalonia.Tests.csproj" />
   </Folder>
 </Solution>

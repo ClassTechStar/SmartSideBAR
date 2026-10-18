@@ -42,6 +42,11 @@ public sealed record CaptureConfig
 
 public sealed record RecorderConfig
 {
+    /// <summary>
+    /// 录屏总开关。部分机型（如骁龙 ARM 上跑 x64 仿真）的 MediaFoundation 管道会
+    /// 在转码准备阶段把进程直接带崩（无托管异常），这类机器上关掉即可自保。
+    /// </summary>
+    public bool Enabled { get; init; } = true;
     public int Fps { get; init; } = 15;
     public string Bitrate { get; init; } = "2M";
     public bool Mic { get; init; }

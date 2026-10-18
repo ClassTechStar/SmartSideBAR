@@ -16,4 +16,12 @@ namespace SmartSideBAR.Core.Configuration;
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(long))]
 [JsonSerializable(typeof(bool))]
+[JsonSerializable(typeof(int))]
+[JsonSerializable(typeof(double))]
+// 数组/集合：ConfigService.Set<T> 序列化的是调用方的 T，未登记的集合类型会抛
+// NotSupportedException（写 policy.disabledModules / links 时必踩）。
+[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(List<string>))]
+[JsonSerializable(typeof(LinkItem[]))]
+[JsonSerializable(typeof(Reminder[]))]
 public sealed partial class ConfigJsonContext : JsonSerializerContext;

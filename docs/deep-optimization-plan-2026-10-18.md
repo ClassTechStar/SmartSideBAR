@@ -309,12 +309,13 @@ public interface ICrashReporter {
 | P0-2 视觉规格基线 | ✅ 已建立（部分） | `design-tokens.json`（仓库根）→ `Core/Design/DesignTokens.cs` 嵌入发布 → `Theme.cs`/窗口几何消费；`DesignTokensTests`（8 例）把 v1.2 基线钉死。**截图像素回归未做**（需固定虚拟屏 runner，下一阶段） |
 | P0-3 冻结门禁 | ✅ 已上线 | `ci.yml` 新增 `electron-freeze-guard`：PR 触碰 `src/main\|renderer\|shared` 且无 `fix(security)` 标签即红 |
 | P0-3 归档条件 | ⏳ 未达成 | 依赖 testing-matrix 回填与连续 3 版无 Electron 需求 |
-| P1-1 VM 测试 | ⏳ 部分 | 面板状态机已随 P2-1 拆分可测；Avalonia.Headless VM 测试未建 |
+| P1-1 VM 测试 | ✅ 已建（首个） | 新增 `tests/SmartSideBAR.Avalonia.Tests`（9 例，Avalonia.Headless + 测试替身）：rail 构成/策略过滤/面板切换/单条高亮/IME 角标/关面板/链接过滤/属性通知。**顺手抓到两个真 bug**：① `ConfigService.Set<T>` 写数组/集合抛 NotSupportedException（源生成上下文未登记 string[]/List<string>/LinkItem[]/Reminder[]，已补）；② 关面板是"先缩窗口再延后卸载"，无 dispatcher 泵时状态不收敛（测试需 `Dispatcher.RunJobs()`，已固化在用例里）。集成 UIAutomation 冒烟仍未做 |
 | P1-2 版本单源 | ✅ 已生效（方案证据过期） | `VERSION` / `Directory.Build.props <Version>` / `package.json` 均为 1.3.0，`scripts/sync-version.mjs` 在 release 阶段同步 |
 | P1-3 依赖健康 | ⏳ 未动 | Electron 冻结栈不投修复，随归档消亡 |
 | P2-1 巨型文件拆分 | ✅ 已完成 | `SidebarPanels.cs` 697 行 → `SidebarPanel.cs` + `CapturePanel/UsbPanel/PrinterPanel/ReminderPanel/LinksPanel/TaskMgrPanel/SettingsPanel`（各 26–253 行）；`PanelKit`/`PanelHost` 语义保留；主线已无 >600 行文件（次大 499） |
 | P2-2 日志轮转 | ✅ 已实现 | `Core/Diagnostics/LogRotation`（纯逻辑+6 例单测）：保留 14 天 + 单文件 10MB 滚动，`FileLoggerProvider` 启动/跨天时清理 |
 | P2-3 崩溃可观测 | ✅ 已实现（本地） | `CrashLog` 三路未处理异常 → 文本日志 + `crash-{ts}-{source}.json`（version/dpi/panel/os/safeMode）；`CrashContext` 5 例单测。匿名上报接口未做（默认关闭，按方案） |
+| 录屏 0 字节（非方案条目，用户优先项） | ⚠️ 已定位未修复 | 证据链：采集侧正常（"首帧到达"）。但 `StartAsync` 从不返回——"开始"日志在所有运行中均缺失、无异常、进程随后消失，崩点在 WinRT `PrepareMediaStreamSourceTranscodeAsync`（骁龙 ARM 上跑 x64 仿真）。已修：完成信号早于输出流 flush（0 字节的直接成因之一）、流描述符 Rgb32↔BGRA 不匹配、GPU 硬编码关闭、转码准备 10s 超时兜底、`recorder.enabled` 开关。**根因仍需 native dump** |
 | P2-2 性能（懒加载/内存） | ⏳ 未动 | 面板已是首次激活时构建（懒加载达成）；内存/冷启动预算待 D3 每周基准采样 |
 | P3-2 文档对账 | ✅ 本节 | 后续每个 P0/P1 提交回填本表 |
 
