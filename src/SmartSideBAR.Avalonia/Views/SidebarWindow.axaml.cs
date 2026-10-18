@@ -157,11 +157,6 @@ public partial class SidebarWindow : Window
         PanelTitleText.Foreground = p.AccentBrush;
         PanelCloseGlyph.Foreground = p.AccentBrush;
 
-        if (DockBtn.Content is global::Avalonia.Controls.Shapes.Path arrow)
-        {
-            arrow.Stroke = new SolidColorBrush(p.Dark ? Color.Parse("#E8EDF5") : Color.Parse("#333333"));
-        }
-
         Resources["RailHover"] = new SolidColorBrush(p.Dark
             ? Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF)
             : Color.FromArgb(0x14, 0x0F, 0x17, 0x2A));
@@ -169,17 +164,15 @@ public partial class SidebarWindow : Window
             ? Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF)
             : Color.FromArgb(0x21, 0x0F, 0x17, 0x2A));
         Resources["RailActive"] = new SolidColorBrush(p.AccentSoft);
-        Resources["BadgeBg"] = new SolidColorBrush(p.Dark
-            ? Color.FromArgb(0xD1, 0x2A, 0x30, 0x3C)
-            : Color.FromArgb(0xD1, 0xFF, 0xFF, 0xFF));
-        Resources["BadgeFg"] = new SolidColorBrush(p.Dark
-            ? Color.Parse("#E8EDF5")
-            : Color.Parse("#2A2F38"));
+        // v1.2 .rail-badge: 品牌色底 + 白字（白底深字在玻璃胶囊上几乎看不见）
+        Resources["BadgeBg"] = new SolidColorBrush(p.Accent);
+        Resources["BadgeFg"] = new SolidColorBrush(Colors.White);
 
         // 深色主题下 rail 图标需要白色变体
         if (DataContext is SidebarViewModel vm)
         {
             foreach (var item in vm.RailItems) item.SetIconDark(p.Dark);
+            vm.SetDockIconDark(p.Dark);
         }
 
         _railSheen?.Apply(p);
