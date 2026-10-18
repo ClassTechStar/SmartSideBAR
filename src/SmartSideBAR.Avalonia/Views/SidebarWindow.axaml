@@ -72,10 +72,9 @@
           <DockPanel Margin="0,12,0,8">
             <!-- dock 切换 -->
             <Button x:Name="DockBtn" Classes="railBtn" DockPanel.Dock="Bottom"
+                    HorizontalAlignment="Center" Margin="0,0,0,6"
                     Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}">
-              <Path Data="{Binding DockArrowPath}"
-                    Stroke="#333333" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
-                    Width="24" Height="24" Stretch="Uniform"/>
+              <Image Width="22" Height="22" Source="{Binding DockIcon}"/>
             </Button>
 
             <ScrollViewer Padding="0,2" HorizontalScrollBarVisibility="Disabled">
@@ -90,10 +89,14 @@
                     <Button Classes="railBtn" Classes.active="{Binding IsActive}"
                             Command="{Binding Command}" ToolTip.Tip="{Binding Title}">
                       <Panel>
-                        <Image Width="28" Height="28" Source="{Binding Icon}"/>
+                        <Image Width="28" Height="28" Source="{Binding Icon}">
+                          <Image.Effect>
+                            <DropShadowEffect OffsetX="0" OffsetY="1" BlurRadius="2" Opacity="0.18" Color="Black"/>
+                          </Image.Effect>
+                        </Image>
                         <Border IsVisible="{Binding HasBadge}"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                CornerRadius="8" Width="17" Height="17" Padding="0"
+                                Margin="0,0,2,2" CornerRadius="6" Padding="4,1"
                                 Background="{DynamicResource BadgeBg}">
                           <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="SemiBold"
                                      Foreground="{DynamicResource BadgeFg}"

@@ -118,15 +118,27 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
                 }
             }
             Raise(nameof(DockTooltip));
-            Raise(nameof(DockArrowPath));
+            Raise(nameof(DockIcon));
         }
     }
 
     public string DockTooltip => IsDocked ? "展开侧边栏" : "收起侧边栏";
 
-    public string DockArrowPath => IsDocked
-        ? "M 12 19 L 12 5 M 6 11 L 12 5 L 18 11"
-        : "M 12 5 L 12 19 M 6 13 L 12 19 L 18 13";
+    /// <summary>
+    /// 停靠箭头用图标而不是 Path 字符串：此前 <c>Path Data</c> 配 Stretch=Uniform 会把
+    /// 12×14 的几何拉伸到 24×24，箭头既被拉扁又偏离圆心（用户截图里的"箭头位置有点偏"）。
+    /// </summary>
+    public global::Avalonia.Media.IImage? DockIcon => Ui.SvgIcons.Load(IsDocked ? "dock-up" : "dock-down", _dockIconWhite);
+
+    private bool _dockIconWhite;
+
+    /// <summary>深色主题下换成白色描边图标。</summary>
+    public void SetDockIconDark(bool dark)
+    {
+        if (_dockIconWhite == dark) return;
+        _dockIconWhite = dark;
+        Raise(nameof(DockIcon));
+    }
 
     public ICommand ToggleImeCommand { get; }
     public ICommand ClosePanelCommand { get; }
