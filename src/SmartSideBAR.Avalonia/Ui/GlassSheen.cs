@@ -37,6 +37,8 @@ internal sealed class GlassSheen
         foreach (var rim in _rims) layer.Children.Add(rim);
 
         Apply(palette);
+        layer.SizeChanged += (_, _) => SyncSize();
+        SyncSize();
         Track(0.32, 0.08); // 初始光源在左上，与 v1.2 的 18% 0% 一致
     }
 
@@ -56,7 +58,7 @@ internal sealed class GlassSheen
         // 白色高光在近白胶囊上几乎不可见（实测上下半区亮度差 <1.5），
         // 改用品牌色低透明度光斑：既保留"光随指针走"的观感，又能在白底上看得出来。
         var accent = palette.Accent;
-        var core = (byte)(palette.Dark ? 0x30 : 0x38);
+        var core = (byte)(palette.Dark ? 0x1E : 0x1A);
         var mid = (byte)(core * 0.45);
         var edge = palette.Dark
             ? Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF)
@@ -64,9 +66,9 @@ internal sealed class GlassSheen
 
         _spot.Fill = new RadialGradientBrush
         {
-            Center = new RelativePoint(0.32, 0.08, RelativeUnit.Relative),
-            RadiusX = new RelativeScalar(0.62, RelativeUnit.Relative),
-            RadiusY = new RelativeScalar(0.78, RelativeUnit.Relative),
+            Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(0.5, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.6, RelativeUnit.Relative),
             GradientStops =
             {
                 new GradientStop(Color.FromArgb(core, accent.R, accent.G, accent.B), 0),
@@ -77,17 +79,38 @@ internal sealed class GlassSheen
         };
     }
 
+    /// <summary>Canvas 只按子元素 DesiredSize 摆放、不拉伸，必须显式给尺寸，
+    /// 否则光斑与描边都是 0×0，画面上等于不存在（本实现初版即此问题）。</summary>
+    private void SyncSize()
+    {
+        var w = _layer.Bounds.Width;
+        var h = _layer.Bounds.Height;
+        if (w <= 0 || h <= 0) return;
+        _spot.Width = w;
+        _spot.Height = h;
+        foreach (var rim in _rims)
+        {
+            rim.Width = w;
+            rim.Height = h;
+            Canvas.SetLeft(rim, 0);
+            Canvas.SetTop(rim, 0);
+        }
+    }
+
     /// <summary>光标在控件内的归一化位置 (-1~1)，驱动高光中心与色散边错位。</summary>
     public void Track(double nx, double ny)
     {
         nx = Math.Clamp(nx, -1, 1);
         ny = Math.Clamp(ny, -1, 1);
 
-        if (_spot.Fill is RadialGradientBrush brush)
-        {
-            // 中心在 0.1~0.9 之间游走，留出边缘余量
-            brush.Center = new RelativePoint(0.5 + nx * 0.4, 0.5 + ny * 0.4, RelativeUnit.Relative);
-        }
+        SyncSize();
+        var w = _layer.Bounds.Width;
+        var h = _layer.Bounds.Height;
+        if (w <= 0 || h <= 0) return;
+
+        // 光斑固定在中心绘制，用平移把它带走 —— 直接改 RadialGradientBrush.Center
+        // 不会让已渲染的笔刷失效（实测画面完全不动），必须改几何变换。
+        _spot.RenderTransform = new TranslateTransform(nx * w * 0.26, ny * h * 0.30);
 
         var shift = _aberration * 0.6;
         var offsets = new[]
