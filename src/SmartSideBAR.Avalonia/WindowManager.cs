@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SmartSideBAR.Avalonia.Ui;
 using SmartSideBAR.Avalonia.Views;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Diagnostics;
 using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;
@@ -76,12 +77,20 @@ public sealed class WindowManager(
             }
             var hwnd = handle.Handle;
             var scale = Windows.Native.Win32Display.GetScaling(hwnd);
+            CrashLog.LastContext = new CrashContext(
+                AppVersion, SafeMode.NormalizeDpi(scale), "none", SafeMode.OsBuildString());
             var railPx = (int)Math.Round(RailWidthDip * scale);
             var expandedPx = (int)Math.Round((RailWidthDip + PanelWidthDip) * scale);
             _attachInfo = (hwnd, railPx, expandedPx);
 
             // §5.4: AppBar 注册失败回退 alwaysOnTop (v1.2.0 同策略)
-            if (appBar.Attach(hwnd, side, railPx, expandedPx))
+            var safeMode = SafeMode.FromEnvironment();
+            if (safeMode)
+            {
+                log.LogWarning("[Window] 安全模式：跳过 AppBar 注册与悬浮球，仅保留侧栏本体");
+                win.Topmost = true;
+            }
+            else if (appBar.Attach(hwnd, side, railPx, expandedPx))
             {
                 win.Topmost = false;
             }
@@ -102,7 +111,7 @@ public sealed class WindowManager(
             {
                 ShowOobe();
             }
-            else
+            else if (!safeMode)
             {
                 ShowFloatBall();
             }
@@ -322,6 +331,15 @@ public sealed class WindowManager(
         // B5: 传递麦克风配置 (config.recorder.mic 已有配置, 此前未消费)
         await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
     }
+
+    /// <summary>崩溃上下文里的版本号（与 Directory.Build.props &lt;Version&gt; 同源）。</summary>
+    private static string AppVersion =>
+        typeof(WindowManager).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion
+        ?? typeof(WindowManager).Assembly.GetName().Version?.ToString()
+        ?? "unknown";
 
     public void ShowFloatBall()
     {

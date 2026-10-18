@@ -74,7 +74,8 @@
             <Button x:Name="DockBtn" Classes="railBtn" DockPanel.Dock="Bottom"
                     HorizontalAlignment="Center" Margin="0,0,0,6"
                     Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}">
-              <Image Width="30" Height="30" Source="{Binding DockIcon}"/>
+              <!-- 尺寸由 DesignTokens.Dock.ArrowSizePx 在构造时写入（单一真源） -->
+              <Image x:Name="DockArrowIcon" Width="30" Height="30" Source="{Binding DockIcon}"/>
             </Button>
 
             <ScrollViewer Padding="0,2" HorizontalScrollBarVisibility="Disabled">
