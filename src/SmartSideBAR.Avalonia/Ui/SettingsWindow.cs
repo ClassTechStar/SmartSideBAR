@@ -16,8 +16,23 @@ public sealed class SettingsWindow : Window
     private readonly IShellService _shell;
     private readonly IDiagnosticsService _diag;
 
+    private readonly ComboBox _theme = new()
+    {
+        ItemsSource = new[] { "浅色（默认）", "深色" },
+        SelectedIndex = 0,
+        MinWidth = 140,
+    };
+    private readonly ComboBox _accent = new()
+    {
+        ItemsSource = new[] { "品牌蓝 #2B6EE0", "青 #12A594", "紫 #7C5CFF", "橙 #D98324", "石墨 #4A5568" },
+        SelectedIndex = 0,
+        MinWidth = 180,
+    };
+    private static readonly string[] AccentHex = ["#2B6EE0", "#12A594", "#7C5CFF", "#D98324", "#4A5568"];
+
     private readonly ComboBox _side = new() { ItemsSource = new[] { "left", "right" }, SelectedIndex = 1 };
     private readonly CheckBox _autoLaunch = new() { Content = "开机自启动" };
+    private readonly CheckBox _autoCollapse = new() { Content = "全屏应用时自动收起侧栏" };
     private readonly ComboBox _format = new() { ItemsSource = new[] { "PNG", "JPG" }, SelectedIndex = 0 };
     private readonly TextBox _captureDir = new() { Watermark = "{Pictures}/Sidekick" };
     private readonly TextBox _recorderDir = new() { Watermark = "{Videos}/Sidekick" };
@@ -47,6 +62,11 @@ public sealed class SettingsWindow : Window
 
     private void LoadFrom(SidekickConfig c)
     {
+        _theme.SelectedIndex = string.Equals(c.Appearance.Theme, "dark", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        var accentIdx = Array.FindIndex(AccentHex,
+            h => string.Equals(h, c.Appearance.Accent, StringComparison.OrdinalIgnoreCase));
+        _accent.SelectedIndex = accentIdx < 0 ? 0 : accentIdx;
+        _autoCollapse.IsChecked = c.Display.AutoCollapseOnFullscreen;
         _side.SelectedIndex = c.Display.SidebarSide == SidebarSide.Left ? 0 : 1;
         _autoLaunch.IsChecked = _shell.GetAutoLaunch();
         _format.SelectedIndex = c.Capture.Format.Equals("jpg", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
@@ -112,8 +132,12 @@ public sealed class SettingsWindow : Window
             Content = new StackPanel { Spacing = 6 },
         };
         var root = (StackPanel)scroll.Content!;
-        root.Children.Add(new TextBlock { Text = "常规", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 8, 0, 4) });
+        root.Children.Add(new TextBlock { Text = "外观", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 8, 0, 4) });
+        root.Children.Add(RowOf("主题", _theme));
+        root.Children.Add(RowOf("强调色", _accent));
+        root.Children.Add(new TextBlock { Text = "常规", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
         root.Children.Add(RowOf("侧栏位置", _side));
+        root.Children.Add(RowOf("", _autoCollapse));
         root.Children.Add(RowOf("", _autoLaunch));
         root.Children.Add(new TextBlock { Text = "截图", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
         root.Children.Add(RowOf("格式", _format));
@@ -145,6 +169,10 @@ public sealed class SettingsWindow : Window
     private void Save()
     {
         var c = _config.Current;
+        _ = _config.Set("appearance.theme", _theme.SelectedIndex == 1 ? "dark" : "light");
+        _ = _config.Set("appearance.accent",
+            AccentHex[Math.Clamp(_accent.SelectedIndex, 0, AccentHex.Length - 1)]);
+        _ = _config.Set("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
         _ = _config.Set("display.sidebarSide", _side.SelectedIndex == 0 ? "left" : "right");
         _ = _config.Set("capture.format", (string?)_format.SelectedItem ?? "PNG");
         _ = _config.Set("capture.dir", string.IsNullOrWhiteSpace(_captureDir.Text) ? c.Capture.Dir : _captureDir.Text.Trim());

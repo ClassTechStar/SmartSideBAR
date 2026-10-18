@@ -24,6 +24,7 @@ public sealed class OverlayWindow : Window
     public OverlayWindow(ICaptureApi capture, string dir, string format)
     {
         _capture = capture;
+        OverlayGate.Enter();
         _dir = dir;
         _format = format;
 
@@ -96,6 +97,12 @@ public sealed class OverlayWindow : Window
         {
             return null;
         }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        OverlayGate.Exit();
+        base.OnClosed(e);
     }
 
     protected override void OnOpened(EventArgs e)
