@@ -33,6 +33,7 @@ public sealed class SettingsWindow : Window
     private readonly ComboBox _side = new() { ItemsSource = new[] { "left", "right" }, SelectedIndex = 1 };
     private readonly CheckBox _autoLaunch = new() { Content = "开机自启动" };
     private readonly CheckBox _autoCollapse = new() { Content = "全屏应用时自动收起侧栏" };
+    private readonly CheckBox _recEnabled = new() { Content = "启用录屏（个别机型媒体管道会崩溃，可关闭）" };
     private readonly ComboBox _format = new() { ItemsSource = new[] { "PNG", "JPG" }, SelectedIndex = 0 };
     private readonly TextBox _captureDir = new() { Watermark = "{Pictures}/Sidekick" };
     private readonly TextBox _recorderDir = new() { Watermark = "{Videos}/Sidekick" };
@@ -76,6 +77,7 @@ public sealed class SettingsWindow : Window
         _mic.IsChecked = c.Recorder.Mic;
         _usbEnabled.IsChecked = c.Usb.Enabled;
         _printerSec.Value = c.Printer.PollIntervalSec;
+        _recEnabled.IsChecked = c.Recorder.Enabled;
         _hkCapture.Text = c.Capture.Hotkey;
         _hkAnnotate.Text = c.Capture.AnnotateHotkey;
         _hkLongshot.Text = c.Capture.LongshotHotkey;
@@ -143,6 +145,7 @@ public sealed class SettingsWindow : Window
         root.Children.Add(RowOf("格式", _format));
         root.Children.Add(RowOf("保存目录", _captureDir));
         root.Children.Add(new TextBlock { Text = "录屏 (MP4)", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
+        root.Children.Add(RowOf("", _recEnabled));
         root.Children.Add(RowOf("帧率", _fps));
         root.Children.Add(RowOf("", _mic));
         root.Children.Add(RowOf("保存目录", _recorderDir));
@@ -178,7 +181,8 @@ public sealed class SettingsWindow : Window
         _ = _config.Set("capture.dir", string.IsNullOrWhiteSpace(_captureDir.Text) ? c.Capture.Dir : _captureDir.Text.Trim());
         _ = _config.Set("recorder.dir", string.IsNullOrWhiteSpace(_recorderDir.Text) ? c.Recorder.Dir : _recorderDir.Text.Trim());
         _ = _config.Set("recorder.fps", (int)(_fps.Value ?? 15));
-        _ = _config.Set("recorder.mic", _mic.IsChecked == true); // B8 根修: 此前漏写, 勾选后重开即丢
+        _ = _config.Set("recorder.mic", _mic.IsChecked == true);
+        _ = _config.Set("recorder.enabled", _recEnabled.IsChecked == true); // B8 根修: 此前漏写, 勾选后重开即丢
         _ = _config.Set("usb.enabled", _usbEnabled.IsChecked == true);
         _ = _config.Set("printer.pollIntervalSec", (int)(_printerSec.Value ?? 10));
         _ = _config.Set("capture.hotkey", _hkCapture.Text?.Trim());

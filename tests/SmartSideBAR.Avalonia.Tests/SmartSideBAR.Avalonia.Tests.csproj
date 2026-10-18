@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 与 Avalonia 主线同 TFM：Headless 跑的是同一套 UI 类型 -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
+    <!-- P1-1：VM 层测试用 Avalonia.Headless，无需真实窗口即可驱动 ViewModel -->
+    <PackageReference Include="Avalonia.Headless" Version="11.3.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartSideBAR.Avalonia\SmartSideBAR.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\SmartSideBAR.Core\SmartSideBAR.Core.csproj" />
+    <ProjectReference Include="..\..\src\SmartSideBAR.Windows\SmartSideBAR.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -313,6 +313,11 @@ public sealed class WindowManager(
 
     private async Task ToggleRecorderAsync()
     {
+        if (!config.Current.Recorder.Enabled)
+        {
+            ToastService.Instance.Show("录屏已在设置中关闭（本机媒体管道不可用）", "warn");
+            return;
+        }
         if (recorder.IsRecording)
         {
             await recorder.StopAsync();
