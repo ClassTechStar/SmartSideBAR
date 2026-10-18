@@ -4,6 +4,8 @@
 using Avalonia.Media;
 using SmartSideBAR.Core.Configuration;
 
+using SmartSideBAR.Core.Design;
+
 namespace SmartSideBAR.Avalonia.Ui;
 
 public sealed record Palette
@@ -36,11 +38,19 @@ public sealed record Palette
 
 public static class AppTheme
 {
-    // 状态色（与 v1.2 面板一致：正常绿 / 警告橙 / 故障红 / 录制红）
-    public static readonly Color Ok = Color.Parse("#2E9E5B");
-    public static readonly Color Warn = Color.Parse("#D98324");
-    public static readonly Color Err = Color.Parse("#D64545");
-    public static readonly Color Rec = Color.Parse("#E74C3C");
+    // 状态色与固定色一律取 design-tokens.json（P0-2：颜色不再散落硬编码）
+    private static ColorTokens Tokens => DesignTokens.Current.Color;
+
+    public static Color Ok => Parse(Tokens.StateOk, "#2E9E5B");
+    public static Color Warn => Parse(Tokens.StateWarn, "#D98324");
+    public static Color Err => Parse(Tokens.StateError, "#D64545");
+    public static Color Rec => Parse(Tokens.StateRecording, "#E74C3C");
+
+    private static Color Parse(string? hex, string fallback)
+    {
+        try { return Color.Parse(hex ?? fallback); }
+        catch { return Color.Parse(fallback); }
+    }
 
     /// <summary>仅显式选择 dark 才走深色；auto/light 一律浅色（保持 v1.2 出厂的白色玻璃观感）。</summary>
     public static bool IsDark(string mode) =>
@@ -60,12 +70,17 @@ public static class AppTheme
         catch { return Color.Parse("#2B6EE0"); }
     }
 
+    /// <summary>v1.2 胶囊规格：圆角 28、纵向留白 8%（上下各一份）。</summary>
+    public static double CapsuleRadius => DesignTokens.Current.Capsule.Radius;
+
+    public static double CapsuleMarginRatio => DesignTokens.Current.Capsule.MarginRatio;
+
     private static Palette Light(Color accent, AppearanceConfig a) => new()
     {
         Dark = false,
-        PanelBg = Color.Parse("#FFFFFF"),
-        Text = Color.Parse("#2B6EE0"),
-        Muted = Color.Parse("#5A6478"),
+        PanelBg = Parse(Tokens.PanelBg, "#FFFFFF"),
+        Text = Parse(Tokens.Text, "#2B6EE0"),
+        Muted = Parse(Tokens.TextMuted, "#5A6478"),
         Divider = Color.FromArgb(0x12, 0, 0, 0),
         Hover = Color.FromArgb(0x0D, 0x10, 0x20, 0x40),
         Accent = accent,
@@ -80,9 +95,9 @@ public static class AppTheme
     private static Palette Dark(Color accent, AppearanceConfig a) => new()
     {
         Dark = true,
-        PanelBg = Color.Parse("#171B22"),
+        PanelBg = Parse(Tokens.BgDark, "#171B22"),
         Text = Lighten(accent, 0.35),
-        Muted = Color.Parse("#9AA4B6"),
+        Muted = Parse(Tokens.TextDark, "#E6EBF3"),
         Divider = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
         Hover = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
         Accent = Lighten(accent, 0.2),

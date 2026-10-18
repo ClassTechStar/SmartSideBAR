@@ -1,0 +1,61 @@
+{
+  "$comment": "SmartSideBAR 视觉规格单一真源（P0-2）。数值取自已发布 v1.2 的打包产物 CSS/内联 SVG，并经真机核对。改这里之前请先问：是规格变了，还是我把代码写错了？",
+  "version": "1.2-derived",
+  "rail": {
+    "widthDip": 72,
+    "itemSizeDip": 52,
+    "iconSizeDip": 28,
+    "radius": 14,
+    "gap": 8,
+    "paddingTop": 12,
+    "paddingBottom": 8
+  },
+  "capsule": {
+    "radius": 28,
+    "marginRatio": 0.08,
+    "blur": 21,
+    "saturate": 2.2
+  },
+  "panel": {
+    "widthDip": 380,
+    "radius": 28,
+    "headerHeight": 52,
+    "paddingX": 16,
+    "paddingY": 12
+  },
+  "dock": {
+    "toggleSizeDip": 52,
+    "arrowSizePx": 30
+  },
+  "floatball": {
+    "sizeDip": 56,
+    "fanItemDip": 46,
+    "fanRadiusMin": 96,
+    "fanRadiusMax": 260
+  },
+  "badge": {
+    "fontSize": 10,
+    "radius": 6,
+    "offsetX": 2,
+    "offsetY": 2,
+    "paddingX": 4,
+    "paddingY": 1
+  },
+  "color": {
+    "brand": "#2B6EE0",
+    "panelBg": "#FFFFFF",
+    "text": "#2B6EE0",
+    "textBody": "#1B2230",
+    "textMuted": "#5A6478",
+    "textDark": "#E6EBF3",
+    "bgDark": "#171B22",
+    "stateOk": "#2E9E5B",
+    "stateWarn": "#D98324",
+    "stateError": "#D64545",
+    "stateRecording": "#E74C3C"
+  },
+  "motion": {
+    "animMs": 220,
+    "animFastMs": 120
+  }
+}

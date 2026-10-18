@@ -47,6 +47,38 @@ jobs:
       - run: npm run lint
       - run: npm test
 
+
+  # P0-3（deep-optimization-plan-2026-10-18）：Electron 冻结硬门禁。
+  # ADR-001 已定 Avalonia 为主线，Electron 栈仅冻结维护；除安全修复外禁止再改动，
+  # 否则双栈漂移会持续制造缺陷（同一逻辑两套实现各修各的）。
+  electron-freeze-guard:
+    name: Electron freeze guard (P0-3)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject non-security Electron changes
+        env:
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+          hits=$(echo "$changed" | grep -E '^(src/main|src/renderer|src/shared)/' || true)
+          if [ -z "$hits" ]; then
+            echo "no Electron paths touched -> OK"
+            exit 0
+          fi
+          echo "Electron paths changed:"
+          echo "$hits"
+          if echo "$PR_LABELS" | grep -q 'fix(security)'; then
+            echo "labeled fix(security) -> allowed by exception"
+            exit 0
+          fi
+          echo "::error::Electron 栈处于冻结维护（ADR-001），仅允许带 fix(security) 标签的安全修复。"
+          exit 1
+
   dotnet:
     name: Avalonia (Core/Windows/Avalonia 三层)
     runs-on: windows-latest

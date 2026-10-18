@@ -7,6 +7,8 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SmartSideBAR.Avalonia.Ui;
+using SmartSideBAR.Core.Design;
+using SmartSideBAR.Core.Diagnostics;
 using SmartSideBAR.Avalonia.Ui.Panels;
 using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Windows.AppBar;
@@ -33,6 +35,7 @@ public partial class SidebarWindow : Window
         _palette = AppTheme.From(services?.Config.Current.Appearance);
 
         InitializeComponent();
+        ApplyDesignTokens();
         ApplySide();
 
         if (services is null) return; // 设计器 / 运行时加载器路径
@@ -195,6 +198,27 @@ public partial class SidebarWindow : Window
         sheen.Track(local.X / bounds.Width * 2 - 1, local.Y / bounds.Height * 2 - 1);
     }
 
+    /// <summary>
+    /// 把 design-tokens.json 的几何规格落到窗口（P0-2）。
+    /// XAML 里仍写着一份默认值以便设计器预览，运行时一律以令牌为准 ——
+    /// 这样停靠箭头这类"逐像素手调"的参数就只有一处可改。
+    /// </summary>
+    private void ApplyDesignTokens()
+    {
+        var tokens = DesignTokens.Current;
+
+        PanelHost.Width = tokens.Panel.WidthDip;
+        PanelHost.CornerRadius = new global::Avalonia.CornerRadius(tokens.Panel.Radius);
+
+        RailCapsule.CornerRadius = new global::Avalonia.CornerRadius(tokens.Capsule.Radius);
+
+        if (DockArrowIcon is not null)
+        {
+            DockArrowIcon.Width = tokens.Dock.ArrowSizePx;
+            DockArrowIcon.Height = tokens.Dock.ArrowSizePx;
+        }
+    }
+
     private void ShowPanel(PanelKind kind)
     {
         _panel = kind switch
@@ -211,6 +235,11 @@ public partial class SidebarWindow : Window
         PanelBody.Content = _panel;
         PanelScroll.Offset = default;
         _panel?.Refresh();
+
+        // P2-3：崩溃上下文记录"崩在哪个面板"
+        CrashLog.LastContext = CrashLog.LastContext is { } ctx
+            ? ctx with { ActivePanel = kind.ToString() }
+            : new CrashContext("unknown", 1.0, kind.ToString(), SafeMode.OsBuildString());
     }
 
     /// <summary>

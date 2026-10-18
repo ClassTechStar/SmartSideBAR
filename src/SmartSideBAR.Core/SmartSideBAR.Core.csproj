@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- P0-2: 视觉规格单一真源随 Core 程序集嵌入（运行时/单测同源） -->
+    <EmbeddedResource Include="..\..\design-tokens.json" LogicalName="design-tokens.json" />
+  </ItemGroup>
 </Project>
