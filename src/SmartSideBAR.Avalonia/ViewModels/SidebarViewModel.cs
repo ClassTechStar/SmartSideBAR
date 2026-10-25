@@ -37,7 +37,8 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
             if (p is LinkItem link) OpenLink(link);
         });
 
-        RailItems = BuildRail();
+        RailItems = [];
+        PopulateRail();
         RefreshIme();
     }
 
@@ -73,9 +74,10 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         PanelKind.Usb => "USB 设备",
         PanelKind.Printer => "打印机",
         PanelKind.Links => "快捷链接",
-        PanelKind.Reminder => "定时提醒",
+        PanelKind.Reminder => "提醒与通知",
         PanelKind.TaskMgr => "任务管理",
         PanelKind.Settings => "设置",
+        PanelKind.QuickSettings => "快捷设置",
         _ => "",
     };
 
@@ -193,7 +195,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         if (_imeItem is not null) _imeItem.Badge = ImeState;
     }
 
-    private void OpenLink(LinkItem link)
+    public void OpenLink(LinkItem link)
     {
         try
         {
@@ -206,12 +208,50 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     }
 
     // ---------------------------------------------------------------- rail 构建
-    private ObservableCollection<RailItem> BuildRail()
+
+    /// <summary>
+    /// 当前工作区允许的模块集合（KoBar 工作区语义）。
+    /// null = 当前预设不限制（Modules 为空或无预设）—— 只受 policy.disabledModules 约束。
+    /// </summary>
+    private IReadOnlySet<string>? WorkspaceAllowed()
+    {
+        var ws = _services.Config.Current.Workspace;
+        var preset = ws.Presets.FirstOrDefault(p => string.Equals(p.Name, ws.Current, StringComparison.OrdinalIgnoreCase));
+        if (preset is null || preset.Modules.Count == 0) return null;
+        return new HashSet<string>(preset.Modules, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>rail 顺序：config.rail.order 优先，未登记模块按内置顺序追加在末尾。</summary>
+    private int OrderOf(string module)
+    {
+        var order = _services.Config.Current.Rail.Order;
+        var idx = order.FindIndex(m => string.Equals(m, module, StringComparison.OrdinalIgnoreCase));
+        return idx >= 0 ? idx : order.Count + 100;
+    }
+
+    /// <summary>按当前配置（工作区 + 策略 + 顺序）重建 rail。工作区切换后调用。</summary>
+    public void RebuildRail()
+    {
+        RailItems.Clear();
+        PopulateRail();
+        RefreshIme();
+        // 工作区切走后，原激活项可能已被过滤 —— 保持面板打开但取消高亮即可
+        if (_activeRail is not null && !RailItems.Contains(_activeRail))
+        {
+            _activeRail = null;
+            foreach (var item in RailItems) item.IsActive = false;
+        }
+    }
+
+    private void PopulateRail()
     {
         var disabled = _services.Config.Current.Policy.DisabledModules;
-        bool On(string module) => !disabled.Contains(module, StringComparer.OrdinalIgnoreCase);
+        var allowed = WorkspaceAllowed();
+        bool On(string module) =>
+            !disabled.Contains(module, StringComparer.OrdinalIgnoreCase)
+            && (allowed is null || allowed.Contains(module));
 
-        var items = new ObservableCollection<RailItem>();
+        var items = new List<RailItem>();
 
         if (On("ime"))
         {
@@ -232,10 +272,17 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         if (On("printer")) items.Add(NewItem("printer", PanelKind.Printer, "打印机"));
         if (On("taskmgr")) items.Add(NewItem("taskmgr", PanelKind.TaskMgr, "任务管理器"));
         if (On("links")) items.Add(NewItem("link", PanelKind.Links, "快捷链接"));
-        if (On("reminder")) items.Add(NewItem("bell", PanelKind.Reminder, "定时提醒"));
-        if (On("settings")) items.Add(NewItem("settings", PanelKind.Settings, "设置"));
+        if (On("bell")) items.Add(NewItem("bell", PanelKind.Reminder, "提醒与通知"));
+        if (On("settings")) items.Add(NewItem("settings", PanelKind.QuickSettings, "快捷设置"));
 
-        return items;
+        // rail.order 持久化顺序（长按重排序写入）；未登记的保持内置相对顺序
+        foreach (var item in items.OrderBy(i => OrderOf(i.Module))) RailItems.Add(item);
+    }
+
+    /// <summary>重排序结束后回写 rail.order（SidebarWindow 拖拽逻辑调用）。</summary>
+    public void SaveRailOrder()
+    {
+        _ = _services.Config.Set("rail.order", RailItems.Select(i => i.Module).ToList());
     }
 
     /// <summary>

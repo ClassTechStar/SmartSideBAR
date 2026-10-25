@@ -71,5 +71,32 @@
     "text": "#1A1A1A",
     "textSecondary": "#666666",
     "shadow": "#14000000"
+  },
+  "shape": {
+    "$comment": "Seelen radius.css 角色语义: xs=勾选框/小件, s=按钮/输入/列表项, m=卡片/弹层/菜单, l=对话框/整面板, full=胶囊",
+    "radiusXs": 4,
+    "radiusS": 6,
+    "radiusM": 10,
+    "radiusL": 16
+  },
+  "spacing": {
+    "$comment": "Seelen spacings.css: xs 4 / s 8 / m 12 / l 16 / xl 20",
+    "xs": 4,
+    "s": 8,
+    "m": 12,
+    "l": 16,
+    "xl": 20
+  },
+  "shadow": {
+    "$comment": "KoBar 三级海拔: e1 卡片, e2 弹层, e3 模态; 恒配 1px 发丝描边",
+    "e1": "0 2 3 #14000000",
+    "e2": "0 4 12 #29000000",
+    "e3": "0 8 28 #3D000000"
+  },
+  "indicator": {
+    "$comment": "KoBar 选中态指示条: rail/导航激活项在贴屏侧的圆角竖条",
+    "width": 3,
+    "height": 18,
+    "radius": 2
   }
 }

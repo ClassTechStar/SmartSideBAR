@@ -33,6 +33,8 @@ public static class AppearanceNormalize
     {
         if (input is null) return fallback;
         var s = input.Trim();
+        // 「跟随系统强调色」: 合法值原样透传, Theme 层负责解析为 WinRT accent
+        if (string.Equals(s, "auto", StringComparison.OrdinalIgnoreCase)) return "auto";
         // 与 appearance.ts 正则一致: #RGB 与 #RRGGBB 均需合法 hex 字符
         if (s.Length == 4 && s[0] == '#' && s[1..].All(char.IsAsciiHexDigit))
         {

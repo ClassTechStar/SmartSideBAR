@@ -71,6 +71,10 @@
         <DropShadowEffect OffsetX="0" OffsetY="1" BlurRadius="2" Opacity="0.18" Color="Black"/>
       </Setter>
     </Style>
+    <!-- 左侧栏: 指示条翻到左边 (贴屏侧), 右侧栏默认在右 -->
+    <Style Selector="Border.sideLeft Button.railBtn Border.accentBar">
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
     <Style Selector="Button.panelClose">
       <Style.Setters>
         <Setter Property="Background" Value="Transparent"/>
@@ -128,7 +132,7 @@
             </Button>
 
             <ScrollViewer Padding="0,2" HorizontalScrollBarVisibility="Disabled">
-              <ItemsControl ItemsSource="{Binding RailItems}" HorizontalAlignment="Center">
+              <ItemsControl x:Name="RailList" ItemsSource="{Binding RailItems}" HorizontalAlignment="Center">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Spacing="6" HorizontalAlignment="Center"/>
@@ -141,6 +145,11 @@
                       <Panel>
                         <!-- 投影由 Border.glassRail ItemsControl Image 样式控制 (玻璃/经典模式切换) -->
                         <Image Width="28" Height="28" Source="{Binding Icon}"/>
+                        <!-- KoBar 选中态指示条: 贴屏侧 3px 圆角竖条, 教室远距离可辨 (左右侧由 ApplySide 切换) -->
+                        <Border Classes="accentBar" IsVisible="{Binding IsActive}"
+                                Width="3" Height="18" CornerRadius="2"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Background="{DynamicResource IndicatorBar}"/>
                         <Border IsVisible="{Binding HasBadge}"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                 Margin="0,0,2,2" CornerRadius="6" Padding="4,1"

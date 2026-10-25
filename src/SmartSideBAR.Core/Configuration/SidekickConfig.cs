@@ -17,6 +17,8 @@ public sealed record SidekickConfig
     public DisplayConfig Display { get; init; } = new();
     public AppearanceConfig Appearance { get; init; } = new();
     public FloatBallConfig FloatBall { get; init; } = new();
+    public WorkspaceConfig Workspace { get; init; } = new();
+    public RailConfig Rail { get; init; } = new();
     public List<LinkItem> Links { get; init; } = [];
     public List<Reminder> Reminders { get; init; } = [];
     public ReminderSoundConfig ReminderSound { get; init; } = new();
@@ -73,6 +75,41 @@ public sealed record DisplayConfig
     public bool FitWindowsToWorkArea { get; init; } = true;
     /// <summary>检测到真正全屏的应用时自动把侧栏收成底角方块（教室演示场景默认开启）。</summary>
     public bool AutoCollapseOnFullscreen { get; init; } = true;
+    /// <summary>
+    /// 触发模式（希沃方案建议 #1）:
+    /// always = 常驻胶囊（现状, 触屏教学推荐）;
+    /// edge = 极细触发条, 点击展开, 防误触（写代码/大屏推荐）;
+    /// edge-hover = 触发条悬停滑出（程序员习惯）。
+    /// </summary>
+    public string RailTrigger { get; init; } = "always";
+}
+
+/// <summary>KoBar 工作区（建议: 教师场景一键切换模块组合）。空 Modules = 不限制（跟随 policy）。</summary>
+public sealed record WorkspaceConfig
+{
+    public string Current { get; init; } = "默认";
+    public List<WorkspacePreset> Presets { get; init; } =
+    [
+        new WorkspacePreset { Name = "默认", Modules = [] },
+        new WorkspacePreset
+        {
+            Name = "上课",
+            Modules = ["ime", "capture", "annotate", "longshot", "record", "usb", "bell"],
+        },
+        new WorkspacePreset { Name = "批注", Modules = ["ime", "annotate"] },
+    ];
+}
+
+public sealed record WorkspacePreset
+{
+    public string Name { get; init; } = "";
+    public List<string> Modules { get; init; } = [];
+}
+
+/// <summary>rail 图标顺序（长按重排序的持久化目标）。缺省项按内置顺序补齐。</summary>
+public sealed record RailConfig
+{
+    public List<string> Order { get; init; } = [];
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SidebarSide>))]
@@ -92,6 +129,8 @@ public sealed record LinkItem
     public string Url { get; init; } = "";
     public string? Icon { get; init; }
     public bool Enabled { get; init; } = true;
+    /// <summary>标签页分类（建议 #3: 应用/网站/工具/AI，自定义值也会自动成页）。</summary>
+    public string Category { get; init; } = "网站";
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<ReminderKind>))]

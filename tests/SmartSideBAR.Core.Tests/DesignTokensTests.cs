@@ -100,6 +100,23 @@ public class DesignTokensTests
     }
 
     [Fact]
+    public void Shape_spacing_shadow_indicator_roles()
+    {
+        // Seelen 形状/间距角色 + KoBar 海拔阴影与选中指示条
+        Assert.Equal(4, T.Shape.RadiusXs);
+        Assert.Equal(6, T.Shape.RadiusS);
+        Assert.Equal(10, T.Shape.RadiusM);
+        Assert.Equal(16, T.Shape.RadiusL);
+        Assert.Equal(4, T.Spacing.Xs);
+        Assert.Equal(16, T.Spacing.L);
+        Assert.Equal("0 2 3 #14000000", T.Shadow.E1);
+        Assert.Equal("0 4 12 #29000000", T.Shadow.E2);
+        Assert.Equal("0 8 28 #3D000000", T.Shadow.E3);
+        Assert.Equal(3, T.Indicator.Width);
+        Assert.Equal(18, T.Indicator.Height);
+    }
+
+    [Fact]
     public void Parse_roundtrip_preserves_values()
     {
         const string json = """

@@ -33,6 +33,9 @@ public sealed class ToastService
                 return;
             _recentShown[message] = now;
 
+            // 通知中心留档（提醒历史/USB/录屏等事件统一可回看）
+            NotificationCenter.Instance.Push(message, tone);
+
             // 清理过期去重记录
             if (_recentShown.Count > 50)
             {

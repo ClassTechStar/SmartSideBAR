@@ -51,6 +51,18 @@ public sealed class WindowManager(
     private bool _docked;
     private AppBarEdge _side = AppBarEdge.Right;
     private (nint Hwnd, int RailPx, int ExpandedPx) _attachInfo;
+    private global::Avalonia.Threading.DispatcherTimer? _topmostKeeper;
+    private EdgeTriggerWindow? _edgeTrigger;
+
+    /// <summary>希沃式触发条模式（建议 #1）: edge=点击展开, edge-hover=悬停滑出。</summary>
+    private bool IsEdgeTriggerMode
+    {
+        get
+        {
+            var mode = config.Current.Display.RailTrigger;
+            return mode is "edge" or "edge-hover";
+        }
+    }
 
     public SidebarWindow CreateSidebar()
     {
@@ -59,7 +71,7 @@ public sealed class WindowManager(
         _side = side;
 
         // 面板体系需要设备/调度等服务（v1.2 各 Panel 经 IPC 取数，此处同进程直调）
-        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, recorder, sound, Dispatch);
+        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, recorder, sound, links, Dispatch);
         // 把 AppBar 的窗口几何操作挪出 WndProc 调用栈（重入 shell 调用是本项目原生崩溃的来源之一）
         appBar.Defer = action =>
             global::Avalonia.Threading.Dispatcher.UIThread.Post(action, global::Avalonia.Threading.DispatcherPriority.Background);
@@ -89,6 +101,7 @@ public sealed class WindowManager(
             {
                 log.LogWarning("[Window] 安全模式：跳过 AppBar 注册与悬浮球，仅保留侧栏本体");
                 win.Topmost = true;
+                StartTopmostKeeper(win);
             }
             else if (appBar.Attach(hwnd, side, railPx, expandedPx))
             {
@@ -97,6 +110,7 @@ public sealed class WindowManager(
             else
             {
                 win.Topmost = true;
+                StartTopmostKeeper(win);
                 log.LogWarning("[Window] AppBar 注册失败 → Topmost 回退");
             }
 
@@ -115,6 +129,30 @@ public sealed class WindowManager(
             {
                 ShowFloatBall();
             }
+
+            // 希沃式触发条模式 (建议 #1): 配置为 edge/edge-hover 时初始即收起为
+            // 屏幕边缘极细触发条, 点击(或悬停)展开; 常驻胶囊场景不收起
+            if (!safeMode && IsEdgeTriggerMode)
+            {
+                SetDocked(true);
+            }
+
+            // edge 模式: 指针离开且无面板打开 → 4s 后自动收回为触发条
+            global::Avalonia.Threading.DispatcherTimer? edgeAutoDock = null;
+            win.PointerExited += (_, _) =>
+            {
+                if (!IsEdgeTriggerMode) return;
+                edgeAutoDock ??= new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                edgeAutoDock.Tick += (_, _) =>
+                {
+                    edgeAutoDock.Stop();
+                    if (win.IsPointerOver || _docked) return;
+                    if (win.DataContext is ViewModels.SidebarViewModel { PanelOpen: true }) return;
+                    SetDocked(true);
+                };
+                edgeAutoDock.Start();
+            };
+            win.PointerEntered += (_, _) => edgeAutoDock?.Stop();
         };
         win.Closed += (_, _) => appBar.Detach();
 
@@ -176,6 +214,30 @@ public sealed class WindowManager(
 
         log.LogInformation("[Window] 侧栏窗口已创建 ({Side} 侧, rail={Rail} DIP, 胶囊高度=工作区 84%)", side, RailWidthDip);
         return win;
+    }
+
+    /// <summary>
+    /// KoBar topmostKeeper 策略移植: Windows 在显示切换/休眠唤醒/输入源切换后会悄悄
+    /// 丢弃 always-on-top —— 教学一体机睡眠唤醒尤其频繁。Topmost 回退模式下每 30s
+    /// 重申一次置顶 (toggle 触发 Win32 重新插入 topmost 带, 等价 KoBar 的 moveTop);
+    /// AppBar 注册成功后自动停表。
+    /// </summary>
+    private void StartTopmostKeeper(SidebarWindow win)
+    {
+        if (_topmostKeeper is not null) return;
+        _topmostKeeper = new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _topmostKeeper.Tick += (_, _) =>
+        {
+            if (appBar.IsRegistered)
+            {
+                _topmostKeeper!.Stop();
+                return;
+            }
+            if (_docked || !win.IsVisible) return;
+            win.Topmost = false;
+            win.Topmost = true;
+        };
+        _topmostKeeper.Start();
     }
 
     public void RegisterConfiguredHotkeys()
@@ -245,6 +307,10 @@ public sealed class WindowManager(
 
                 case "settings":
                     OpenSettings();
+                    break;
+
+                case { } ws when ws.StartsWith("workspace:", StringComparison.OrdinalIgnoreCase):
+                    SwitchWorkspace(ws["workspace:".Length..]);
                     break;
 
                 case "reminder":
@@ -338,6 +404,14 @@ public sealed class WindowManager(
         await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
     }
 
+    /// <summary>KoBar 工作区切换: 落盘 + 重建 rail（模块组合立即生效）。</summary>
+    private void SwitchWorkspace(string name)
+    {
+        _ = config.Set("workspace.current", name);
+        if (_sidebar?.DataContext is ViewModels.SidebarViewModel vm) vm.RebuildRail();
+        ToastService.Instance.Show($"已切换到「{name}」工作区", "success");
+    }
+
     /// <summary>崩溃上下文里的版本号（与 Directory.Build.props &lt;Version&gt; 同源）。</summary>
     private static string AppVersion =>
         typeof(WindowManager).Assembly
@@ -381,20 +455,41 @@ public sealed class WindowManager(
         {
             appBar.Detach();
             sidebar.Hide();
+            var wa = GetSidebarWorkArea();
+            var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
+            if (scale <= 0) scale = 1.0;
+
+            if (IsEdgeTriggerMode)
+            {
+                // 希沃式触发条: 屏幕边缘居中的极细竖条, 点击/悬停展开 (防鼠标误触)
+                if (_edgeTrigger is null)
+                {
+                    _edgeTrigger = new EdgeTriggerWindow(() => SetDocked(false),
+                        hoverToExpand: config.Current.Display.RailTrigger == "edge-hover", _side);
+                }
+                const int wDip = 14, hDip = 160;
+                var x = _side == AppBarEdge.Right ? wa.X + wa.W - (int)Math.Round(wDip * scale) : wa.X;
+                var y = wa.Y + (wa.H - (int)Math.Round(hDip * scale)) / 2;
+                _edgeTrigger.Position = new PixelPoint(x, y);
+                _edgeTrigger.Show();
+                log.LogInformation("[Window] 侧栏已收起为边缘触发条 ({X},{Y})", x, y);
+                return;
+            }
+
             if (_dockWindow is null)
             {
                 _dockWindow = new DockWindow(() => SetDocked(false));
             }
             // R4 修复: dock 定位也用目标屏而非主屏
-            var wa = GetSidebarWorkArea();
-            var sizePx = (int)Math.Round(DockSizeDip * Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd));
-            var x = _side == AppBarEdge.Right ? wa.X + wa.W - sizePx : wa.X;
-            _dockWindow.Position = new PixelPoint(x, wa.Y + wa.H - sizePx);
+            var sizePx = (int)Math.Round(DockSizeDip * scale);
+            var dockX = _side == AppBarEdge.Right ? wa.X + wa.W - sizePx : wa.X;
+            _dockWindow.Position = new PixelPoint(dockX, wa.Y + wa.H - sizePx);
             _dockWindow.Show();
-            log.LogInformation("[Window] 侧栏已收起为底角方块 ({X},{Y}) {Size}px", x, wa.Y + wa.H - sizePx, sizePx);
+            log.LogInformation("[Window] 侧栏已收起为底角方块 ({X},{Y}) {Size}px", dockX, wa.Y + wa.H - sizePx, sizePx);
         }
         else
         {
+            _edgeTrigger?.Hide();
             _dockWindow?.Hide();
             sidebar.Show();
             // C4-⑤: fire-and-forget 改为同步调用并记录失败 (Attach 内部已有异常保护)

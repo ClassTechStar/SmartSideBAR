@@ -1,9 +1,12 @@
-// 设置窗 (§6.11): 唯一表单语义 (P1-6) —— 保存经 ConfigService.Set 白名单路径, 自动广播 ConfigChanged。
+// 设置窗 (§6.11) —— 参照 Seelen-UI 设置应用 (导航 + 分页) 与 KoBar (Surface 卡片 +
+// 「标签+描述在左 / 控件在右」的 Option 行语法) 重构。保存仍走 ConfigService.Set
+// 白名单路径 + 自动广播 ConfigChanged; 控件字段与旧版一一对应, Save() 语义不变。
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Design;
 using SmartSideBAR.Windows.Devices;
 using SmartSideBAR.Windows.Input;
 using SmartSideBAR.Windows.Shell;
@@ -15,6 +18,9 @@ public sealed class SettingsWindow : Window
     private readonly ConfigService _config;
     private readonly IShellService _shell;
     private readonly IDiagnosticsService _diag;
+    private readonly Palette _p;
+
+    private static readonly string[] NavItems = ["外观", "常规", "截图", "录屏", "设备", "快捷键", "诊断", "关于"];
 
     private readonly ComboBox _theme = new()
     {
@@ -22,6 +28,14 @@ public sealed class SettingsWindow : Window
         SelectedIndex = 0,
         MinWidth = 140,
     };
+    private readonly ComboBox _accent = new()
+    {
+        ItemsSource = new[] { "跟随系统（推荐）", "品牌蓝 #2B6EE0", "青 #12A594", "紫 #7C5CFF", "橙 #D98324", "石墨 #4A5568" },
+        SelectedIndex = 0,
+        MinWidth = 180,
+    };
+    private static readonly string[] AccentHex = ["auto", "#2B6EE0", "#12A594", "#7C5CFF", "#D98324", "#4A5568"];
+
     private readonly CheckBox _glass = new()
     {
         Content = "液态玻璃质感（关闭 = 经典纯白快速面，低配设备推荐）",
@@ -30,15 +44,13 @@ public sealed class SettingsWindow : Window
     {
         Content = "减弱动效（跳过面板滑入等过渡动画）",
     };
-    private readonly ComboBox _accent = new()
-    {
-        ItemsSource = new[] { "品牌蓝 #2B6EE0", "青 #12A594", "紫 #7C5CFF", "橙 #D98324", "石墨 #4A5568" },
-        SelectedIndex = 0,
-        MinWidth = 180,
-    };
-    private static readonly string[] AccentHex = ["#2B6EE0", "#12A594", "#7C5CFF", "#D98324", "#4A5568"];
-
     private readonly ComboBox _side = new() { ItemsSource = new[] { "left", "right" }, SelectedIndex = 1 };
+    private readonly ComboBox _trigger = new()
+    {
+        ItemsSource = new[] { "常驻胶囊（触屏教学推荐）", "极细触发条·点击展开（防误触）", "极细触发条·悬停滑出" },
+        SelectedIndex = 0,
+        MinWidth = 220,
+    };
     private readonly CheckBox _autoLaunch = new() { Content = "开机自启动" };
     private readonly CheckBox _autoCollapse = new() { Content = "全屏应用时自动收起侧栏" };
     private readonly CheckBox _recEnabled = new() { Content = "启用录屏（个别机型媒体管道会崩溃，可关闭）" };
@@ -56,17 +68,26 @@ public sealed class SettingsWindow : Window
     private readonly TextBox _hkIme = new();
     private readonly TextBlock _diagResult = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
 
+    private readonly ContentControl _pageHost = new();
+    private readonly List<(string Title, Control Page)> _pages = new();
+    private Button? _selectedNav;
+
     public SettingsWindow(ConfigService config, IShellService shell, HotkeyService hotkeys, IDiagnosticsService diag)
     {
         _config = config;
         _shell = shell;
         _diag = diag;
+        _p = AppTheme.From(config.Current.Appearance);
         Title = "SmartSideBAR 设置";
-        Width = 560;
-        Height = 640;
+        Width = 720;
+        Height = 680;
+        MinWidth = 640;
+        MinHeight = 560;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        Background = new SolidColorBrush(_p.Inset);
         LoadFrom(config.Current);
         Content = BuildUi();
+        SelectNav(0);
     }
 
     private void LoadFrom(SidekickConfig c)
@@ -81,9 +102,15 @@ public sealed class SettingsWindow : Window
         _reduceMotion.IsChecked = c.Appearance.ReduceMotion;
         var accentIdx = Array.FindIndex(AccentHex,
             h => string.Equals(h, c.Appearance.Accent, StringComparison.OrdinalIgnoreCase));
-        _accent.SelectedIndex = accentIdx < 0 ? 0 : accentIdx;
+        _accent.SelectedIndex = accentIdx < 0 ? 1 : accentIdx; // 未知值回退品牌蓝（index 1）
         _autoCollapse.IsChecked = c.Display.AutoCollapseOnFullscreen;
         _side.SelectedIndex = c.Display.SidebarSide == SidebarSide.Left ? 0 : 1;
+        _trigger.SelectedIndex = c.Display.RailTrigger switch
+        {
+            "edge" => 1,
+            "edge-hover" => 2,
+            _ => 0,
+        };
         _autoLaunch.IsChecked = _shell.GetAutoLaunch();
         _format.SelectedIndex = c.Capture.Format.Equals("jpg", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         _captureDir.Text = c.Capture.Dir;
@@ -100,19 +127,293 @@ public sealed class SettingsWindow : Window
         _hkIme.Text = string.IsNullOrWhiteSpace(c.Ime.Hotkey) ? "Ctrl+Shift+I" : c.Ime.Hotkey;
     }
 
+    // ---------------------------------------------------------------- UI 构建
+
     private Control BuildUi()
     {
-        static StackPanel RowOf(string label, Control control)
+        var nav = new StackPanel { Spacing = 2, Margin = new Thickness(0, 12) };
+        for (var i = 0; i < NavItems.Length; i++)
         {
-            var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 4) };
-            sp.Children.Add(new TextBlock { Text = label, Width = 120, VerticalAlignment = VerticalAlignment.Center });
-            sp.Children.Add(control);
-            return sp;
+            var index = i;
+            var item = new Button
+            {
+                Content = NavItemContent(NavItems[i]),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Padding = new Thickness(12, 0),
+                Height = 34,
+                CornerRadius = new CornerRadius(DesignTokens.Current.Shape.RadiusS),
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+            };
+            item.Click += (_, _) => SelectNav(index);
+            nav.Children.Add(item);
         }
 
-        var save = new Button { Content = "保存", Padding = new Thickness(24, 8), HorizontalAlignment = HorizontalAlignment.Right };
+        _pages.Add(("外观", BuildAppearancePage()));
+        _pages.Add(("常规", BuildGeneralPage()));
+        _pages.Add(("截图", BuildCapturePage()));
+        _pages.Add(("录屏", BuildRecorderPage()));
+        _pages.Add(("设备", BuildDevicesPage()));
+        _pages.Add(("快捷键", BuildHotkeysPage()));
+        _pages.Add(("诊断", BuildDiagnosticsPage()));
+        _pages.Add(("关于", BuildAboutPage()));
+
+        var save = new Button
+        {
+            Content = "保存",
+            Padding = new Thickness(24, 8),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            // 主操作: 品牌色实心 (KoBar「唯一主操作用色」纪律)
+            Background = _p.AccentBrush,
+            Foreground = Brushes.White,
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(DesignTokens.Current.Shape.RadiusS),
+        };
         save.Click += (_, _) => Save();
 
+        var footer = new Border
+        {
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            BorderBrush = _p.DividerBrush,
+            Background = new SolidColorBrush(_p.Card),
+            Padding = new Thickness(16, 10),
+            Child = save,
+        };
+
+        var grid = new Grid
+        {
+            RowDefinitions = new RowDefinitions("*,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("168,*"),
+        };
+        var navScroller = new ScrollViewer
+        {
+            Content = nav,
+            Margin = new Thickness(8, 0),
+        };
+        Grid.SetRow(navScroller, 0);
+        Grid.SetColumn(navScroller, 0);
+        grid.Children.Add(navScroller);
+
+        Grid.SetRow(_pageHost, 0);
+        Grid.SetColumn(_pageHost, 1);
+        grid.Children.Add(_pageHost);
+
+        Grid.SetRow(footer, 1);
+        Grid.SetColumnSpan(footer, 2);
+        grid.Children.Add(footer);
+        return grid;
+    }
+
+    private static StackPanel NavItemContent(string label)
+    {
+        var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, VerticalAlignment = VerticalAlignment.Center };
+        sp.Children.Add(new Border
+        {
+            Width = 3,
+            Height = 16,
+            CornerRadius = new CornerRadius(DesignTokens.Current.Indicator.Radius),
+            // 具体色由 ApplyNavState 落 (paletteAccent), 这里占位透明避免空引用
+            Background = Brushes.Transparent,
+            IsVisible = false,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        sp.Children.Add(new TextBlock { Text = label, FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+        return sp;
+    }
+
+    private void SelectNav(int index)
+    {
+        if (_selectedNav is { } prev)
+        {
+            ApplyNavState(prev, false);
+        }
+        if (((Grid)Content!).Children[0] is not ScrollViewer { Content: StackPanel nav }
+            || nav.Children[index] is not Button item)
+        {
+            return;
+        }
+        _selectedNav = item;
+        ApplyNavState(item, true);
+        _pageHost.Content = _pages[index].Page;
+    }
+
+    private void ApplyNavState(Button btn, bool selected)
+    {
+        btn.Background = selected ? _p.AccentSoftBrush : Brushes.Transparent;
+        if (btn.Content is StackPanel sp)
+        {
+            if (sp.Children.FirstOrDefault() is Border bar)
+            {
+                bar.Background = _p.AccentBrush;
+                bar.IsVisible = selected;
+            }
+            if (sp.Children.LastOrDefault() is TextBlock tb)
+            {
+                tb.FontWeight = selected ? FontWeight.SemiBold : FontWeight.Normal;
+                tb.Foreground = selected ? _p.AccentBrush : BodyFg();
+            }
+        }
+    }
+
+    // -------------------------------------------------- 页面（Seelen/KoBar 卡片语法）
+
+    private Control Page(string title, params Control[] sections)
+    {
+        var stack = new StackPanel { Spacing = 12 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 17,
+            FontWeight = FontWeight.Bold,
+            Foreground = BodyFg(),
+            Margin = new Thickness(0, 0, 0, 2),
+        });
+        foreach (var s in sections) stack.Children.Add(s);
+        return new ScrollViewer { Padding = new Thickness(16, 14, 16, 16), Content = stack };
+    }
+
+    /// <summary>KoBar Surface 卡片: 卡面 Card 色 + e1 海拔 + 发丝描边, 内含标题与 Option 行。</summary>
+    private Control Section(string title, params Control[] rows) => Section(title, null, rows);
+
+    private Control Section(string title, string? hint, params Control[] rows)
+    {
+        var stack = new StackPanel { Spacing = 4 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 12.5,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = _p.MutedBrush,
+            Margin = new Thickness(0, 2, 0, 6),
+        });
+        if (!string.IsNullOrEmpty(hint))
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = hint,
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = _p.MutedBrush,
+                Opacity = 0.9,
+                Margin = new Thickness(0, 0, 0, 4),
+            });
+        }
+        foreach (var r in rows) stack.Children.Add(r);
+        return new Border
+        {
+            Background = new SolidColorBrush(_p.Card),
+            CornerRadius = new CornerRadius(DesignTokens.Current.Shape.RadiusM),
+            Padding = new Thickness(14),
+            BorderThickness = new Thickness(1),
+            BorderBrush = _p.DividerBrush,
+            BoxShadow = BoxShadows.Parse(DesignTokens.Current.Shadow.E1),
+            Child = stack,
+        };
+    }
+
+    /// <summary>KoBar SettingsOption 行: 左侧「600 字重标签 + 弱化描述」, 右侧控件 (min 150)。</summary>
+    private Control Row(string label, string? description, Control control)
+    {
+        var left = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        left.Children.Add(new TextBlock { Text = label, FontSize = 13, FontWeight = FontWeight.SemiBold, Foreground = BodyFg() });
+        if (!string.IsNullOrEmpty(description))
+        {
+            left.Children.Add(new TextBlock
+            {
+                Text = description,
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 320,
+                Foreground = _p.MutedBrush,
+            });
+        }
+
+        control.VerticalAlignment = VerticalAlignment.Center;
+        switch (control)
+        {
+            case TextBox box:
+                box.MinWidth = 220;
+                box.Height = 30;
+                break;
+            case NumericUpDown num:
+                num.MinWidth = 110;
+                break;
+        }
+
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            MinHeight = 36,
+            Margin = new Thickness(0, 3),
+        };
+        Grid.SetColumn(left, 0);
+        grid.Children.Add(left);
+        Grid.SetColumn(control, 1);
+        grid.Children.Add(control);
+        return grid;
+    }
+
+    private Control BuildAppearancePage()
+    {
+        return Page("外观",
+            Section("主题与强调色",
+                Row("主题", "浅色 / 深色 / 自动（自动当前按浅色渲染）", _theme),
+                Row("强调色", "rail 高亮、选中指示条、主按钮使用", _accent)),
+            Section("质感与动效",
+                Row("", "液态玻璃为 v1.2 观感; 经典纯白为 1.0 观感, 低配设备推荐", _glass),
+                Row("", "跳过面板滑入等过渡动画", _reduceMotion)));
+    }
+
+    private Control BuildGeneralPage()
+    {
+        return Page("常规",
+            Section("侧栏",
+                Row("侧栏位置", "停靠在屏幕左缘或右缘", _side),
+                Row("触发方式", "触发条模式重启后生效; 常驻胶囊即时生效", _trigger),
+                Row("", "演示/看片等全屏场景自动收起为底角方块", _autoCollapse),
+                Row("", "随系统启动自动运行", _autoLaunch)));
+    }
+
+    private Control BuildCapturePage()
+    {
+        return Page("截图",
+            Section("区域截图",
+                Row("图片格式", "PNG 无损 / JPG 体积小", _format),
+                Row("保存目录", "支持 {Pictures} 等路径占位符", _captureDir)));
+    }
+
+    private Control BuildRecorderPage()
+    {
+        return Page("录屏",
+            Section("MP4 录制",
+                Row("", "个别机型的媒体管道会在转码准备期崩溃, 可在此关闭", _recEnabled),
+                Row("帧率", "5–60 fps, 15 为课堂够用档", _fps),
+                Row("", "同时录制麦克风声音", _mic),
+                Row("保存目录", "支持 {Videos} 等路径占位符", _recorderDir)));
+    }
+
+    private Control BuildDevicesPage()
+    {
+        return Page("设备",
+            Section("外设监控",
+                Row("", "插入/移除 U 盘时弹出提醒", _usbEnabled),
+                Row("打印机轮询间隔（秒）", "越短发现缺纸/卡纸越及时, 代价是常驻开销", _printerSec)));
+    }
+
+    private Control BuildHotkeysPage()
+    {
+        return Page("快捷键",
+            Section("全局热键", "格式: Ctrl/Alt/Shift/Win + 键。冲突时会注册失败, 换一组即可",
+                Row("区域截图", "", _hkCapture),
+                Row("屏幕批注", "", _hkAnnotate),
+                Row("长截图", "", _hkLongshot),
+                Row("悬浮球", "", _hkFloatBall),
+                Row("输入法切换", "", _hkIme)));
+    }
+
+    private Control BuildDiagnosticsPage()
+    {
         var runDiag = new Button { Content = "运行诊断" };
         runDiag.Click += (_, _) =>
         {
@@ -142,49 +443,67 @@ public sealed class SettingsWindow : Window
                 ToastService.Instance.Show($"导出诊断包失败: {ex.Message}", "error");
             }
         };
-
-        var scroll = new ScrollViewer
-        {
-            Margin = new Thickness(16),
-            Content = new StackPanel { Spacing = 6 },
-        };
-        var root = (StackPanel)scroll.Content!;
-        root.Children.Add(new TextBlock { Text = "外观", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 8, 0, 4) });
-        root.Children.Add(RowOf("主题", _theme));
-        root.Children.Add(RowOf("强调色", _accent));
-        root.Children.Add(RowOf("", _glass));
-        root.Children.Add(RowOf("", _reduceMotion));
-        root.Children.Add(new TextBlock { Text = "常规", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
-        root.Children.Add(RowOf("侧栏位置", _side));
-        root.Children.Add(RowOf("", _autoCollapse));
-        root.Children.Add(RowOf("", _autoLaunch));
-        root.Children.Add(new TextBlock { Text = "截图", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
-        root.Children.Add(RowOf("格式", _format));
-        root.Children.Add(RowOf("保存目录", _captureDir));
-        root.Children.Add(new TextBlock { Text = "录屏 (MP4)", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
-        root.Children.Add(RowOf("", _recEnabled));
-        root.Children.Add(RowOf("帧率", _fps));
-        root.Children.Add(RowOf("", _mic));
-        root.Children.Add(RowOf("保存目录", _recorderDir));
-        root.Children.Add(new TextBlock { Text = "设备", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
-        root.Children.Add(RowOf("", _usbEnabled));
-        root.Children.Add(RowOf("打印机轮询(秒)", _printerSec));
-        root.Children.Add(new TextBlock { Text = "快捷键 (Ctrl/Alt/Shift/Win + 键)", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
-        root.Children.Add(RowOf("区域截图", _hkCapture));
-        root.Children.Add(RowOf("屏幕批注", _hkAnnotate));
-        root.Children.Add(RowOf("长截图", _hkLongshot));
-        root.Children.Add(RowOf("悬浮球", _hkFloatBall));
-        root.Children.Add(RowOf("输入法", _hkIme));
-        root.Children.Add(new TextBlock { Text = "诊断", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
-        var diagRow = new StackPanel { Orientation = Orientation.Horizontal };
-        diagRow.Children.Add(runDiag);
-        diagRow.Children.Add(exportDiag);
-        root.Children.Add(diagRow);
-        root.Children.Add(_diagResult);
-        root.Children.Add(save);
-
-        return scroll;
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(runDiag);
+        row.Children.Add(exportDiag);
+        return Page("诊断",
+            Section("自检与排障",
+                Row("", "检查系统信息/内存/显示器/各服务健康度", row)),
+            new Border
+            {
+                Background = new SolidColorBrush(_p.Card),
+                CornerRadius = new CornerRadius(DesignTokens.Current.Shape.RadiusM),
+                Padding = new Thickness(14),
+                BorderThickness = new Thickness(1),
+                BorderBrush = _p.DividerBrush,
+                Child = _diagResult,
+            });
     }
+
+    private Control BuildAboutPage()
+    {
+        var version = typeof(SettingsWindow).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion
+            ?? "unknown";
+        var stack = new StackPanel { Spacing = 6 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"SmartSideBAR v{version}",
+            FontSize = 15,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = BodyFg(),
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = "常驻教学大屏侧边的快捷操作与设备提醒中心。\nAvalonia + .NET 单进程实现；配置与 Electron 版互认。",
+            FontSize = 12.5,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = _p.MutedBrush,
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = "Apache-2.0 © 2026 ClassTechStar",
+            FontSize = 11.5,
+            Foreground = _p.MutedBrush,
+            Opacity = 0.8,
+        });
+        return Page("关于",
+            new Border
+            {
+                Background = new SolidColorBrush(_p.Card),
+                CornerRadius = new CornerRadius(DesignTokens.Current.Shape.RadiusM),
+                Padding = new Thickness(14),
+                BorderThickness = new Thickness(1),
+                BorderBrush = _p.DividerBrush,
+                Child = stack,
+            });
+    }
+
+    private IBrush BodyFg() => new SolidColorBrush(_p.Dark ? Color.Parse("#E6EBF3") : Color.Parse("#1B2230"));
+
+    // ---------------------------------------------------------------- 保存
 
     private void Save()
     {
@@ -201,6 +520,12 @@ public sealed class SettingsWindow : Window
             AccentHex[Math.Clamp(_accent.SelectedIndex, 0, AccentHex.Length - 1)]);
         _ = _config.Set("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
         _ = _config.Set("display.sidebarSide", _side.SelectedIndex == 0 ? "left" : "right");
+        _ = _config.Set("display.railTrigger", _trigger.SelectedIndex switch
+        {
+            1 => "edge",
+            2 => "edge-hover",
+            _ => "always",
+        });
         _ = _config.Set("capture.format", (string?)_format.SelectedItem ?? "PNG");
         _ = _config.Set("capture.dir", string.IsNullOrWhiteSpace(_captureDir.Text) ? c.Capture.Dir : _captureDir.Text.Trim());
         _ = _config.Set("recorder.dir", string.IsNullOrWhiteSpace(_recorderDir.Text) ? c.Recorder.Dir : _recorderDir.Text.Trim());

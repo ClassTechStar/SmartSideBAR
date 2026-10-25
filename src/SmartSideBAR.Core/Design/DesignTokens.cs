@@ -24,6 +24,10 @@ public sealed class DesignTokens
     public ColorTokens Color { get; set; } = new();
     public MotionTokens Motion { get; set; } = new();
     public ClassicTokens Classic { get; set; } = new();
+    public ShapeTokens Shape { get; set; } = new();
+    public SpacingTokens Spacing { get; set; } = new();
+    public ShadowTokens Shadow { get; set; } = new();
+    public IndicatorTokens Indicator { get; set; } = new();
 
     private static DesignTokens? _default;
 
@@ -154,6 +158,41 @@ public sealed class ClassicTokens
     public string Text { get; set; } = "#1A1A1A";
     public string TextSecondary { get; set; } = "#666666";
     public string Shadow { get; set; } = "#14000000";
+}
+
+/// <summary>Seelen radius.css 的角色语义圆角: xs 小件 / s 按钮·输入 / m 卡片·弹层 / l 对话框·整面板。</summary>
+public sealed class ShapeTokens
+{
+    public double RadiusXs { get; set; } = 4;
+    public double RadiusS { get; set; } = 6;
+    public double RadiusM { get; set; } = 10;
+    public double RadiusL { get; set; } = 16;
+}
+
+/// <summary>Seelen spacings.css 间距刻度。</summary>
+public sealed class SpacingTokens
+{
+    public double Xs { get; set; } = 4;
+    public double S { get; set; } = 8;
+    public double M { get; set; } = 12;
+    public double L { get; set; } = 16;
+    public double Xl { get; set; } = 20;
+}
+
+/// <summary>KoBar 三级海拔阴影 (e1 卡片 / e2 弹层 / e3 模态), 格式同 BoxShadows.Parse。</summary>
+public sealed class ShadowTokens
+{
+    public string E1 { get; set; } = "0 2 3 #14000000";
+    public string E2 { get; set; } = "0 4 12 #29000000";
+    public string E3 { get; set; } = "0 8 28 #3D000000";
+}
+
+/// <summary>KoBar 选中态指示条: rail/导航激活项在贴屏侧的圆角竖条。</summary>
+public sealed class IndicatorTokens
+{
+    public double Width { get; set; } = 3;
+    public double Height { get; set; } = 18;
+    public double Radius { get; set; } = 2;
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

@@ -5,6 +5,7 @@
 using System.ComponentModel;
 using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
@@ -162,6 +163,7 @@ public sealed class SidebarViewModelTests : IDisposable
             _config, appBar, _ime, _shell, new FakeUsb(), new FakePrinter(),
             new SchedulerService(_config, _bus, TimeProvider.System),
             new FakeRecorder(), new FakeSound(),
+            new LinksService(_config),
             action => _dispatched.Add(action));
         return new SidebarViewModel(services, _config.Current.Links);
     }
@@ -197,7 +199,7 @@ public sealed class SidebarViewModelTests : IDisposable
         vm.OpenPanel(PanelKind.Reminder);
 
         Assert.True(vm.PanelOpen);
-        Assert.Equal("定时提醒", vm.PanelTitle);
+        Assert.Equal("提醒与通知", vm.PanelTitle);
     }
 
     [Fact]

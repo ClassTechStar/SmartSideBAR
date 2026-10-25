@@ -17,6 +17,7 @@ public enum PanelKind
     Reminder,
     TaskMgr,
     Settings,
+    QuickSettings,
 }
 
 public sealed class RailItem : INotifyPropertyChanged

@@ -2,6 +2,7 @@
 // v1.2 各 Panel 通过 window.sidekick.* IPC 取数据; Avalonia 侧同进程直调, 收敛为一个上下文对象,
 // 避免每个 Panel 构造函数塞六七个参数。
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Devices;
@@ -22,4 +23,5 @@ public sealed record SidebarServices(
     SchedulerService Scheduler,
     IRecorderApi Recorder,
     ISoundService Sound,
+    LinksService Links,
     Action<string> Dispatch);

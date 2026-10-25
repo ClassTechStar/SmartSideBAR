@@ -1,15 +1,19 @@
 // 面板公共构件 —— v1.2 各 Panel 的 CSS 语义在 Avalonia 侧的对应实现。
 // 统一 13px 正文 / 12px 辅助 / 12px 圆角卡片 / 2 列动作磁贴，避免每个面板各写一套。
+// 圆角/间距取 design-tokens shape/spacing 角色 (Seelen 语义: s=按钮, m=卡片/弹层)。
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using SmartSideBAR.Core.Design;
 
 namespace SmartSideBAR.Avalonia.Ui.Panels;
 
 internal static class PanelKit
 {
+    private static Core.Design.ShapeTokens Shape => DesignTokens.Current.Shape;
+
     public static TextBlock Section(string text, Palette p) => new()
     {
         Text = text,
@@ -42,7 +46,7 @@ internal static class PanelKit
         var border = new Border
         {
             Background = accent ? p.AccentSoftBrush : p.HoverBrush,
-            CornerRadius = new CornerRadius(12),
+            CornerRadius = new CornerRadius(Shape.RadiusM),
             Padding = new Thickness(pad),
             Child = content,
             BorderThickness = new Thickness(1),
@@ -127,7 +131,7 @@ internal static class PanelKit
             Background = p.HoverBrush,
             BorderThickness = new Thickness(1),
             BorderBrush = p.DividerBrush,
-            CornerRadius = new CornerRadius(12),
+            CornerRadius = new CornerRadius(Shape.RadiusM),
         };
         button.Click += (_, _) => click();
         return button;
@@ -145,7 +149,7 @@ internal static class PanelKit
                 Foreground = primary ? new SolidColorBrush(p.Dark ? Colors.White : Colors.White) : p.AccentBrush,
             },
             Padding = new Thickness(14, 7),
-            CornerRadius = new CornerRadius(9),
+            CornerRadius = new CornerRadius(Shape.RadiusS),
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Background = primary ? p.AccentBrush : p.HoverBrush,
             BorderThickness = new Thickness(1),

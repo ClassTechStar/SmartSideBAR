@@ -105,6 +105,98 @@ public partial class SidebarWindow : Window
             if (e.Source is Visual v && v.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
             _services.Dispatch("dock");
         };
+
+        // Esc 关闭面板 (KoBar PanelShell 语义: Esc 沿层级栈退一层)
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape && Vm.PanelOpen && !Vm.IsDocked)
+            {
+                Vm.ClosePanel();
+                e.Handled = true;
+            }
+        };
+
+        // rail 长按重排序 (KoBar Sidebar 语义: 500ms 长按进入, 拖拽换位, 释放持久化 rail.order)
+        AddHandler(PointerPressedEvent, OnRailPointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(PointerMovedEvent, OnRailPointerMoved, RoutingStrategies.Bubble);
+        AddHandler(PointerReleasedEvent, OnRailPointerReleased, RoutingStrategies.Bubble);
+    }
+
+    // ---- rail 长按重排序 ----
+    private global::Avalonia.Threading.DispatcherTimer? _longPressTimer;
+    private IPointer? _activePointer;
+    private RailItem? _dragItem;
+    private bool _reordering;
+
+    private bool IsRailButton(Visual? v, out Button? button)
+    {
+        button = null;
+        if (v?.FindAncestorOfType<Button>(includeSelf: true) is not { } b) return false;
+        if (!b.Classes.Contains("railBtn")) return false;
+        // 排除 dock 钮: 只允许 RailList 内的条目参与排序
+        if (b.FindAncestorOfType<ItemsControl>() != RailList) return false;
+        button = b;
+        return true;
+    }
+
+    private Button? FindRailButtonByItem(RailItem? item)
+    {
+        if (item is null) return null;
+        return RailList.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(b => ReferenceEquals(b.DataContext, item));
+    }
+
+    private void OnRailPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (Vm.IsDocked || !IsRailButton(e.Source as Visual, out _)) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        _dragItem = (e.Source as Visual)!.FindAncestorOfType<Button>(includeSelf: true)!.DataContext as RailItem;
+        _activePointer = e.Pointer;
+        _longPressTimer ??= new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _longPressTimer.Stop();
+        _longPressTimer.Tick += OnLongPressTick;
+        _longPressTimer.Start();
+    }
+
+    private void OnLongPressTick(object? sender, EventArgs e)
+    {
+        _longPressTimer!.Stop();
+        if (_dragItem is null || _activePointer is null) return;
+        _reordering = true;
+        // 窗口接管指针: 按住的按钮不再收到 Released, Click 不会误触发
+        _activePointer.Capture(this);
+        if (FindRailButtonByItem(_dragItem) is { } b) b.Opacity = 0.5;
+    }
+
+    private void OnRailPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_reordering || _dragItem is null) return;
+        var hit = (this as global::Avalonia.Input.IInputElement)!.InputHitTest(e.GetPosition(this)) as Visual;
+        if (IsRailButton(hit, out var btn) && btn!.DataContext is RailItem target && !ReferenceEquals(target, _dragItem))
+        {
+            var list = Vm.RailItems;
+            var from = list.IndexOf(_dragItem);
+            var to = list.IndexOf(target);
+            if (from >= 0 && to >= 0 && from != to) list.Move(from, to);
+        }
+        e.Handled = true;
+    }
+
+    private void OnRailPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _longPressTimer?.Stop();
+        if (!_reordering)
+        {
+            _dragItem = null;
+            _activePointer = null;
+            return;
+        }
+        _reordering = false;
+        if (FindRailButtonByItem(_dragItem) is { } b) b.Opacity = 1;
+        Vm.SaveRailOrder();   // KoBar 语义: 拖完即持久化, 重启保持
+        _dragItem = null;
+        _activePointer = null;
+        e.Handled = true;     // 吞掉释放, 不触发点击动作
     }
 
     public SidebarViewModel Vm => (SidebarViewModel)DataContext!;
@@ -214,6 +306,8 @@ public partial class SidebarWindow : Window
         // v1.2 .rail-badge: 品牌色底 + 白字（白底深字在玻璃胶囊上几乎看不见）
         Resources["BadgeBg"] = new SolidColorBrush(p.Accent);
         Resources["BadgeFg"] = new SolidColorBrush(Colors.White);
+        // KoBar 选中态指示条: 品牌色竖条
+        Resources["IndicatorBar"] = new SolidColorBrush(p.Accent);
 
         // 深色主题下 rail 图标需要白色变体
         if (DataContext is SidebarViewModel vm)
@@ -273,10 +367,11 @@ public partial class SidebarWindow : Window
             PanelKind.Capture => new CapturePanel(_services, _palette),
             PanelKind.Usb => new UsbPanel(_services, _palette),
             PanelKind.Printer => new PrinterPanel(_services, _palette),
-            PanelKind.Links => new LinksPanel(_services, _palette, Vm.Links),
+            PanelKind.Links => new LinksPanel(_services, _palette, link => Vm.OpenLink(link)),
             PanelKind.Reminder => new ReminderPanel(_services, _palette),
             PanelKind.TaskMgr => new TaskMgrPanel(_services, _palette),
             PanelKind.Settings => new SettingsPanel(_services, _palette),
+            PanelKind.QuickSettings => new QuickSettingsPanel(_services, _palette),
             _ => null,
         };
         PanelBody.Content = _panel;
@@ -367,6 +462,9 @@ public partial class SidebarWindow : Window
             rail.HorizontalAlignment = _side == AppBarEdge.Left
                 ? global::Avalonia.Layout.HorizontalAlignment.Left
                 : global::Avalonia.Layout.HorizontalAlignment.Right;
+            // 选中指示条贴屏侧跟随停靠边 (KoBar BarItem 语义)
+            rail.Classes.Add(_side == AppBarEdge.Left ? "sideLeft" : "sideRight");
+            rail.Classes.Remove(_side == AppBarEdge.Left ? "sideRight" : "sideLeft");
         }
         if (panel is not null)
         {

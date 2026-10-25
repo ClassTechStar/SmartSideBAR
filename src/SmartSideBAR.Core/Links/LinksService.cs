@@ -13,7 +13,7 @@ public sealed class LinksService(ConfigService config)
     /// <summary>设置界面视图: 全量, 含禁用项。</summary>
     public IReadOnlyList<LinkItem> ListAll() => config.Current.Links.ToArray();
 
-    public LinkItem Add(string name, string url, string? icon = null, bool enabled = true)
+    public LinkItem Add(string name, string url, string? icon = null, bool enabled = true, string? category = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(url);
@@ -24,12 +24,13 @@ public sealed class LinksService(ConfigService config)
             Url = url.Trim(),
             Icon = icon,
             Enabled = enabled,
+            Category = string.IsNullOrWhiteSpace(category) ? "网站" : category.Trim(),
         };
         Persist(all => { all.Add(item); return true; });
         return item;
     }
 
-    public bool Update(string id, string? name = null, string? url = null, string? icon = null, bool? enabled = null)
+    public bool Update(string id, string? name = null, string? url = null, string? icon = null, bool? enabled = null, string? category = null)
     {
         return Persist(all =>
         {
@@ -41,6 +42,7 @@ public sealed class LinksService(ConfigService config)
                 Url = url?.Trim() ?? all[idx].Url,
                 Icon = icon ?? all[idx].Icon,
                 Enabled = enabled ?? all[idx].Enabled,
+                Category = category?.Trim() ?? all[idx].Category,
             };
             all[idx] = item;
             return true;
