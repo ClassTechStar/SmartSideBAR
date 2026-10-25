@@ -53,6 +53,7 @@ public sealed class WindowManager(
     private (nint Hwnd, int RailPx, int ExpandedPx) _attachInfo;
     private global::Avalonia.Threading.DispatcherTimer? _topmostKeeper;
     private EdgeTriggerWindow? _edgeTrigger;
+    private MiniBoardWindow? _miniBoard;
 
     /// <summary>希沃式触发条模式（建议 #1）: edge=点击展开, edge-hover=悬停滑出。</summary>
     private bool IsEdgeTriggerMode
@@ -277,6 +278,10 @@ public sealed class WindowManager(
                     StartAnnotate();
                     break;
 
+                case "miniboard":
+                    ShowMiniBoard();
+                    break;
+
                 case "longshot" or "longshot-hotkey":
                     StartLongshotPicker();
                     break;
@@ -339,8 +344,7 @@ public sealed class WindowManager(
     }
 
     private void StartAnnotate()
-    {
-        byte[]? background = null;
+    {        byte[]? background = null;
         try
         {
             // 打开瞬间抓全屏底图 (WithBackground 导出用); 失败允许仅笔迹
@@ -356,7 +360,8 @@ public sealed class WindowManager(
         {
             log?.LogWarning(ex, "[Window] 批注底图抓取失败");
         }
-        new AnnotateWindow(background, config.Current.Capture.Dir, config.Current.Capture.Format).Show();
+        new AnnotateWindow(background, config.Current.Capture.Dir, config.Current.Capture.Format,
+            config.Current.Capture.InkToShape).Show();
     }
 
     private void StartLongshotPicker()
@@ -438,6 +443,26 @@ public sealed class WindowManager(
         if (_floatBall is null) { ShowFloatBall(); return; }
         if (_floatBall.IsVisible) _floatBall.Hide();
         else _floatBall.Show();
+    }
+
+    /// <summary>板中板 (ICC MiniWhiteboard 模式): 临时演算纸浮窗。重复唤起时置前而非新开。</summary>
+    public void ShowMiniBoard()
+    {
+        if (_miniBoard is { IsVisible: true })
+        {
+            _miniBoard.Activate();
+            return;
+        }
+        _miniBoard = new MiniBoardWindow(config.Current.Capture.Dir, config.Current.Capture.InkToShape);
+        // 定位到侧栏所在屏的工作区居中 (多屏时不出现在教师不看的屏上)
+        var wa = GetSidebarWorkArea();
+        var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
+        if (scale <= 0) scale = 1.0;
+        var x = wa.X + Math.Max(0, (wa.W - (int)Math.Round(860 * scale)) / 2);
+        var y = wa.Y + Math.Max(0, (wa.H - (int)Math.Round(560 * scale)) / 3);
+        _miniBoard.Position = new PixelPoint(x, y);
+        _miniBoard.Show();
+        log.LogInformation("[Window] 板中板已打开 ({X},{Y})", x, y);
     }
 
     /// <summary>v1.1 dock/undock: 收起为工作区底角小方块 / 恢复玻璃胶囊。

@@ -92,7 +92,10 @@ internal static class PanelKit
         for (var i = 0; i < items.Length; i++)
         {
             var tile = BuildTile(items[i].Icon, items[i].Label, p, items[i].Click);
-            Grid.SetRow(tile, i / 2);
+            var row = i / 2;
+            // 行数随条目数增长 (磁贴超过 4 个时不再受固定两行限制)
+            while (grid.RowDefinitions.Count <= row) grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            Grid.SetRow(tile, row);
             Grid.SetColumn(tile, i % 2);
             grid.Children.Add(tile);
         }

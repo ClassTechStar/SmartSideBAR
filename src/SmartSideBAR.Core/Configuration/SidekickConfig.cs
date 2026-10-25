@@ -42,6 +42,8 @@ public sealed record CaptureConfig
     public string LongshotHotkey { get; init; } = "Ctrl+Shift+L";
     public string Format { get; init; } = "PNG"; // png|jpg
     public string Dir { get; init; } = "{Pictures}/Sidekick";
+    /// <summary>墨迹识别转形: 收笔后把手绘闭合图形/直线替换为干净形状（工具条可临时关闭）。</summary>
+    public bool InkToShape { get; init; } = true;
 }
 
 public sealed record RecorderConfig

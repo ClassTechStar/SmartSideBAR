@@ -12,6 +12,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using SmartSideBAR.Core.Ink;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Native;
 using AloLayout = global::Avalonia.Layout;
@@ -49,7 +50,7 @@ public sealed class InkCanvas : Control
     private readonly List<Stroke> _strokes = [];
     private readonly List<List<Stroke>> _undo = []; // 操作前快照 (≤50)
     private readonly List<LaserStroke> _lasers = [];
-    private readonly DispatcherTimer? _laserTimer;
+    private DispatcherTimer? _laserTimer; // 激光笔消隐时钟 (惰性创建, 全窗共用)
     private Stroke? _current;
     private Point _shapeStart;
     private Color _color = Color.Parse("#E53935");
@@ -62,6 +63,13 @@ public sealed class InkCanvas : Control
     public void SetColor(Color c) => _color = c;
     public void SetWidth(double w) => _width = w;
     public void SetTool(AnnotateTool tool) => _tool = tool;
+
+    /// <summary>墨迹识别转形: 收笔后把闭合图形/直线替换为干净形状 (Core.Ink 纯几何识别)。</summary>
+    public bool InkToShape { get; set; } = true;
+
+    /// <summary>当前墨色 (板中板切底色时判定对比度用)。</summary>
+    public Color PeekColor() => _color;
+
     public int Count => _strokes.Count;
 
     // ---- 撤销 (快照语义: 每次提交性操作前压栈) ----
@@ -179,15 +187,42 @@ public sealed class InkCanvas : Control
         }
         else if (_current.Points.Count > 0)
         {
-            if (_current.Kind == StrokeKind.Pen && _current.Points.Count >= 3)
+            if (_current.Kind == StrokeKind.Pen)
             {
-                SmoothCurrent();
+                // 墨迹识别转形: 命中则整个笔画替换为干净形状 (撤销快照在 BeginStroke 已压栈,
+                // 再撤销一次即回到手绘前 —— 转形不额外消耗撤销步数)
+                if (InkToShape && TryRecognize(_current) is { } shape)
+                {
+                    _current = shape;
+                    _strokes.Add(_current);
+                    _current = null;
+                    InvalidateVisual();
+                    StrokesChanged?.Invoke(this, EventArgs.Empty);
+                    return;
+                }
+                if (_current.Points.Count >= 3) SmoothCurrent();
             }
             _strokes.Add(_current);
         }
         _current = null;
         InvalidateVisual();
         StrokesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>手绘折线 → 干净形状笔画 (识别失败返回 null, 走原平滑路径)。</summary>
+    private Stroke? TryRecognize(Stroke stroke)
+    {
+        if (stroke.Points.Count < 6) return null;
+        var inkPts = stroke.Points.Select(p => new InkPoint(p.X, p.Y)).ToList();
+        var result = InkShapeRecognizer.Recognize(inkPts);
+        if (result.Kind == RecognizedShape.None) return null;
+        return new Stroke
+        {
+            Color = stroke.Color,
+            Width = Math.Max(stroke.Width, 2.5),
+            Kind = StrokeKind.Shape,
+            SubPaths = [result.Points.Select(p => new Point(p.X, p.Y)).ToList()],
+        };
     }
 
     // ---- 速度模拟压感 (ICC 公式: 慢 0.9 / 快 0.22, 中速 0.5) ----
@@ -324,17 +359,15 @@ public sealed class InkCanvas : Control
     private void EnsureLaserTimer()
     {
         if (_laserTimer is not null) return;
-        _laserTimerField = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
-        _laserTimerField.Tick += (_, _) =>
+        _laserTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _laserTimer.Tick += (_, _) =>
         {
             _lasers.RemoveAll(l => l.Age > 1.2);
-            if (_lasers.Count == 0) _laserTimerField!.Stop();
+            if (_lasers.Count == 0) _laserTimer!.Stop();
             InvalidateVisual();
         };
-        _laserTimerField.Start();
+        _laserTimer.Start();
     }
-
-    private DispatcherTimer? _laserTimerField;
 
     // ---- 渲染 ----
 
@@ -461,13 +494,17 @@ public sealed class AnnotateWindow : Window
     private readonly List<Button> _toolButtons = [];
     private readonly List<Button> _colorButtons = [];
     private readonly List<Button> _widthButtons = [];
+    private Button? _shapeBtn;
+    private bool _inkToShapeOn;
 
-    public AnnotateWindow(byte[]? backgroundPng, string dir, string format)
+    public AnnotateWindow(byte[]? backgroundPng, string dir, string format, bool inkToShape = true)
     {
         _backgroundPng = backgroundPng;
         OverlayGate.Enter();
         _dir = dir;
         _format = format;
+        _inkToShapeOn = inkToShape;
+        _ink.InkToShape = inkToShape;
 
         // B25 根修: 透明/无边框/置顶必须在 Show 之前设定 (分层窗口语义)。
         Topmost = true;
@@ -644,6 +681,20 @@ public sealed class AnnotateWindow : Window
             panel.Children.Add(btn);
         }
         if (_widthButtons.Count > 1) MarkActive(_widthButtons, _widthButtons[1]);
+
+        // 墨迹识别转形开关: 选中 = accent 描边 (与工具钮同语言)
+        _shapeBtn = ToolBtn("转形", () =>
+        {
+            _inkToShapeOn = !_inkToShapeOn;
+            _ink.InkToShape = _inkToShapeOn;
+            _shapeBtn!.BorderBrush = _inkToShapeOn
+                ? new SolidColorBrush(Color.Parse("#4D8DF7"))
+                : Brushes.Transparent;
+        }, minWidth: 38);
+        _shapeBtn.BorderBrush = _inkToShapeOn
+            ? new SolidColorBrush(Color.Parse("#4D8DF7"))
+            : Brushes.Transparent;
+        panel.Children.Add(_shapeBtn);
 
         panel.Children.Add(Separator());
 
