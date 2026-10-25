@@ -75,3 +75,6 @@ buildResources/
 # Cache
 .cache/
 .temp/
+
+# 发布产物一律只挂 Release 资产, 禁止入库 (P0-2; dist/ 全目录已忽略)
+dist/*.exe

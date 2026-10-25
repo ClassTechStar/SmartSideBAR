@@ -1,11 +1,11 @@
-; SmartSideBAR Inno Setup 安装脚本 (Avalonia 主线)
-; A4: 产物目录改为 CI publish 输出 artifacts/app（可复现, 不再依赖本地产物）
-; 版本号由 scripts/sync-version.mjs 从 VERSION 文件注入 (A3 单一事实源)
-; 编译: "C:\Program Files\Inno Setup 7\ISCC.exe" installer\SmartSideBAR-v1.3.iss
-; CI 编译: 由 .github/workflows/ci.yml release job 自动执行
+; SmartSideBAR Inno Setup 安装脚本 (Avalonia 主线) —— 文件名不再带版本, 发版只改 AppVersion 三处
+; 产物目录: CI publish 输出 artifacts/app（可复现, 不依赖本地产物）
+; 版本号单一事实源: Directory.Build.props <Version>（与本脚本 AppVersion 保持一致）
+; 编译: "C:\Program Files\Inno Setup 7\ISCC.exe" installer\SmartSideBAR-v1.5.iss
+; AppId 与 v1.3 一致 —— 已装 v1.3 的机器安装本包即原地升级
 
 #define AppName "SmartSideBAR"
-#define AppVersion "1.3.0"
+#define AppVersion "1.5.0"
 #define AppPublisher "Seewo Sidekick Team"
 #define AppExe "SmartSideBAR.Avalonia.exe"
 #define SetupIconFile "..\build\icon.ico"
@@ -19,7 +19,7 @@ AppPublisher={#AppPublisher}
 DefaultDirName={localappdata}\Programs\smartsidebar
 DefaultGroupName={#AppName}
 OutputDir=..\dist
-OutputBaseFilename=SmartSideBAR-v1.3.0-Setup
+OutputBaseFilename=SmartSideBAR-v1.5.0-Setup
 SetupIconFile={#SetupIconFile}
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2/max
@@ -35,14 +35,14 @@ MinVersion=10.0.17763
 ; 发布产物为 win-x64, 不允许在 ARM64/x86 上误装
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-VersionInfoVersion=1.3.0.0
+VersionInfoVersion=1.5.0.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoCopyright=Apache-2.0
-VersionInfoProductVersion=1.3.0.0
+VersionInfoProductVersion=1.5.0.0
 VersionInfoProductName={#AppName}
 
 [Messages]
-WelcomeLabel2=这将安装 [name/ver] 到你的电脑。%n%n基于 1.2 版本开发：悬浮球圆形镜头样式与展开扇形菜单、全屏自动收缩侧边栏。%n%n建议先卸载旧版本再继续。
+WelcomeLabel2=这将安装 [name/ver] 到你的电脑。%n%n1.5 版：工作区一键切换（上课/批注模式）、墨迹识别转形、板中板、通知中心、快捷设置大磁贴、希沃式触发条、悬浮球扇形菜单与全屏批注压感笔。%n%n建议先卸载旧版本再继续。
 
 [Files]
 Source: "..\artifacts\app\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -54,7 +54,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务:"
-; 自启独立成任务: 原来绑在 desktopicon 上 —— 不建桌面图标就没有自启, 且与应用内
+; 自启独立成任务: 不绑在 desktopicon 上, 且与应用内
 ; 「开机自启动」开关 (.NET Registry Run, 值带 /silent) 互相覆盖。
 Name: "autostart"; Description: "开机自动启动 {#AppName}"; GroupDescription: "附加任务:"; Flags: unchecked
 
