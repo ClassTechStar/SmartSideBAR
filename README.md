@@ -5,7 +5,7 @@
   <p>
     <a href="#功能列表"><img src="https://img.shields.io/badge/功能-12%2B模块-blue" alt="Features"></a>
     <a href="#技术栈"><img src="https://img.shields.io/badge/技术栈-Avalonia%20+%20.NET%2010-green" alt="Tech Stack"></a>
-    <a href="#测试与质量门禁"><img src="https://img.shields.io/badge/测试-120%20用例-brightgreen" alt="Tests"></a>
+    <a href="#测试与质量门禁"><img src="https://img.shields.io/badge/测试-130%20用例-brightgreen" alt="Tests"></a>
     <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
   </p>
 </div>
@@ -20,12 +20,12 @@
 
 ## 架构与发布形态
 
-> **决策 (ADR-001)**：Avalonia (C# / .NET 10) 为主线栈。Electron 栈已冻结，仅保安全修复（CI 有 `electron-freeze-guard` 门禁）。
+> **决策 (ADR-001)**：Avalonia (C# / .NET 10) 是唯一栈。Electron 栈已整体归档至 [`archive/electron-final`](https://github.com/ClassTechStar/SmartSideBAR/tree/archive/electron-final) 分支，主线仓库纯 dotnet。
 
 | 栈 | 技术 | 状态 | 发布物 |
 |----|------|------|--------|
 | **Avalonia（主线）** | C# .NET 10 + Avalonia 11 | 活跃开发 | **是**（Inno Setup 安装包） |
-| Electron（冻结） | Electron 30 + Vue 3 + TS | 仅安全修复 | 否 |
+| Electron（已归档） | Electron 30 + Vue 3 + TS | `archive/electron-final` 分支封存 | 否 |
 
 **实际安装产物**是 Avalonia 版 `SmartSideBAR.exe`（自包含单文件约 15MB），通过 Inno Setup 打包为 `SmartSideBAR-v{version}-Setup.exe`。版本号单一事实源：`Directory.Build.props` 的 `<Version>`。
 
@@ -82,7 +82,7 @@
 
 从 [GitHub Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下载 `SmartSideBAR-v{version}-Setup.exe`，双击安装（按用户安装，无 UAC）。
 
-> 安装包由源码构建（`dotnet publish` + Inno Setup）。自签名形态下，目标电脑需先运行 `cert/install-trust.cmd` 导入证书信任。
+> 安装包由源码构建（`dotnet publish` + Inno Setup），当前发布**不签名**（自签根证书方案已废除——往用户机器装根 CA 属于反模式；用户量起来后再购真实代码签名证书）。SmartScreen 提示「仍要运行」即可。
 
 ### 方法二：从源码构建
 
@@ -101,8 +101,8 @@ dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
   -p:TrimMode=partial -p:EnableCompressionInSingleFile=true \
   -o artifacts/app
 
-# 4. 编译安装器 (需要 Inno Setup)
-iscc installer/SmartSideBAR-v1.3.iss
+# 4. 编译安装器 (需要 Inno Setup, 发版时改 iss 内 AppVersion 三处)
+iscc installer/SmartSideBAR.iss
 ```
 
 ### 方法三：开发运行（热重载调试）
@@ -111,7 +111,9 @@ iscc installer/SmartSideBAR-v1.3.iss
 dotnet run --project src/SmartSideBAR.Avalonia
 ```
 
-> Electron 冻结栈如需调试（仅安全修复场景）：`npm install && npm run dev`。
+> 历史 Electron 版源码在 `archive/electron-final` 分支（v1.0.0/1.1/1.2.0 快照目录亦在仓库根，供观感对照）。
+>
+> **winget 安装（推荐给学校电教）**：`packaging/winget/` 提供清单，winget-pkgs 合入后 `winget install ClassTechStar.SmartSideBAR`。
 
 ## 使用说明
 
@@ -168,23 +170,19 @@ dotnet run --project src/SmartSideBAR.Avalonia
 | 运行时 | .NET 10（self-contained 单文件，≈15MB） | ReadyToRun + 裁剪 |
 | 核心逻辑 | `SmartSideBAR.Core`（纯逻辑层） | 配置/调度/悬浮球布局/墨迹识别/链接服务 |
 | 平台层 | `SmartSideBAR.Windows`（P/Invoke + WinRT） | AppBar/热键/WGC 录屏/USB/长截图 |
-| 测试 | xUnit（Core/Windows/Avalonia 三层） | 120 用例 + Fake 替身（AppBar/时钟） |
-
-### Electron 冻结栈（历史维护）
-
-Electron 30 + Vue 3 + TypeScript，`src/main|renderer|shared`；仅安全修复，归档条件见 ADR-001。
+| 测试 | xUnit（Core/Windows/Avalonia 三层） | 130 用例：单元 + headless 冒烟 7 链路 + 像素结构基线 3 态 |
 
 ## 开发命令
 
 ```bash
 dotnet build SmartSideBAR.slnx -c Debug     # 构建
-dotnet test SmartSideBAR.slnx               # 全量测试 (120 用例)
+dotnet test SmartSideBAR.slnx               # 全量测试 (130 用例, 含 headless 冒烟)
 dotnet run --project src/SmartSideBAR.Avalonia   # 运行主线
 dotnet format SmartSideBAR.slnx --verify-no-changes  # 格式检查 (CI 同款)
 dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 ...  # 发布
 ```
 
-CI（`.github/workflows/ci.yml`）：gitleaks 密钥扫描 → dotnet 构建/测试/覆盖率/格式门禁 → 发布单文件 artifact；`electron-freeze-guard` 拒绝未带 `fix(security)` 标签的 Electron 路径变更。
+CI：gitleaks 密钥扫描 → dotnet 构建/测试/覆盖率(≥40%)/格式门禁 → 发布 artifact；`v*` tag → Inno 安装包 → Release 草稿；**nightly** 每晚全量三遍抓偶发 + 冒烟留产物。
 
 ## 项目结构
 
@@ -207,8 +205,6 @@ SmartSideBAR/
 │   │   ├── AppBar/               # SHAppBarMessage 注册与自动收起
 │   │   ├── Recording/ Capture/ Devices/ Input/ Shell/ ...
 │   ├── SmartSideBAR.Avalonia/    # (见上)
-│   ├── main|renderer|shared/     # Electron 冻结栈 (仅安全修复)
-│   └── native/                   # Electron 版 appbar N-API 原生模块 (冻结)
 ├── tests/                        # Core.Tests / Windows.Tests / Avalonia.Tests
 ├── installer/                    # Inno Setup 安装脚本
 ├── cert/                         # 自签名证书与信任脚本
@@ -250,7 +246,7 @@ SmartSideBAR/
 - **操作系统**：Windows 10 1803+ / Windows 11（64 位）
 - **内存**：≥ 4GB RAM
 - **屏幕**：1366×768 ~ 3840×2160，系统缩放 100%–250%
-- **开发**：.NET 10 SDK（Windows）；Electron 冻结栈需 Node.js ≥ 20
+- **开发**：.NET 10 SDK（Windows）；Node.js 20+ 仅 perf-bench 脚本（`scripts/bench-p28.mjs`）需要
 
 ## 贡献指南
 
@@ -258,7 +254,7 @@ SmartSideBAR/
 
 1. Fork 本仓库 → 创建功能分支 `feat/xxx` → 提交 → PR
 2. 主线改动请先跑 `dotnet test`；触碰 `design-tokens.json` 必须同步更新 `DesignTokensTests`
-3. Electron 路径（`src/main|renderer|shared`）仅接受带 `fix(security)` 标签的变更（CI 强制）
+3. 文档 `docs/ARCHITECTURE.md` 是结构速览——改架构先改它
 
 ## 许可证
 

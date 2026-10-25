@@ -3,6 +3,7 @@
 // "点了 rail 图标却没切面板""4 个截图图标一起高亮"这类缺陷只能靠肉眼在真机发现。
 // 这里直接驱动 SidebarViewModel：不创建真实窗口，只验证状态机与命令路由。
 using System.ComponentModel;
+using Avalonia.Headless.XUnit;
 using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Links;
@@ -168,7 +169,7 @@ public sealed class SidebarViewModelTests : IDisposable
         return new SidebarViewModel(services, _config.Current.Links);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Rail_has_expected_items_and_ime_badge()
     {
         var vm = CreateVm();
@@ -179,7 +180,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.All(vm.RailItems, item => Assert.NotNull(item.Command));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Policy_disabled_modules_are_hidden_from_rail()
     {
         _config.Set("policy.disabledModules", new[] { "usb", "printer" });
@@ -190,7 +191,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.Contains(vm.RailItems, i => i.Module == "capture");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Opening_panel_sets_title_and_state()
     {
         var vm = CreateVm();
@@ -202,7 +203,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.Equal("提醒与通知", vm.PanelTitle);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Only_the_clicked_rail_item_is_highlighted()
     {
         // 截图组 4 个条目共享 Capture 面板：按面板类型判高亮会一次点亮 4 个
@@ -216,7 +217,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.Equal(1, vm.RailItems.Count(i => i.IsActive));
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Ime_item_toggles_and_does_not_open_panel()
     {
         var vm = CreateVm();
@@ -228,7 +229,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.Equal("EN", vm.RailItems[0].Badge);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Task_manager_item_opens_panel_instead_of_firing_immediately()
     {
         // v1.2 语义：rail 图标只负责开面板，真正的动作在面板里点（避免误触直接弹窗）
@@ -241,7 +242,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.DoesNotContain("taskmgr", _dispatched);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Closing_panel_clears_title_and_highlight()
     {
         var vm = CreateVm();
@@ -256,7 +257,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.DoesNotContain(vm.RailItems, i => i.IsActive);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Links_list_keeps_only_enabled_entries()
     {
         _config.Set("links", new List<LinkItem>
@@ -271,7 +272,7 @@ public sealed class SidebarViewModelTests : IDisposable
         Assert.Equal("A", vm.Links[0].Name);
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void Panel_state_raises_property_changed()
     {
         var vm = CreateVm();

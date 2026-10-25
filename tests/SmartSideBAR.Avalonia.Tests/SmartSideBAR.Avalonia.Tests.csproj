@@ -5,6 +5,7 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,7 +13,10 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
     <!-- P1-1：VM 层测试用 Avalonia.Headless，无需真实窗口即可驱动 ViewModel -->
-    <PackageReference Include="Avalonia.Headless" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Headless" Version="11.3.20" />
+    <!-- P1-6：冒烟/像素基线需要 xUnit 集成 + Skia 真渲染 -->
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Skia" Version="11.3.20" />
   </ItemGroup>
 
   <ItemGroup>

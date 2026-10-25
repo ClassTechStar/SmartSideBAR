@@ -1,0 +1,32 @@
+# winget 安装器清单 —— PackageVersion 1.5.0
+# InstallerUrl 指向 GitHub Release 资产 (发版即有, 无需自建 CDN)。
+# 每个新版本: 复制本目录三份 yaml → 改 PackageVersion/InstallerUrl/Sha256 (sha256sum dist/*-Setup.exe)。
+PackageIdentifier: ClassTechStar.SmartSideBAR
+PackageVersion: 1.5.0
+PackageName: SmartSideBAR
+Publisher: ClassTechStar
+License: Apache-2.0
+LicenseUrl: https://github.com/ClassTechStar/SmartSideBAR/blob/main/LICENSE
+ShortDescription: 常驻教学大屏侧边的快捷操作与设备提醒中心
+PackageUrl: https://github.com/ClassTechStar/SmartSideBAR
+Tags:
+  - teaching
+  - whiteboard
+  - sidebar
+  - annotation
+  - screenshot
+  - seewo
+Installers:
+  - Architecture: x64
+    InstallerType: inno
+    InstallerUrl: https://github.com/ClassTechStar/SmartSideBAR/releases/download/v1.5/SmartSideBAR-v1.5.0-Setup.exe
+    InstallerSha256: 94296FBB1D053726A9F1119493F48A9C0B4156EA753EE234CB3B0C4DE64EA429
+    InstallerSwitches:
+      Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+      SilentWithProgress: /SILENT /NORESTART
+      Interactive: ""
+    Scope: user
+    InstallerLocale: zh-CN
+    UpgradeBehavior: install
+ManifestType: installer
+ManifestVersion: 1.6.0

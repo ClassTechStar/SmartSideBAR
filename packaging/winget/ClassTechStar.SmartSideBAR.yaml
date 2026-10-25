@@ -1,0 +1,7 @@
+# winget 版本清单 —— 提交流程见同目录 README.md
+# 提交 PR 到 microsoft/winget-pkgs: manifests/c/ClassTechStar/SmartSideBAR/<version>/
+PackageIdentifier: ClassTechStar.SmartSideBAR
+PackageVersion: 1.5.0
+DefaultLocale: zh-CN
+ManifestType: version
+ManifestVersion: 1.6.0

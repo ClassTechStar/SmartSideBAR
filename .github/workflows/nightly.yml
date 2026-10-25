@@ -1,0 +1,39 @@
+# Nightly —— Karpathy 裁决落地: march of nines。
+# 每晚全量测试 (含 6 链路 headless 冒烟 + 截图像素基线), 连续跑一百个晚上,
+# 让"只在真机上偶发"的缺陷在 CI 里先红。失败上传全部测试产物供晨间排查。
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 18 * * *'  # 每日 18:00 UTC (北京时间次日 02:00)
+  workflow_dispatch: {}
+
+jobs:
+  nightly:
+    name: 全量测试 + 冒烟 + 像素基线
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore & Build
+        run: |
+          dotnet restore SmartSideBAR.slnx
+          dotnet build SmartSideBAR.slnx -c Release --no-restore
+      - name: Full test suite (3 遍, 抓偶发)
+        run: |
+          dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx;LogFileName=run1.trx" --results-directory TestResults
+          dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx;LogFileName=run2.trx" --results-directory TestResults
+          dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx;LogFileName=run3.trx" --results-directory TestResults
+      - name: Headless 冒烟 (标记筛选, 独立跑一遍留产物)
+        run: >
+          dotnet test tests/SmartSideBAR.Avalonia.Tests -c Release --no-build
+          --logger "trx;LogFileName=smoke.trx" --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-results
+          path: |
+            TestResults/**
+          retention-days: 30

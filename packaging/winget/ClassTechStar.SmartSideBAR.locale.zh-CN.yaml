@@ -1,0 +1,20 @@
+# winget 区域清单 (zh-CN)
+PackageIdentifier: ClassTechStar.SmartSideBAR
+PackageVersion: 1.5.0
+PackageLocale: zh-CN
+Publisher: ClassTechStar
+PublisherUrl: https://github.com/ClassTechStar
+Author: ClassTechStar
+PackageName: SmartSideBAR
+PackageUrl: https://github.com/ClassTechStar/SmartSideBAR
+License: Apache-2.0
+LicenseUrl: https://github.com/ClassTechStar/SmartSideBAR/blob/main/LICENSE
+ShortDescription: 常驻教学大屏侧边的快捷操作与设备提醒中心
+Description: |-
+  SmartSideBAR 是专为希沃交互智能平板 / Windows OPS 教学环境设计的常驻侧边快捷键工具。
+  边缘图标轨一触即达：输入法切换、区域截图、屏幕批注（压感笔锋 + 墨迹识别转形）、
+  长截图、MP4 录屏、板中板、U 盘监控、打印机状态、定时提醒、通知中心、网页快捷入口。
+  工作区一键切换上课/批注模式；希沃式触发条防误触；触屏优先，单手可操作。
+Moniker: smartsidebar
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

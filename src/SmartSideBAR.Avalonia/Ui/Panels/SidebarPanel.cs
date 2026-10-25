@@ -41,5 +41,13 @@ internal abstract class SidebarPanel : UserControl
         }, global::Avalonia.Threading.DispatcherPriority.Background);
     }
 
+    /// <summary>同步重建（headless 测试用: Background 优先级的 Post 在 RunJobs 下不排空）。</summary>
+    internal void RefreshNow()
+    {
+        _pending = false;
+        Content = Build();
+        OnBuilt();
+    }
+
     protected StackPanel Stack(double spacing = 12) => new() { Spacing = spacing };
 }

@@ -264,10 +264,12 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
             // 与 v1.2 一致：rail 图标只负责打开"截图与批注"面板，具体动作在面板磁贴里执行。
             // （此前图标同时触发动作，会立刻盖一层全屏覆盖层，把刚打开的面板压在下面。）
             items.Add(NewItem("capture", PanelKind.Capture, "截图与批注"));
-            items.Add(NewItem("annotate", PanelKind.Capture, "批注"));
-            items.Add(NewItem("longshot", PanelKind.Capture, "长截图"));
-            items.Add(NewItem("record", PanelKind.Capture, "录屏"));
         }
+        // 逐项 gate（工作区/策略可独立裁剪单个能力, 而非整组):
+        // 「批注」工作区只放行 ime+annotate 时, record/longshot 消失而 annotate 保留。
+        if (On("annotate")) items.Add(NewItem("annotate", PanelKind.Capture, "批注"));
+        if (On("longshot")) items.Add(NewItem("longshot", PanelKind.Capture, "长截图"));
+        if (On("record")) items.Add(NewItem("record", PanelKind.Capture, "录屏"));
         if (On("usb")) items.Add(NewItem("usb", PanelKind.Usb, "USB 监控"));
         if (On("printer")) items.Add(NewItem("printer", PanelKind.Printer, "打印机"));
         if (On("taskmgr")) items.Add(NewItem("taskmgr", PanelKind.TaskMgr, "任务管理器"));
