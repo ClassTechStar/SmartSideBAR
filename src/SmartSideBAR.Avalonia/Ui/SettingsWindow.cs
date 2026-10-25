@@ -18,9 +18,17 @@ public sealed class SettingsWindow : Window
 
     private readonly ComboBox _theme = new()
     {
-        ItemsSource = new[] { "浅色（默认）", "深色" },
+        ItemsSource = new[] { "浅色（默认）", "深色", "自动（跟随系统）" },
         SelectedIndex = 0,
         MinWidth = 140,
+    };
+    private readonly CheckBox _glass = new()
+    {
+        Content = "液态玻璃质感（关闭 = 经典纯白快速面，低配设备推荐）",
+    };
+    private readonly CheckBox _reduceMotion = new()
+    {
+        Content = "减弱动效（跳过面板滑入等过渡动画）",
     };
     private readonly ComboBox _accent = new()
     {
@@ -63,7 +71,14 @@ public sealed class SettingsWindow : Window
 
     private void LoadFrom(SidekickConfig c)
     {
-        _theme.SelectedIndex = string.Equals(c.Appearance.Theme, "dark", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        _theme.SelectedIndex = c.Appearance.Theme.ToLowerInvariant() switch
+        {
+            "dark" => 1,
+            "auto" => 2,
+            _ => 0,
+        };
+        _glass.IsChecked = c.Appearance.LiquidGlass;
+        _reduceMotion.IsChecked = c.Appearance.ReduceMotion;
         var accentIdx = Array.FindIndex(AccentHex,
             h => string.Equals(h, c.Appearance.Accent, StringComparison.OrdinalIgnoreCase));
         _accent.SelectedIndex = accentIdx < 0 ? 0 : accentIdx;
@@ -82,7 +97,7 @@ public sealed class SettingsWindow : Window
         _hkAnnotate.Text = c.Capture.AnnotateHotkey;
         _hkLongshot.Text = c.Capture.LongshotHotkey;
         _hkFloatBall.Text = c.FloatBall.Hotkey;
-        _hkIme.Text = "Ctrl+Shift+I";
+        _hkIme.Text = string.IsNullOrWhiteSpace(c.Ime.Hotkey) ? "Ctrl+Shift+I" : c.Ime.Hotkey;
     }
 
     private Control BuildUi()
@@ -137,6 +152,8 @@ public sealed class SettingsWindow : Window
         root.Children.Add(new TextBlock { Text = "外观", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 8, 0, 4) });
         root.Children.Add(RowOf("主题", _theme));
         root.Children.Add(RowOf("强调色", _accent));
+        root.Children.Add(RowOf("", _glass));
+        root.Children.Add(RowOf("", _reduceMotion));
         root.Children.Add(new TextBlock { Text = "常规", FontWeight = FontWeight.Bold, FontSize = 15, Margin = new Thickness(0, 12, 0, 4) });
         root.Children.Add(RowOf("侧栏位置", _side));
         root.Children.Add(RowOf("", _autoCollapse));
@@ -172,7 +189,14 @@ public sealed class SettingsWindow : Window
     private void Save()
     {
         var c = _config.Current;
-        _ = _config.Set("appearance.theme", _theme.SelectedIndex == 1 ? "dark" : "light");
+        _ = _config.Set("appearance.theme", _theme.SelectedIndex switch
+        {
+            1 => "dark",
+            2 => "auto", // auto 当前按浅色渲染 (AppTheme.IsDark 仅显式 dark 走深色)
+            _ => "light",
+        });
+        _ = _config.Set("appearance.liquidGlass", _glass.IsChecked == true);
+        _ = _config.Set("appearance.reduceMotion", _reduceMotion.IsChecked == true);
         _ = _config.Set("appearance.accent",
             AccentHex[Math.Clamp(_accent.SelectedIndex, 0, AccentHex.Length - 1)]);
         _ = _config.Set("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
@@ -189,6 +213,7 @@ public sealed class SettingsWindow : Window
         _ = _config.Set("capture.annotateHotkey", _hkAnnotate.Text?.Trim());
         _ = _config.Set("capture.longshotHotkey", _hkLongshot.Text?.Trim());
         _ = _config.Set("floatBall.hotkey", _hkFloatBall.Text?.Trim());
+        _ = _config.Set("ime.hotkey", string.IsNullOrWhiteSpace(_hkIme.Text) ? "Ctrl+Shift+I" : _hkIme.Text?.Trim());
         _shell.SetAutoLaunch(_autoLaunch.IsChecked == true);
         ToastService.Instance.Show("设置已保存", "success");
         Close();

@@ -1,5 +1,5 @@
 {
-  "$comment": "SmartSideBAR 视觉规格单一真源（P0-2）。数值取自已发布 v1.2 的打包产物 CSS/内联 SVG，并经真机核对。改这里之前请先问：是规格变了，还是我把代码写错了？",
+  "$comment": "SmartSideBAR 视觉规格单一真源（P0-2）。v1.2 玻璃规格 + 1.0.0 经典面规格（用户实测体感最佳版本）+ 动效词汇。改这里之前请先问：是规格变了，还是我把代码写错了？",
   "version": "1.2-derived",
   "rail": {
     "widthDip": 72,
@@ -56,6 +56,20 @@
   },
   "motion": {
     "animMs": 220,
-    "animFastMs": 120
+    "animFastMs": 120,
+    "windowMs": 250,
+    "panelMs": 180,
+    "staggerMs": 32,
+    "pressScale": 0.96
+  },
+  "classic": {
+    "bg": "#FFFFFF",
+    "bgHover": "#F5F7FA",
+    "brandLight": "#E8F1FC",
+    "pressedHover": "#D9E8FB",
+    "border": "#E8E8E8",
+    "text": "#1A1A1A",
+    "textSecondary": "#666666",
+    "shadow": "#14000000"
   }
 }

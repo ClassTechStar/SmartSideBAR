@@ -74,6 +74,32 @@ public class DesignTokensTests
     }
 
     [Fact]
+    public void Motion_vocabulary_matches_feel_baseline()
+    {
+        // 1.0.0 动效词汇（体感最佳版本）：微反馈 120 / 面板 180 / 窗口 250
+        Assert.Equal(220, T.Motion.AnimMs);
+        Assert.Equal(120, T.Motion.AnimFastMs);
+        Assert.Equal(250, T.Motion.WindowMs);
+        Assert.Equal(180, T.Motion.PanelMs);
+        Assert.Equal(32, T.Motion.StaggerMs);
+        Assert.Equal(0.96, T.Motion.PressScale);
+    }
+
+    [Fact]
+    public void Classic_surface_matches_v100()
+    {
+        // 1.0.0「经典快」表面语言：纯白 + 发丝线 + 品牌浅蓝态色（体感最佳版本的根因之一）
+        Assert.Equal("#FFFFFF", T.Classic.Bg);
+        Assert.Equal("#F5F7FA", T.Classic.BgHover);
+        Assert.Equal("#E8F1FC", T.Classic.BrandLight);
+        Assert.Equal("#D9E8FB", T.Classic.PressedHover);
+        Assert.Equal("#E8E8E8", T.Classic.Border);
+        Assert.Equal("#1A1A1A", T.Classic.Text);
+        Assert.Equal("#666666", T.Classic.TextSecondary);
+        Assert.Equal("#14000000", T.Classic.Shadow);
+    }
+
+    [Fact]
     public void Parse_roundtrip_preserves_values()
     {
         const string json = """

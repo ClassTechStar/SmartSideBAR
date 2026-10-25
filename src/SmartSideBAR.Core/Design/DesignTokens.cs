@@ -23,6 +23,7 @@ public sealed class DesignTokens
     public BadgeTokens Badge { get; set; } = new();
     public ColorTokens Color { get; set; } = new();
     public MotionTokens Motion { get; set; } = new();
+    public ClassicTokens Classic { get; set; } = new();
 
     private static DesignTokens? _default;
 
@@ -120,10 +121,39 @@ public sealed class ColorTokens
     public string StateRecording { get; set; } = "#E74C3C";
 }
 
+/// <summary>
+/// 动效词汇（1.0.0 体感基线 + LanMountain 模式）：微反馈 120ms / 面板 180ms / 窗口 250ms，
+/// 扇形菜单交错 32ms，按压缩放 0.96。动效统一从这里取，禁止散落魔法数字。
+/// </summary>
 public sealed class MotionTokens
 {
     public double AnimMs { get; set; } = 220;
     public double AnimFastMs { get; set; } = 120;
+    /// <summary>dock/undock 等窗口级动画时长。</summary>
+    public double WindowMs { get; set; } = 250;
+    /// <summary>面板展开滑出时长（1.0.0 CSS width 180ms ease 同源）。</summary>
+    public double PanelMs { get; set; } = 180;
+    /// <summary>扇形菜单逐项交错延迟。</summary>
+    public double StaggerMs { get; set; } = 32;
+    /// <summary>按压反馈缩放（LanMountain SettingsCardStyles 0.985~0.96 档）。</summary>
+    public double PressScale { get; set; } = 0.96;
+}
+
+/// <summary>
+/// 「经典快」表面语言（1.0.0 实测体感最佳）：纯白不透明 + 发丝线 + 品牌浅蓝态色，
+/// 零持久模糊。appearance.liquidGlass=false 时整套生效；true 时回 v1.2 玻璃规格。
+/// </summary>
+public sealed class ClassicTokens
+{
+    public string Bg { get; set; } = "#FFFFFF";
+    public string BgHover { get; set; } = "#F5F7FA";
+    public string BrandLight { get; set; } = "#E8F1FC";
+    /// <summary>按压态（比 hover 深一档，触控可感）。</summary>
+    public string PressedHover { get; set; } = "#D9E8FB";
+    public string Border { get; set; } = "#E8E8E8";
+    public string Text { get; set; } = "#1A1A1A";
+    public string TextSecondary { get; set; } = "#666666";
+    public string Shadow { get; set; } = "#14000000";
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

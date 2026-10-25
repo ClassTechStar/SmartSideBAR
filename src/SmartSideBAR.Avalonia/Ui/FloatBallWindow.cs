@@ -4,9 +4,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
+using Avalonia.Styling;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Design;
 using SmartSideBAR.Core.FloatBall;
 using SmartSideBAR.Windows.Native;
 
@@ -34,6 +39,8 @@ public sealed class FloatBallWindow : Window
     private PixelPoint _grabOffsetPx;
     private PixelPoint _restPosition;        // 收起态窗口位置 (物理像素) —— 展开/收起不得漂移
     private DateTime _lastTap = DateTime.MinValue;
+    private readonly DispatcherTimer? _idleTimer;   // 闲时变暗 (config.floatBall.idleDelayMs/idleOpacity 首次接入)
+    private readonly double _idleOpacity;
 
     /// <param name="workPx">侧栏所在显示器的工作区 (物理像素)。</param>
     /// <param name="scale">窗口 DPI 缩放 (物理 = DIP × scale)。</param>
@@ -71,11 +78,60 @@ public sealed class FloatBallWindow : Window
         PointerPressed += OnPress;
         PointerMoved += OnMove;
         PointerReleased += OnRelease;
+        PointerEntered += (_, _) => Wake();
+        PointerMoved += (_, _) => Wake();
         DoubleTapped += (_, _) =>
         {
             _toggleSidebar();
             if (_expanded) CollapseFan(); // 双击的第一击可能已展开, 一并收起
         };
+
+        // 闲时变暗: 指针停留超时后降到 idleOpacity, 交互即恢复 (配置此前从未被消费)
+        _idleOpacity = cfg.IdleOpacity;
+        if (cfg.IdleDelayMs > 0 && cfg.IdleOpacity < 1)
+        {
+            _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(cfg.IdleDelayMs) };
+            _idleTimer.Tick += (_, _) =>
+            {
+                if (_expanded || _dragging)
+                {
+                    Wake();
+                    return;
+                }
+                AnimateOrbOpacity(_idleOpacity);
+            };
+            _idleTimer.Start();
+        }
+    }
+
+    /// <summary>任意交互后恢复不透明并重置闲时计时。</summary>
+    private void Wake()
+    {
+        _idleTimer?.Stop();
+        _idleTimer?.Start();
+        if (_orb.Opacity < 1) AnimateOrbOpacity(1);
+    }
+
+    private void AnimateOrbOpacity(double target)
+    {
+        var appearance = _config.Current.Appearance;
+        if (appearance.ReduceMotion)
+        {
+            _orb.Opacity = target;
+            return;
+        }
+        var anim = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(DesignTokens.Current.Motion.AnimMs),
+            Easing = new CubicEaseOut(),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, _orb.Opacity) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, target) } },
+            },
+        };
+        _ = anim.RunAsync(_orb);
     }
 
     private Border BuildOrb()
@@ -128,6 +184,7 @@ public sealed class FloatBallWindow : Window
     {
         var p = e.GetCurrentPoint(this);
         if (!p.Properties.IsLeftButtonPressed) return;
+        Wake();
         _dragging = true;
         _moved = false;
         _pressPos = p.Position;
@@ -160,6 +217,7 @@ public sealed class FloatBallWindow : Window
     {
         if (!_dragging) return;
         _dragging = false;
+        Wake();
         if (_moved && !_expanded)
         {
             // 吸附 (v1.1 SnapToEdges 语义, 物理像素)
@@ -260,8 +318,67 @@ public sealed class FloatBallWindow : Window
             Canvas.SetLeft(button, centerX + ox - FloatBallLayout.FanItemSize / 2.0);
             Canvas.SetTop(button, centerY + oy - FloatBallLayout.FanItemSize / 2.0);
             _root.Children.Add(button);
+            PlayFanIn(button, i);
         }
         _expanded = true;
+    }
+
+    /// <summary>扇形菜单逐项入场: 淡入 + 从 0.6 缩放弹出, 每项交错 staggerMs (令牌驱动)。</summary>
+    private void PlayFanIn(Button button, int index)
+    {
+        var motion = DesignTokens.Current.Motion;
+        if (_config.Current.Appearance.ReduceMotion)
+        {
+            button.Opacity = 1;
+            return;
+        }
+        var scale = new ScaleTransform(0.6, 0.6);
+        button.RenderTransform = scale;
+        button.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
+        button.Opacity = 0;
+        var delay = TimeSpan.FromMilliseconds(motion.StaggerMs * index);
+        var appear = new Animation
+        {
+            Delay = delay,
+            Duration = TimeSpan.FromMilliseconds(motion.AnimMs),
+            Easing = new CubicEaseOut(),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(Visual.OpacityProperty, 0d) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(Visual.OpacityProperty, 1d) } },
+            },
+        };
+        _ = appear.RunAsync(button);
+        var grow = new Animation
+        {
+            Delay = delay,
+            Duration = TimeSpan.FromMilliseconds(motion.AnimMs),
+            Easing = new CubicEaseOut(),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame
+                {
+                    Cue = new Cue(0),
+                    Setters =
+                    {
+                        new Setter(ScaleTransform.ScaleXProperty, 0.6),
+                        new Setter(ScaleTransform.ScaleYProperty, 0.6),
+                    },
+                },
+                new KeyFrame
+                {
+                    Cue = new Cue(1),
+                    Setters =
+                    {
+                        new Setter(ScaleTransform.ScaleXProperty, 1.0),
+                        new Setter(ScaleTransform.ScaleYProperty, 1.0),
+                    },
+                },
+            },
+        };
+        _ = grow.RunAsync(scale);
     }
 
     /// <summary>收起: 窗口缩回球体尺寸, 位置与 Canvas 偏移都必须复位 ——

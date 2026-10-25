@@ -1,0 +1,40 @@
+appId: com.classtechstar.smartsidebar
+productName: SmartSideBAR
+copyright: Copyright © 2026 ClassTechStar
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - build/**/*
+  - resources/**/*
+  - package.json
+asarUnpack:
+  - '**/*.node'
+nsis:
+  oneClick: true
+  perMachine: true
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: SmartSideBAR
+  uninstallDisplayName: SmartSideBAR
+  deleteAppDataOnUninstall: false
+  warningsAsErrors: false
+  include: build/installer.nsh
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+  artifactName: ${productName}-安装包-${version}.exe
+  publisherName: Seewo Sidekick Team
+  verifyUpdateCodeSignature: false
+  requestedExecutionLevel: requireAdministrator
+  signAndEditExecutable: false
+extraResources:
+  - from: resources/app/defaults
+    to: app/defaults
+    filter: "**/*"
+compression: maximum
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

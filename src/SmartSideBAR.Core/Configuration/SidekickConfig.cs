@@ -29,6 +29,8 @@ public sealed record ImeConfig
     public string Slot1 { get; init; } = "Microsoft Pinyin";
     public string Slot2 { get; init; } = "US";
     public bool FallbackSwap { get; init; } = true;
+    /// <summary>输入法切换热键（此前硬编码 Ctrl+Shift+I 且设置界面不落盘）。</summary>
+    public string Hotkey { get; init; } = "Ctrl+Shift+I";
 }
 
 public sealed record CaptureConfig

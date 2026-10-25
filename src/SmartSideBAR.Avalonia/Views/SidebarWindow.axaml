@@ -31,6 +31,23 @@
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <!-- 触控按压反馈: 缩放 120ms 过渡 (design-tokens.motion.pressScale/animFastMs) -->
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+        <Setter Property="Transitions">
+          <Transitions>
+            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12"/>
+          </Transitions>
+        </Setter>
+      </Style.Setters>
+    </Style>
+    <Style Selector="Button.railBtn /template/ ContentPresenter">
+      <Style.Setters>
+        <Setter Property="Transitions">
+          <Transitions>
+            <!-- 1.0 体感基线: hover/active 背景过渡 120ms (v1.0 CSS 变量 anim 同源) -->
+            <BrushTransition Property="Background" Duration="0:0:0.12"/>
+          </Transitions>
+        </Setter>
       </Style.Setters>
     </Style>
     <Style Selector="Button.railBtn:pointerover /template/ ContentPresenter">
@@ -39,8 +56,20 @@
     <Style Selector="Button.railBtn:pressed /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource RailPressed}"/>
     </Style>
+    <Style Selector="Button.railBtn:pressed">
+      <Style.Setters>
+        <Setter Property="RenderTransform" Value="scale(0.96)"/>
+      </Style.Setters>
+    </Style>
     <Style Selector="Button.railBtn.active /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource RailActive}"/>
+    </Style>
+    <!-- 玻璃模式下 rail 图标补投影 (583b1d9); 经典模式无投影 (1.0 同源)。
+         RailCapsule 的 glassRail/classicRail 类由 ApplyTheme 切换。 -->
+    <Style Selector="Border.glassRail ItemsControl Image">
+      <Setter Property="Effect">
+        <DropShadowEffect OffsetX="0" OffsetY="1" BlurRadius="2" Opacity="0.18" Color="Black"/>
+      </Setter>
     </Style>
     <Style Selector="Button.panelClose">
       <Style.Setters>
@@ -51,10 +80,30 @@
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="RenderTransform" Value="scale(1)"/>
+        <Setter Property="Transitions">
+          <Transitions>
+            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12"/>
+          </Transitions>
+        </Setter>
+      </Style.Setters>
+    </Style>
+    <Style Selector="Button.panelClose /template/ ContentPresenter">
+      <Style.Setters>
+        <Setter Property="Transitions">
+          <Transitions>
+            <BrushTransition Property="Background" Duration="0:0:0.12"/>
+          </Transitions>
+        </Setter>
       </Style.Setters>
     </Style>
     <Style Selector="Button.panelClose:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource RailHover}"/>
+    </Style>
+    <Style Selector="Button.panelClose:pressed">
+      <Style.Setters>
+        <Setter Property="RenderTransform" Value="scale(0.94)"/>
+      </Style.Setters>
     </Style>
   </Window.Styles>
 
@@ -90,11 +139,8 @@
                     <Button Classes="railBtn" Classes.active="{Binding IsActive}"
                             Command="{Binding Command}" ToolTip.Tip="{Binding Title}">
                       <Panel>
-                        <Image Width="28" Height="28" Source="{Binding Icon}">
-                          <Image.Effect>
-                            <DropShadowEffect OffsetX="0" OffsetY="1" BlurRadius="2" Opacity="0.18" Color="Black"/>
-                          </Image.Effect>
-                        </Image>
+                        <!-- 投影由 Border.glassRail ItemsControl Image 样式控制 (玻璃/经典模式切换) -->
+                        <Image Width="28" Height="28" Source="{Binding Icon}"/>
                         <Border IsVisible="{Binding HasBadge}"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                 Margin="0,0,2,2" CornerRadius="6" Padding="4,1"

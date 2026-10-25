@@ -11,6 +11,8 @@ namespace SmartSideBAR.Avalonia.Ui;
 public sealed record Palette
 {
     public required bool Dark { get; init; }
+    /// <summary>false = 1.0「经典快」面（纯白不透明 + 发丝线, 零持久模糊）; true = v1.2 液态玻璃。</summary>
+    public required bool Glass { get; init; }
     public required Color PanelBg { get; init; }
     public required Color Text { get; init; }
     public required Color Muted { get; init; }
@@ -61,6 +63,9 @@ public static class AppTheme
         var a = AppearanceNormalize.Clamp(appearance);
         var dark = IsDark(a.Theme);
         var accent = ToColor(a.Accent);
+        // liquidGlass=false → 1.0「经典快」: 纯白不透明表面（实测体感最佳; 低配设备零模糊合成开销）。
+        // 深色主题无经典变体时保持玻璃深色, 避免另起一套深色平面规格。
+        if (!a.LiquidGlass && !dark) return ClassicLight(accent);
         return dark ? Dark(accent, a) : Light(accent, a);
     }
 
@@ -78,6 +83,7 @@ public static class AppTheme
     private static Palette Light(Color accent, AppearanceConfig a) => new()
     {
         Dark = false,
+        Glass = true,
         PanelBg = Parse(Tokens.PanelBg, "#FFFFFF"),
         Text = Parse(Tokens.Text, "#2B6EE0"),
         Muted = Parse(Tokens.TextMuted, "#5A6478"),
@@ -95,6 +101,7 @@ public static class AppTheme
     private static Palette Dark(Color accent, AppearanceConfig a) => new()
     {
         Dark = true,
+        Glass = true,
         PanelBg = Parse(Tokens.BgDark, "#171B22"),
         Text = Lighten(accent, 0.35),
         Muted = Parse(Tokens.TextDark, "#E6EBF3"),
@@ -108,6 +115,31 @@ public static class AppTheme
         RimFrom = Color.FromArgb(0x3D, 0xFF, 0xFF, 0xFF),
         RimTo = Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF),
     };
+
+    /// <summary>1.0「经典快」浅色面：设计令牌 classic 段（纯白 / 发丝线 / 品牌浅蓝态色）。</summary>
+    private static Palette ClassicLight(Color accent)
+    {
+        var c = DesignTokens.Current.Classic;
+        var bg = Parse(c.Bg, "#FFFFFF");
+        var border = Parse(c.Border, "#E8E8E8");
+        return new Palette
+        {
+            Dark = false,
+            Glass = false,
+            PanelBg = bg,
+            Text = Parse(c.Text, "#1A1A1A"),
+            Muted = Parse(c.TextSecondary, "#666666"),
+            Divider = border,
+            Hover = Parse(c.BgHover, "#F5F7FA"),
+            Accent = accent,
+            AccentSoft = Color.FromArgb(0x14, accent.R, accent.G, accent.B),
+            RailFrom = bg,
+            RailTo = bg,
+            RailGlow = Color.FromArgb(0, 0xFF, 0xFF, 0xFF),
+            RimFrom = border,
+            RimTo = border,
+        };
+    }
 
     private static Color WithAlpha(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);
 

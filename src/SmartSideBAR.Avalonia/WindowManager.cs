@@ -194,7 +194,8 @@ public sealed class WindowManager(
             hotkeys.Register("longshot", cfg.Capture.LongshotHotkey);
         }
         hotkeys.Register("floatball", cfg.FloatBall.Hotkey);
-        hotkeys.Register("ime", "Ctrl+Shift+I");
+        hotkeys.Register("ime",
+            string.IsNullOrWhiteSpace(cfg.Ime.Hotkey) ? "Ctrl+Shift+I" : cfg.Ime.Hotkey);
     }
 
     /// <summary>动作总路由: rail 按钮 / 悬浮球 / 热键 / 托盘共用。</summary>

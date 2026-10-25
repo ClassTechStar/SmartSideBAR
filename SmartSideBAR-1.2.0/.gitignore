@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+out/
+dist/
+native/build/
+native/*.vcxproj
+native/*.vcxproj.filters
+native/binding.sln
+native/config.gypi
+*.node
+*.exe
+*.dmg
+*.zip
+*.AppImage
+*.deb
+*.rpm
+*.msi
+*.blockmap
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Environment
+.env
+.env.local
+
+# Code signing (私钥/口令绝不入库; 公钥 .cer 与信任脚本随 release 分发)
+cert/
+
+# Electron
+release/
+buildResources/
+
+# Cache
+.cache/
+.temp/
