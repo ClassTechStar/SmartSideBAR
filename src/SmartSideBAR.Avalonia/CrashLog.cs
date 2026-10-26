@@ -1,4 +1,4 @@
-// 崩溃取证 —— 常驻程序最怕"静默退出"：任务栏里图标没了，却查不到任何原因。
+// 崩溃记录。常驻程序怕的是无声退出: 任务栏图标没了, 却查不到原因。
 // P2-3：除文本日志外，再落一份结构化 JSON（含版本/DPI/当前面板/OS 版本），便于聚合与关联。
 // 这里把 AppDomain / TaskScheduler / UI 线程三路未处理异常统一收集。
 using System.Text;
@@ -19,7 +19,7 @@ internal static class CrashLog
     /// <summary>最近一次上下文（由 WindowManager 在面板切换/DPI 变化时刷新）。</summary>
     public static CrashContext? LastContext { get; set; }
 
-    /// <summary>进程级取证。注意：此时不要碰 Dispatcher.UIThread ——
+    /// <summary>进程级记录。这里不要碰 Dispatcher.UIThread,
     /// 平台尚未初始化，提前访问会把 Dispatcher 绑到空实现，导致 MainLoop 抛
     /// PlatformNotSupportedException（本文件初版就踩了这个坑）。</summary>
     public static void InstallProcessWide()

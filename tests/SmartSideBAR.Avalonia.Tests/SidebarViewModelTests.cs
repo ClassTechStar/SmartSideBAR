@@ -1,5 +1,5 @@
 // 侧栏 ViewModel 的 Headless 测试（P1-1）。
-// 此前用例全部集中在 Core 纯逻辑与 Windows 替身层，VM 层零覆盖 ——
+// 用例原本集中在 Core 纯逻辑与 Windows 替身层, VM 层零覆盖,
 // "点了 rail 图标却没切面板""4 个截图图标一起高亮"这类缺陷只能靠肉眼在真机发现。
 // 这里直接驱动 SidebarViewModel：不创建真实窗口，只验证状态机与命令路由。
 using System.ComponentModel;

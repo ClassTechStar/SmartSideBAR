@@ -1,4 +1,4 @@
-// Windows/Shell/DiagnosticsService.cs —— §6.12: 7 项真实探测聚合 + 诊断包导出 (P1-12 语义)。
+// §6.12: 7 项真实探测聚合 + 诊断包导出 (P1-12 语义)。
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
@@ -72,7 +72,7 @@ public sealed partial class DiagnosticsService(
         Directory.CreateDirectory(reportPath);
         File.WriteAllText(Path.Combine(reportPath, "report.json"), json, Encoding.UTF8);
 
-        // 日志打包 (7d 滚动目录整体复制) —— 日志文件可能正被写入, 失败不影响已导出的 report.json
+                // 日志打包 (7d 滚动目录整体复制)。日志文件可能正被写入, 失败不影响已导出的 report.json
         var logsDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SmartSideBAR", "logs");
         if (Directory.Exists(logsDir))

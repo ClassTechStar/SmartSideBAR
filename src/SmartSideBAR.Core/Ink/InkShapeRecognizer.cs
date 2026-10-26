@@ -1,4 +1,4 @@
-// 墨迹识别转形 (Ink-to-shape) —— 纯几何识别器。
+// 墨迹识别转形 (Ink-to-shape), 纯几何识别器。
 // ICC (InkCanvasForClass) 用 WinRT InkAnalyzer (依赖 WPF InkPresenter, 不可移植);
 // 这里复刻其意图: 收笔后把手绘折线替换为干净形状。算法 = 主轴分析(PCA) + 残差校验:
 //   直线    开放笔画, 最大弦偏差 ≤ 12% 弦长

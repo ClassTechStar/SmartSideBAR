@@ -1,4 +1,4 @@
-// 面板公共构件 —— v1.2 各 Panel 的 CSS 语义在 Avalonia 侧的对应实现。
+// 面板公共构件, v1.2 各 Panel 的 CSS 语义在 Avalonia 侧的对应实现。
 // 统一 13px 正文 / 12px 辅助 / 12px 圆角卡片 / 2 列动作磁贴，避免每个面板各写一套。
 // 圆角/间距取 design-tokens shape/spacing 角色 (Seelen 语义: s=按钮, m=卡片/弹层)。
 using Avalonia;

@@ -1,4 +1,4 @@
-// shared/floatball-layout.ts 的逐函数移植 —— 纯算法, 无平台依赖 (附录 A floatball:layout 落点)。
+// shared/floatball-layout.ts 的逐函数移植, 纯算法无平台依赖 (附录 A floatball:layout 落点)。
 namespace SmartSideBAR.Core.FloatBall;
 
 public readonly record struct RectLike(int X, int Y, int Width, int Height);

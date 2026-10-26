@@ -1,5 +1,5 @@
-// Windows/Native/WndProcHook.cs —— K1 通知闭环的基础设施。
-// 实现方式: SetWindowLongPtr(GWLP_WNDPROC) 经典子类化 —— 方案 §5.3 原想用 Avalonia 的
+// K1 通知处理的基础设施。
+// 实现方式: SetWindowLongPtr(GWLP_WNDPROC) 经典子类化。方案 §5.3 原想用 Avalonia 的
 // AddWndProcCallback, 但该 API 未公开(为 Avalonia 内部实现); 子类化等效且零 UI 框架耦合,
 // 同一钩子可被 AppBar / 全局热键(WM_HOTKEY) / USB(WM_DEVICECHANGE) 共用 (Wave B 复用点)。
 using System.Runtime.CompilerServices;

@@ -1,4 +1,4 @@
-// Core/Devices/PrinterStateMapper.cs —— E4 根修 (方案 §6.7): 用 DetectedErrorState 枚举做状态判定。
+// E4 修复 (方案 §6.7): 用 DetectedErrorState 枚举做状态判定。
 // 与 v1.2.0 的「PrinterState===3 判 ok」错误映射不同, 此处字段语义逐一对齐 Win32_Printer 文档:
 //   DetectedErrorState: 0=Unknown 1=Other 2=NoError 3=LowPaper 4=NoPaper 5=LowToner 6=NoToner
 //                       7=DoorOpen 8=Jammed 9=Offline 10=ServiceRequested 11=OutputBinFull
@@ -36,7 +36,7 @@ public static class PrinterStateMapper
         _ => "unknown",
     };
 
-    /// <summary>纯净映射函数 —— 单测锁定语义。</summary>
+        /// <summary>纯映射函数, 单测锁定语义。</summary>
     public static PrinterState Map(uint? detectedErrorState, ushort? printerStatus)
     {
         switch (detectedErrorState)

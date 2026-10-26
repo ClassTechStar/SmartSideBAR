@@ -1,4 +1,4 @@
-// Core/Input/HotkeyParser.cs —— "Ctrl+Shift+A" 文本 ↔ Win32 修饰键+虚拟键 (方案 §6.13)。
+// "Ctrl+Shift+A" 文本 ↔ Win32 修饰键+虚拟键 (方案 §6.13)。
 // 解析/替代建议为纯函数可单测; 冲突事实由 RegisterHotKey 返回值给出 (系统级, 非启发式)。
 namespace SmartSideBAR.Core.Input;
 

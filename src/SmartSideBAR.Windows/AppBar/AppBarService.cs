@@ -1,6 +1,6 @@
-// Windows/AppBar/AppBarService.cs —— §5.3 生命周期 + 通知状态机 (v1.2.0 缺口 K1/K2/K3/K4/K7 根修)
+// §5.3 生命周期 + 通知状态机 (v1.2.0 缺口 K1/K2/K3/K4/K7 修复)
 // 通知链: 系统 → WndProcHook(子类化) → OnWndProc 状态机 → Reposition/EventBus。
-// 坐标 (K4): 与系统协商及窗口定位全链路物理像素 —— MoveWindow 直达, 无 DIP 换算。
+// 坐标 (K4): 与系统协商及窗口定位全链路物理像素, MoveWindow 直达, 无 DIP 换算。
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Windows.Native;
@@ -13,7 +13,7 @@ public sealed record FullscreenAppChanged(bool Active);
 public sealed record WindowArrangePending(bool Hiding);
 
 /// <summary>侧栏应用栏编排器。
-/// 生命周期: Attach(自愈+注册+首次定位) ⇄ OnAppBarNotification(自适应) → Detach(注销)。</summary>
+/// 生命周期: Attach(自动恢复+注册+首次定位) ⇄ OnAppBarNotification(自适应) → Detach(注销)。</summary>
 public sealed class AppBarService(
     IAppBarApi api,
     IWndProcHook hook,
@@ -51,7 +51,7 @@ public sealed class AppBarService(
         _userExpanded = false;
         _fullscreen = false;
 
-        // V6 自愈: 上次强杀可能残留孤儿注册 —— ABM_REMOVE 对未注册 hwnd 无副作用, 先补发一次
+                // V6: 上次强杀可能残留注册, ABM_REMOVE 对未注册 hwnd 无副作用, 先补发一次
         api.Remove(hwnd);
 
         if (!api.Register(hwnd, AppBarNative.AppBarCallbackMsg))
@@ -61,7 +61,7 @@ public sealed class AppBarService(
         }
         _registered = true;
 
-        // K1/K2/K3 核心: 挂接 WndProc —— v1.2.0 完全缺失的通知闭环
+                // K1/K2/K3: 挂接 WndProc, v1.2.0 完全缺失的通知处理
         hook.Add(hwnd, OnWndProc);
         Reposition(CurrentWidthPx);
         log?.LogInformation("[AppBar] 已注册 edge={Edge} rail={Rail}px expanded={Expanded}px",
@@ -77,7 +77,7 @@ public sealed class AppBarService(
     }
 
     /// <summary>
-    /// B4: 自动隐藏 AppBar —— 注册 ABM_SETAUTOHIDEBAR, 全屏时不遮挡, 鼠标贴边唤出。
+        /// B4: 自动隐藏 AppBar, 注册 ABM_SETAUTOHIDEBAR, 全屏时不遮挡, 鼠标贴边唤出。
     /// 这是 913dc35 用户抱怨「右侧屏幕被 AppBar 占用」的正面解:
     /// 既不偷 WorkArea, 又能在全屏应用下通过贴边唤出。
     /// </summary>
@@ -109,7 +109,7 @@ public sealed class AppBarService(
 
     /// <summary>重排: 注册后 / 展开收起 / ABN_POSCHANGED / 分辨率与任务栏变化 (K1/K4)。
     /// 锚点必须是 rcMonitor 全屏矩形: rcWork 已扣除自身 AppBar 占位, 若以它为锚,
-    /// 每次 Reposition 都会向屏幕内侧漂移一个带宽 —— 对方案 §5.3 蓝本的勘误。
+        /// 每次 Reposition 都会向屏幕内侧漂移一个带宽, 这是对方案 §5.3 蓝本的勘误。
     /// 垂直范围 = 工作区高度 84% 的悬浮胶囊 (上下各留 8%, 对齐 v1.1 玻璃胶囊设计);
     /// 水平锚定显示器边缘, 沿边裁剪交给 ABM_QUERYPOS。</summary>
     /// <summary>
@@ -139,7 +139,7 @@ public sealed class AppBarService(
         if (_docked && (_edge is AppBarNative.ABE_LEFT or AppBarNative.ABE_RIGHT))
         {
             // 先注销自身旧占位: QUERYPOS 会为已注册 AppBar(含我们自己)让位, 否则方块逐次左漂。
-            // ABM_REMOVE 后系统 WorkArea 恢复滞后一步 —— 收敛循环直至授予位==期望位。
+                        // ABM_REMOVE 后系统 WorkArea 恢复滞后一步, 收敛循环直至授予位==期望位。
             var dockWant = _edge == AppBarNative.ABE_RIGHT
                 ? new AppBarRect(mon.Work.X + mon.Work.W - _dockSizePx,
                     mon.Work.Y + mon.Work.H - _dockSizePx, _dockSizePx, _dockSizePx)
@@ -175,7 +175,7 @@ public sealed class AppBarService(
             _ => new AppBarRect(mon.Monitor.X, mon.Monitor.Y + mon.Monitor.H - widthPx, mon.Monitor.W, widthPx),
         };
         var granted = api.QueryAndSetPos(_hwnd, _edge, want); // 系统审批 (避让任务栏/他栏)
-        // B24 根修: ABM_REMOVE 之后系统 WorkArea 的恢复滞后一拍。若侧栏刚从 dock 形态恢复,
+        // B24  ABM_REMOVE 之后系统 WorkArea 的恢复滞后一拍。若侧栏刚从 dock 形态恢复,
         // 首次 QUERYPOS 仍会按「旧占位」把区间向内裁掉一个自身宽度 (实测 108px),
         // 之后再 SETPOS 就把这条缝永久留了下来。未贴边 → 注销并重注册后再协商一次。
         for (var attempt = 0; attempt < 3 && !IsAnchored(granted, mon.Monitor); attempt++)
@@ -196,7 +196,7 @@ public sealed class AppBarService(
         log?.LogInformation("[AppBar] 重排 → ({X},{Y}) {W}x{H}px", granted.X, granted.Y, granted.W, granted.H);
     }
 
-    /// <summary>WndProc 状态机 —— K1/K2/K3/K7 的通知闭环。</summary>
+        /// <summary>WndProc 状态机, K1/K2/K3/K7 的通知处理。</summary>
     private nint OnWndProc(nint hwnd, uint msg, nuint wParam, nint lParam, ref bool handled)
     {
         _inHook = true;
@@ -222,7 +222,7 @@ public sealed class AppBarService(
                     break;
 
                 case AppBarNative.ABN_FULLSCREENAPP: // 授课视频等全屏应用开/关 (K3)
-                    // K3 勘误: 系统对「最大化窗口」同样上报 TRUE —— 直接采信会让侧栏在普通桌面
+                                        // K3 勘误: 系统对「最大化窗口」同样上报 TRUE, 直接采信会让侧栏在普通桌面
                     // 使用中被反复收进角落。此处用前台窗口实际几何复核, 只认真正铺满显示器的窗口。
                     _fullscreen = lParam != 0 && (_fullscreenProbe() ?? true);
                     if (_fullscreen) log?.LogInformation("[AppBar] 判定全屏: 前台窗口 {Class}", DescribeForeground());
@@ -254,7 +254,7 @@ public sealed class AppBarService(
         return 0; // handled=false → 其余消息交还原窗口过程
     }
 
-    /// <summary>退出/窗口销毁前必须调用 —— 否则系统 WorkArea 泄漏 (v1.2.0 语义保留)。</summary>
+        /// <summary>退出/窗口销毁前必须调用, 否则系统 WorkArea 泄漏 (v1.2.0 语义保留)。</summary>
     public void Detach()
     {
         if (!_registered) return;
@@ -279,7 +279,7 @@ public sealed class AppBarService(
         };
     }
 
-    /// <summary>前台窗口类名 —— 排查"误判全屏"时用（无边框工具窗口也会铺满屏幕）。</summary>
+        /// <summary>前台窗口类名, 排查"误判全屏"时用 (无边框工具窗口也会铺满屏幕)。</summary>
     private static string DescribeForeground()
     {
         var fg = AppBarNative.GetForegroundWindow();

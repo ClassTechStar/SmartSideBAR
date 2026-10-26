@@ -1,4 +1,4 @@
-// 屏幕批注窗 (§6.3) —— P1-8 拆分后的窗口壳: 铺屏/底图/指针接线/保存。
+// 屏幕批注窗 (§6.3), P1-8 拆分后的窗口壳: 铺屏/底图/指针接线/保存。
 // 引擎见 Ui/Ink/InkCanvas.cs, 工具条见 Ui/Ink/AnnotateToolbar.cs (与板中板共享)。
 using Avalonia;
 using Avalonia.Controls;
@@ -26,7 +26,7 @@ public sealed class AnnotateWindow : Window
         _dir = dir;
         _format = format;
 
-        // B25 根修: 透明/无边框/置顶必须在 Show 之前设定 (分层窗口语义)。
+        // B25  透明/无边框/置顶必须在 Show 之前设定 (分层窗口语义)。
         Topmost = true;
         WindowStartupLocation = WindowStartupLocation.Manual;
         SystemDecorations = SystemDecorations.None;
@@ -40,7 +40,7 @@ public sealed class AnnotateWindow : Window
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        // B25 根修: 以打开瞬间的屏幕快照作底 —— 大面积窗口的分层透明在 Win32 上不可靠。
+                // B25: 以打开瞬间的屏幕快照作底, 大面积窗口的分层透明在 Win32 上不可靠。
         var backdrop = new Image { Stretch = Stretch.Fill, IsHitTestVisible = false };
         if (_backgroundPng is not null)
         {

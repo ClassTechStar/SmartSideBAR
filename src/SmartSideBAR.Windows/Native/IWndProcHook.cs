@@ -1,4 +1,4 @@
-// Windows/Native/IWndProcHook.cs —— WndProc 子类化钩子抽象 (单测注入假件)
+// WndProc 子类化钩子抽象 (单测注入假件)
 namespace SmartSideBAR.Windows.Native;
 
 /// <summary>

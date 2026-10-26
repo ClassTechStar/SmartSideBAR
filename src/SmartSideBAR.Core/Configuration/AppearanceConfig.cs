@@ -1,11 +1,11 @@
-// 与 shared/appearance.ts 同构 —— 仅取纯数据与钳制逻辑; CSS 变量计算留在 UI 层 (Wave C)。
+// 与 shared/appearance.ts 同构, 仅取纯数据与钳制逻辑; CSS 变量计算留在 UI 层 (Wave C)。
 namespace SmartSideBAR.Core.Configuration;
 
 public sealed record AppearanceConfig
 {
     public string Theme { get; init; } = "auto";         // light|dark|auto
     /// <summary>
-    /// false（默认）= 1.0「经典快」面: 纯白不透明 + 发丝线, 零持久模糊 —— 实测体感最佳,
+        /// false (默认) = 1.0「经典快」面: 纯白不透明 + 发丝线, 零持久模糊,
     /// 低配教学一体机的合成开销最低。true = v1.2 液态玻璃（设置中可开启）。
     /// </summary>
     public bool LiquidGlass { get; init; } = false;

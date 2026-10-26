@@ -1,5 +1,5 @@
-// Windows/AppBar/AppBarNative.cs —— §5.2 P/Invoke 层 (方案附录蓝本落地)
-// 物理(K4): APPBARDATA/RECT/MONITORINFO 全部物理像素 —— 与系统协商的唯一坐标轨。
+// §5.2 P/Invoke 层 (方案附录蓝本落地)
+// 物理(K4): APPBARDATA/RECT/MONITORINFO 全部物理像素, 是与系统协商的唯一坐标轨。
 // 参考: https://learn.microsoft.com/zh-cn/windows/win32/shell/application-desktop-toolbars
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
@@ -35,7 +35,7 @@ internal static partial class AppBarNative
     public const uint WM_DEVICECHANGE = 0x0219;        // Wave B UsbWatcher 复用
 
     /// <summary>应用栏回调消息: WM_APP + 0xBAB (应用自定义区; 刻意避开 v1.2.0 的 WM_USER+1,
-    /// 防止与任何遗留注册/其他子类链冲突, 同时便于孤儿注册自愈识别)。</summary>
+    /// 防止与任何遗留注册/其他子类链冲突, 同时便于残留注册的自动清理识别)。</summary>
     public const uint AppBarCallbackMsg = 0x8000 + 0x0BAB;
 
     public const uint MONITOR_DEFAULTTONEAR = 2;
@@ -83,7 +83,7 @@ internal static partial class AppBarNative
     public static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
 
     /// <summary>切换调用线程 DPI 感知上下文, 返回原上下文 (恢复用)。
-    /// 宿主 (Avalonia) 线程上下文不受我们控制 —— AppBar 协商一律临时切到 PMv2,
+        /// 宿主 (Avalonia) 线程上下文不受我们控制, AppBar 协商一律临时切到 PMv2,
     /// 保证 MonitorInfo/MoveWindow 全部物理像素 (K4 单轨的硬保证)。</summary>
     [LibraryImport("user32.dll")]
     internal static partial nint SetThreadDpiAwarenessContext(nint context);

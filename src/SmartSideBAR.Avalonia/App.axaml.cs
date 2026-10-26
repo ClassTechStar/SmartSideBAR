@@ -105,7 +105,7 @@ public partial class App : Application
     }
 
     /// <summary>测试钩子: SSB_AUTO_UNDOCK_MS&gt;0 时 N 毫秒后自动展开侧栏 (undock 回归)。
-    /// B17 根修: 原来调 Dispatch("dock") —— 那是「切换」, 未收起时反而把侧栏收起来,
+    /// B17: Dispatch("dock") 是「切换」语义, 未收起时反而会把侧栏收起来,
     /// 与钩子语义相反。这里直接置为未收起。</summary>
     private void ConfigureAutoUndock(WindowManager wm)
     {

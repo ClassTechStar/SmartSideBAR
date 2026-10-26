@@ -1,4 +1,4 @@
-// InkCanvas 批注引擎 —— P1-8 从 AnnotateWindow.cs 拆出 (798 行 → 引擎/壳分离)。
+// InkCanvas 批注引擎, P1-8 从 AnnotateWindow.cs 拆出 (798 行 → 引擎/壳分离)。
 // 全屏批注与板中板共用同一引擎 (压感/平滑/荧光/激光/形状/识别接入)。
 // 算法出处 (ICC-CE 移植, 见各内联注释): 速度模拟压感、Catmull-Rom 收笔平滑、
 // 荧光笔单几何合成、激光笔三层渲染 + 1.2s 消隐、形状预览整体再生、笔迹级橡皮、快照撤销。
@@ -125,7 +125,7 @@ public sealed class InkCanvas : Control
                 _current.Points.Add(p);
                 break;
         }
-        // B5 根修: 捕获目标必须是「挂载了 Pointer 处理器的元素」。
+        // B5  捕获目标必须是「挂载了 Pointer 处理器的元素」。
         pointer.Capture(captureTarget ?? this);
         InvalidateVisual();
     }
@@ -183,7 +183,7 @@ public sealed class InkCanvas : Control
             if (_current.Kind == StrokeKind.Pen)
             {
                 // 墨迹识别转形: 命中则整个笔画替换为干净形状 (撤销快照在 BeginStroke 已压栈,
-                // 再撤销一次即回到手绘前 —— 转形不额外消耗撤销步数)
+                                // 再撤销一次即回到手绘前, 转形不额外消耗撤销步数)
                 if (InkToShape && TryRecognize(_current) is { } shape)
                 {
                     _current = shape;
@@ -272,7 +272,7 @@ public sealed class InkCanvas : Control
             0.5 * ((2 * p1.Y) + (-p0.Y + p2.Y) * t + (2 * p0.Y - 5 * p1.Y + 4 * p2.Y - p3.Y) * t2 + (-p0.Y + 3 * p1.Y - 3 * p2.Y + p3.Y) * t3));
     }
 
-    // ---- 形状 (预览由 (起点, 当前点) 整体重生成 —— ICC 不变量) ----
+        // ---- 形状 (预览由 (起点, 当前点) 整体重生成, ICC 不变量) ----
 
     private void UpdateShape(Point p)
     {
@@ -459,7 +459,7 @@ public sealed class InkCanvas : Control
         (byte)(c.G + (255 - c.G) * amount),
         (byte)(c.B + (255 - c.B) * amount));
 
-    /// <summary>导出仅笔迹 (透明底, 激光笔除外)。B26 根修: 位图 DPI 固定 96, 缩放只由 PushTransform 施加一次。</summary>
+    /// <summary>导出仅笔迹 (透明底, 激光笔除外)。B26  位图 DPI 固定 96, 缩放只由 PushTransform 施加一次。</summary>
     public Bitmap ExportStrokesOnly(int width, int height, double scale)
     {
         var rtb = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));

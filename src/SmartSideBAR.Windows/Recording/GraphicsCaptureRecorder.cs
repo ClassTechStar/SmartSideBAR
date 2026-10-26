@@ -1,8 +1,8 @@
-// Windows/Recording/GraphicsCaptureRecorder.cs —— §6.5 (ADR-M4): 系统级捕获 → H.264 MP4 直出。
+// §6.5 (ADR-M4): 系统级捕获 → H.264 MP4 直出。
 // 管线: GraphicsCaptureItem → Direct3D11CaptureFramePool(GPU 纹理零拷贝) → MediaStreamSource
 //       → MediaTranscoder(系统 H.264 编码器) → MP4。全 WinRT 投影, 无 COM vtable 手写。
-// 注意: file-scoped namespace 下 `Windows.*` 会被解析为 SmartSideBAR.Windows.* —— 一律 global:: 别名。
-// config.recorder.fps/bitrate 消费; 麦克风混流列 Wave D 增强 (ADR-M4 最小闭环)。
+// 注意: file-scoped namespace 下 `Windows.*` 会被解析为 SmartSideBAR.Windows.*, 一律 global:: 别名。
+// config.recorder.fps/bitrate 消费; 麦克风混流列 Wave D 增强 (ADR-M4 最小完整流程)。
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Messaging;
@@ -70,7 +70,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         if (_recording) throw new InvalidOperationException("已在录制中");
         if (!IsSupported()) throw new PlatformNotSupportedException("系统不支持 Windows.Graphics.Capture (需 Win10 1803+)");
 
-        // B5: 多显示器支持 —— 优先用指定 MonitorHandle, 否则默认主屏
+                // B5: 多显示器支持, 优先用指定 MonitorHandle, 否则默认主屏
         var hMonitor = opt.MonitorHandle != 0
             ? opt.MonitorHandle
             : GraphicsCaptureItemProbe.PrimaryMonitorHandle();
@@ -93,7 +93,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         profile.Video.FrameRate.Numerator = (uint)_fps;
         profile.Video.FrameRate.Denominator = 1;
 
-        // B9 根修: 原实现声明了 AAC 音频轨却没有音频采样源 —— 转码器为音频流索取 sample 时
+                // B9: 不能只声明 AAC 音频轨而不给音频采样源。转码器为音频流索取 sample 时
         // OnSampleRequested 只能返回视频帧或 null, 音频流立即 EOF, 整段转码提前结束
         // (录屏变成 0 字节或毫秒级文件)。本版本统一走「纯视频」, 麦克风偏好仅落配置。
         if (opt.Microphone)
@@ -103,7 +103,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         profile.Audio = null;
 
         // 必须与帧池像素格式一致：Direct3D11CaptureFramePool 建的是
-        // B8G8R8A8UIntNormalized（BGRA）。此前声明成 Rgb32，与真实采样格式不符，
+                // B8G8R8A8UIntNormalized (BGRA)。若声明成 Rgb32, 与真实采样格式不符,
         // 转码器不认这个流 → 从不发起 SampleRequested → 只收到首帧后彻底停滞，
         // 最终产出 0 字节（并在收尾阶段把进程带崩）。
         var videoProps = WinProps.VideoEncodingProperties.CreateUncompressed(
@@ -115,9 +115,9 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _mss.Starting += OnStarting;
         _mss.SampleRequested += OnSampleRequested;
 
-        // 注意: 不能在 StartAsync 作用域内 using 释放 —— PrepareTranscodeResult 仍在使用该转码器
+                // 注意: 不能在 StartAsync 作用域内 using 释放, PrepareTranscodeResult 仍在使用该转码器
         // GPU 硬编码在部分机型（如骁龙 ARM 上的 x64 仿真）会让 MediaTranscoder 直接把进程带崩，
-        // 且没有任何托管异常——表现为"录屏文件 0 字节"。默认走软件编码器求稳。
+                // 且没有任何托管异常, 表现为录屏文件 0 字节。默认走软件编码器求稳。
         var transcoder = new WinTranscoding.MediaTranscoder { HardwareAccelerationEnabled = false };
         _pending = null;
         _stopRequested = false;
@@ -129,7 +129,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _session.StartCapture();
 
         // 转码泵: SampleRequested 阻塞取帧, StopAsync 交付 null 使其自然收尾 (MP4 moov 完整)
-        // 关键兜底：本机的 MediaFoundation 管道（骁龙 ARM 上的 x64 仿真）可能让
+        // 关键保底：本机的 MediaFoundation 管道（骁龙 ARM 上的 x64 仿真）可能让
         // PrepareMediaStreamSourceTranscodeAsync 永不返回，甚至直接把进程带崩。
         // 这里给它一个硬超时：超时就干净收尾并上报错误，绝不留下"一直在录"的假状态。
         async Task<WinTranscoding.PrepareTranscodeResult> PrepareAsync()
@@ -169,7 +169,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
             finally
             {
                 // 关键：TranscodeAsync 返回后必须 flush/关闭输出流，MP4 的 moov 才会真正落盘。
-                // 此前"日志报完成但文件 0 字节"，就是因为完成信号早于落盘。
+                                // 完成信号不能早于落盘, 否则日志报完成但文件 0 字节。
                 try
                 {
                     if (_output is { } output)
@@ -208,8 +208,8 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _stopRequested = true;
         _frameAvailable.Release(); // 唤醒阻塞的取帧点 → 交付 null → 转码收尾
 
-        // 等转码泵真正跑完（含输出流 flush）：此前只等 _recording 变 false，
-        // 于是"完成"日志先落、文件后写，观感就是 0 字节。
+                // 等转码泵真正跑完 (含输出流 flush)。只等 _recording 变 false 的话,
+                // 完成日志会先落、文件后写, 结果就是 0 字节。
         try
         {
             var pump = _pump;
@@ -261,7 +261,7 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         try
         {
             // 首次取帧给足耐心：冷启动（D3D 设备/采集会话初始化）可能超过 1 个等待周期。
-            // 此前单次 3s 超时就交付 null，等于"刚开始就 EOF"，文件必然是空的。
+                        // 单次 3s 超时就交付 null 相当于刚开始就 EOF, 文件必然是空的。
             const int maxAttempts = 3;
             var attempt = 0;
             while (attempt++ < maxAttempts)
@@ -386,7 +386,7 @@ internal static class D3D11Helper
 }
 
 /// <summary>主显示器 HMONITOR → GraphicsCaptureItem。
-/// 19041 投影的 GraphicsCaptureItem 仅有 CreateFromVisual —— 监视器捕获必须走
+/// 19041 投影的 GraphicsCaptureItem 仅有 CreateFromVisual, 监视器捕获必须走
 /// IGraphicsCaptureItemInterop COM 互操作 (官方 CsWinRT 采样同路径)。</summary>
 internal static partial class GraphicsCaptureItemProbe
 {

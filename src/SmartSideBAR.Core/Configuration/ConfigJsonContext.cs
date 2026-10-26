@@ -1,4 +1,4 @@
-// JSON 源生成 (AOT/Trim 友好, 方案 §9 风险缓解) —— camelCase 与 Electron config.json 互认。
+// JSON 源生成 (AOT/Trim 友好, 方案 §9 风险缓解), camelCase 与 Electron config.json 互认。
 using System.Text.Json.Serialization;
 using SmartSideBAR.Core.Configuration;
 

@@ -1,6 +1,6 @@
-// Core/Scheduling/SchedulerService.cs —— TimeProvider 可测调度 (方案 §6.10)
+// TimeProvider 可测调度 (方案 §6.10)
 // 行为基线 = v1.2.0 scheduler.ts: once 触发即移除 / interval 顺延 / hourly 对齐整点 / 贪睡 /
-// C1 变更检测落盘。改进: 启动时过期周期提醒**不补触发**(直接推进到未来槽位) —— 方案明确要求。
+// C1 变更检测落盘。启动时过期周期提醒不补触发, 直接推进到未来槽位 (方案要求)。
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Messaging;
@@ -42,7 +42,7 @@ public sealed class SchedulerService(
                 log?.LogInformation("[Scheduler] 清理 {Count} 条过期 once 提醒", expired.Count);
             }
 
-            // 方案 §6.10: 过期周期提醒启动时不补触发 —— 直接推进到下一个未来槽位
+                        // 方案 §6.10: 过期周期提醒启动时不补触发, 直接推进到下一个未来槽位
             foreach (var r in _reminders.ToArray()) // 快照遍历: 循环体内会原位替换元素
             {
                 if (r.Kind == ReminderKind.Once || EffectiveAt(r) > now) continue;

@@ -1,4 +1,4 @@
-// LongshotStitcherTests —— B6 回归锁: 重叠语义 = 「新帧顶部 k 行 == 已拼图尾部末 k 行」
+// LongshotStitcherTests: B6 回归锁, 重叠语义 = 「新帧顶部 k 行 == 已拼图尾部末 k 行」
 using SmartSideBAR.Core.Capture;
 
 namespace SmartSideBAR.Core.Tests;

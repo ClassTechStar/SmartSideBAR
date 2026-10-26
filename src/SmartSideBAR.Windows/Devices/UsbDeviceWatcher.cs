@@ -1,4 +1,4 @@
-// Windows/Devices/UsbDeviceWatcher.cs —— §6.6: 直接读取系统事件。
+// §6.6: 直接读取系统事件。
 // 三层检测 (对齐 v1.1 usb.ts):
 //   1. WMI Win32_VolumeChangeEvent 事件驱动 (ManagementEventWatcher)
 //   2. WM_DEVICECHANGE 广播 (所有顶层窗口) → 差异扫描
@@ -113,7 +113,7 @@ public sealed class UsbDeviceWatcher(
     {
         if (msg != WM_DEVICECHANGE) return 0;
         handled = true;
-        // 到达/移除/设备节点变化 三类都值得重扫; 卷挂载后文件系统可能未就绪, 延迟再扫一次
+                // 到达/移除/设备节点变化 三类都要重扫; 卷挂载后文件系统可能未就绪, 延迟再扫一次
         RescanWithDiff();
         _ = Task.Run(async () =>
         {

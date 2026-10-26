@@ -1,4 +1,4 @@
-// 与 shared/floatball-layout.ts 同构 —— 配置 + 钳制; 布局算法见 FloatBall/FloatBallLayout.cs
+// 与 shared/floatball-layout.ts 同构, 配置 + 钳制; 布局算法见 FloatBall/FloatBallLayout.cs
 namespace SmartSideBAR.Core.Configuration;
 
 public sealed record FloatBallConfig

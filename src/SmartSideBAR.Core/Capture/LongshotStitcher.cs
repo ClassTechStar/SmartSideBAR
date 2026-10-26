@@ -1,4 +1,4 @@
-// Core/Capture/LongshotStitcher.cs —— §6.4: 线性增量拼接 (C3/P1-1 根修: O(n) 不再 O(n²))。
+// §6.4: 线性增量拼接 (C3/P1-1  O(n) 不再 O(n²))。
 // 纯函数: 调用方提供行哈希 (Windows 层从位图采样计算), Core 决定重叠与拼接偏移。
 namespace SmartSideBAR.Core.Capture;
 
@@ -7,7 +7,7 @@ public static class LongshotStitcher
     /// <summary>
     /// 求新帧与已拼接尾部的最大行重叠: 新帧**顶部 k 行** == 已拼图**尾部末 k 行**。
     /// 返回 0 表示无重叠 (不拼接, 由调用方决定重试/终止)。
-    /// B6 根修: 原实现把「尾图末 k 行」与「新帧末 k 行」相比 (两侧都取末行),
+    /// B6  原实现把「尾图末 k 行」与「新帧末 k 行」相比 (两侧都取末行),
     /// 与文档语义及调用方传参 (尾图) 全部错位, 导致重叠几乎恒为 0 → 长图重复条带。
     /// </summary>
     /// <param name="tailRowHashes">已拼接图像最后 maxOverlap 行的哈希 (顺序 = 从上到下)。</param>

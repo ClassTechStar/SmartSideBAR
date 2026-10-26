@@ -1,4 +1,4 @@
-// Windows/Shell/ShellService.cs —— §6.8: taskmgr / 外链白名单 (B2 根修) / HKCU 自启 (P1-10 asInvoker 路径)。
+// §6.8: taskmgr / 外链白名单 (B2 修复) / HKCU 自启 (P1-10 asInvoker 路径)。
 using System.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;

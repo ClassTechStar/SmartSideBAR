@@ -1,5 +1,5 @@
-// 轻量进程内 Toast (右下角, 3.5s 自动消失) —— 替代 Electron renderer 通知。
-// C4-③: 加队列与去重 —— 相同消息 3s 内不重复弹出; 同时最多显示 3 条, 超出排队。
+// 轻量进程内 Toast (右下角, 3.5s 自动消失), 替代 Electron renderer 通知。
+// C4-③: 加队列与去重, 相同消息 3s 内不重复弹出; 同时最多显示 3 条, 超出排队。
 // 动效: 滑入 (translateY 14→0 + fade, 200ms easeOut) / 淡出 150ms / 点击即消失。
 using System.Collections.Generic;
 using Avalonia;
@@ -137,7 +137,7 @@ public sealed class ToastService
 
             timer.Tick += (_, _) => StartClose();
             timer.Start();
-            // 点击即消失 —— 教室场景里错误提示不应挡住操作 3.5s
+                        // 点击即消失。教室场景里错误提示不该挡住操作 3.5s
             border.PointerPressed += (_, _) => StartClose();
         }
         catch

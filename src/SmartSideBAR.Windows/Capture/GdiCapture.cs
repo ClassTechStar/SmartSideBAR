@@ -1,4 +1,4 @@
-// Windows/Capture/GdiCapture.cs —— §6.2: BitBlt 物理像素直接裁剪 —— 与选框同一坐标系,
+// §6.2: BitBlt 物理像素直接裁剪, 与选框同一坐标系,
 // A4 类多屏/DPI 偏移在结构上不可能复现。保存编码走 System.Drawing (进程内, 零子进程)。
 using System.Drawing;
 using System.Drawing.Imaging;

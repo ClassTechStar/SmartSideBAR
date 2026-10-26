@@ -1,4 +1,4 @@
-// 快捷设置面板 —— Seelen quick-settings 语法: 2 列 80px 大磁贴开关 + 工作区切换
+// 快捷设置面板, Seelen quick-settings 语法: 2 列 80px 大磁贴开关 + 工作区切换
 // (KoBar 工作区)。rail 的 settings 图标直达这里;「全部设置」再进完整 SettingsWindow。
 // 磁贴状态即时落盘; 主题相关项切换后即时 ApplyTheme。
 using Avalonia;

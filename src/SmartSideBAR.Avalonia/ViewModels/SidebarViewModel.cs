@@ -1,6 +1,6 @@
-// SidebarViewModel —— 侧栏 rail 与面板主机。
+// SidebarViewModel: 侧栏 rail 与面板主机。
 // v1.2 面板体系：输入法(直接切换) / 截图与批注 / USB / 打印机 / 快捷链接 / 定时提醒 /
-// 任务管理 / 设置。Avalonia 版此前只有"快捷链接"一个面板，其余 rail 图标点了只弹 Toast；
+// 任务管理 / 设置。缺面板时 rail 图标点了只弹 Toast,
 // 本文件把 rail 与面板全部数据化，并按 policy.disabledModules 过滤。
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -110,7 +110,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
             else
             {
                 Raise(nameof(IsDocked));
-                // docked 时点击 rail 会先展开；展开完成后补开先前请求的面板（v1.2 350ms 语义）
+                                // docked 时点击 rail 会先展开; 展开完成后补开刚才请求的面板 (v1.2 350ms 语义)
                 if (_pendingPanel != PanelKind.None)
                 {
                     var pending = _pendingPanel;
@@ -127,7 +127,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     public string DockTooltip => IsDocked ? "展开侧边栏" : "收起侧边栏";
 
     /// <summary>
-    /// 停靠箭头用图标而不是 Path 字符串：此前 <c>Path Data</c> 配 Stretch=Uniform 会把
+        /// 停靠箭头用图标而不是 Path 字符串: <c>Path Data</c> 配 Stretch=Uniform 会把
     /// 12×14 的几何拉伸到 24×24，箭头既被拉扁又偏离圆心（用户截图里的"箭头位置有点偏"）。
     /// </summary>
     public global::Avalonia.Media.IImage? DockIcon => Ui.SvgIcons.Load(IsDocked ? "dock-up" : "dock-down", _dockIconWhite);
@@ -211,7 +211,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// 当前工作区允许的模块集合（KoBar 工作区语义）。
-    /// null = 当前预设不限制（Modules 为空或无预设）—— 只受 policy.disabledModules 约束。
+        /// null = 当前预设不限制 (Modules 为空或无预设), 只受 policy.disabledModules 约束。
     /// </summary>
     private IReadOnlySet<string>? WorkspaceAllowed()
     {
@@ -235,7 +235,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         RailItems.Clear();
         PopulateRail();
         RefreshIme();
-        // 工作区切走后，原激活项可能已被过滤 —— 保持面板打开但取消高亮即可
+                // 工作区切走后原激活项可能已被过滤, 保持面板打开但取消高亮即可
         if (_activeRail is not null && !RailItems.Contains(_activeRail))
         {
             _activeRail = null;
@@ -262,7 +262,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         if (On("capture"))
         {
             // 与 v1.2 一致：rail 图标只负责打开"截图与批注"面板，具体动作在面板磁贴里执行。
-            // （此前图标同时触发动作，会立刻盖一层全屏覆盖层，把刚打开的面板压在下面。）
+                        // (图标若同时触发动作, 会立刻盖一层全屏覆盖层, 把刚打开的面板压在下面。)
             items.Add(NewItem("capture", PanelKind.Capture, "截图与批注"));
         }
         // 逐项 gate（工作区/策略可独立裁剪单个能力, 而非整组):
@@ -288,7 +288,7 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 构建 rail 条目。命令闭包持有条目自身，因此"当前项高亮"按条目判定 ——
+        /// 构建 rail 条目。命令闭包持有条目自身, "当前项高亮"按条目判定,
     /// 截图组有 4 个条目共享同一面板，不能因为面板相同就同时点亮。
     /// </summary>
     private RailItem NewItem(string icon, PanelKind kind, string title,

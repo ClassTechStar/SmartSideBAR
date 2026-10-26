@@ -1,4 +1,4 @@
-// Core/Configuration/ConfigService.cs —— 三层合并 (附录 B.2): 默认 → ProgramData → 用户层
+// 三层合并 (附录 B.2): 默认 → ProgramData → 用户层
 // 语义对齐 v1.2.0 services/config.ts: deepMerge(null 值跳过) / 未知字段保留 / migrateConfig /
 // {Pictures} 路径展开 / appearance+floatBall 钳制。持久化以 JsonNode 为准以保留未知字段。
 using System.Text.Json;
@@ -99,7 +99,7 @@ public sealed class ConfigService(
     }
 
     /// <summary>按点分路径写入 (如 "capture.format" / "reminderSound.volume")。
-    /// B3 根修: 键白名单 —— 路径必须在默认 schema 中存在; 成功后落盘并广播 ConfigChanged。</summary>
+        /// B3: 键白名单, 路径必须在默认 schema 中存在; 成功后落盘并广播 ConfigChanged。</summary>
     public bool Set(string dotPath, JsonNode? value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dotPath);
@@ -132,7 +132,7 @@ public sealed class ConfigService(
         return Set(dotPath, node);
     }
 
-    /// <summary>C1 语义: 变更检测落盘 —— 仅 reminders 内容实际变化时写盘。返回是否落盘。</summary>
+        /// <summary>C1 语义: 变更检测落盘, 仅 reminders 内容实际变化时写盘。返回是否落盘。</summary>
     public bool SetRemindersIfChanged(IReadOnlyList<Reminder> reminders)
     {
         lock (_gate)

@@ -1,4 +1,4 @@
-// rail 条目视图模型 —— v1.2 railItems 的数据化对应物。
+// rail 条目视图模型, v1.2 railItems 的数据化对应物。
 // 把 rail 从 XAML 里 11 个硬编码按钮改成数据驱动后，可以同时获得：
 // 当前项高亮(IsActive)、IME 角标(Badge)、策略禁用过滤(在 SidebarViewModel 里按 policy 过滤)。
 using System.ComponentModel;

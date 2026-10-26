@@ -1,4 +1,4 @@
-// AppBarServiceTests —— 通知状态机全链路断言 (方案 §5.6 验收 V1-V8 的自动化层 + §7.1 示例)
+// AppBarServiceTests: 通知状态机全链路断言 (方案 §5.6 验收 V1-V8 的自动化层 + §7.1 示例)
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Tests.TestDoubles;
 using Xunit;
@@ -21,13 +21,13 @@ public sealed class AppBarServiceTests
 
         Assert.True(svc.Attach(Hwnd, AppBarEdge.Right, Rail, Expanded));
 
-        // V6 自愈: 注册前先补发一次 ABM_REMOVE 清孤儿注册
+        // V6 自动恢复: 注册前先补发一次 ABM_REMOVE 清孤儿注册
         Assert.Single(api.RemoveCalls);
         Assert.Equal([("NEW", CallbackMsg)], api.RegisterCalls.Select(r => ("NEW", r.CallbackMsg)).ToList());
         Assert.Contains("QUERYPOS", api.Ops);
         Assert.Contains("SETPOS", api.Ops);
         Assert.Contains("WINDOWPOSCHANGED", api.Ops);
-        // 首次以 rail 宽度落位 (物理像素, K4) —— v1.1 悬浮胶囊: 上下各留 8% 工作区
+                // 首次以 rail 宽度落位 (物理像素, K4), v1.1 悬浮胶囊: 上下各留 8% 工作区
         var first = Assert.Single(api.MoveRequests);
         Assert.Equal(Hwnd, first.Hwnd);
         Assert.Equal(Rail, first.Rect.W);
@@ -59,7 +59,7 @@ public sealed class AppBarServiceTests
         svc.Attach(Hwnd, AppBarEdge.Right, Rail, Expanded);
         var q = Assert.Single(api.QueryCalls);
         Assert.Equal(AppBarNative.ABE_RIGHT, q.Edge);
-        // 勘误 (方案 §5.3): 锚点为 rcMonitor 全屏矩形 —— rcWork 会引发占位带逐次内漂
+                // 勘误 (方案 §5.3): 锚点为 rcMonitor 全屏矩形, rcWork 会引发占位带逐次内漂
         Assert.Equal(1920 - Rail, q.Want.X);
         Assert.Equal(Rail, q.Want.W);
         Assert.Equal(874, q.Want.H);  // 胶囊高提议 (工作区 84%)

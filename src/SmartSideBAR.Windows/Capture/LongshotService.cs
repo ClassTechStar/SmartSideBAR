@@ -1,5 +1,5 @@
-// Windows/Capture/LongshotService.cs —— §6.4 长截图: EnumWindows 定位 + BitBlt 滚动帧 + 线性拼接。
-// 跨屏/DPI 用 DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS) 物理矩形 (A5 根修)。
+// §6.4 长截图: EnumWindows 定位 + BitBlt 滚动帧 + 线性拼接。
+// 跨屏/DPI 用 DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS) 物理矩形 (A5 修复)。
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -93,8 +93,8 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
                     frame = captured;
                 }
 
-                // B6 根修: 参与比对的必须是「已拼图的尾部若干行」, 原来传的是 RowHashes(canvas, n)
-                // —— 即画布顶部 n 行, 与「尾部重叠」语义相反。
+                                // B6: 参与比对的必须是「已拼图的尾部若干行」, 不能传 RowHashes(canvas, n)
+                                // 那是画布顶部 n 行, 与「尾部重叠」语义相反。
                 var overlapWindow = Math.Min(canvas.Height, frame.Height);
                 var tailHashes = RowHashes(canvas, canvas.Height - overlapWindow, overlapWindow);
                 var frameHashes = RowHashes(frame, 0, frame.Height);

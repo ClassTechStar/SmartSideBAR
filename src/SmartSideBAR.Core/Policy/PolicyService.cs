@@ -1,4 +1,4 @@
-// Core/Policy/PolicyService.cs —— disabledModules 白名单 (P2-1/P2-3 语义):
+// disabledModules 白名单 (P2-1/P2-3 语义):
 // 驱动服务启动跳过 + rail 图标过滤。模块标识与 v1.2.0 对齐。
 using SmartSideBAR.Core.Configuration;
 

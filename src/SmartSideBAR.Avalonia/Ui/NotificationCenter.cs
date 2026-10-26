@@ -1,4 +1,4 @@
-// 通知中心（Seelen notifications 卡片语法的数据层）—— 所有 Toast 落一份历史,
+// 通知中心 (Seelen notifications 卡片语法的数据层)。所有 Toast 落一份历史,
 // 供「提醒与通知」面板回看与一键清除。内存环形缓冲, 常驻进程轻量持有 (≤50 条)。
 using System.Collections.Generic;
 

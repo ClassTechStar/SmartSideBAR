@@ -1,5 +1,5 @@
-// 定时提醒窗 (补充 B7: rail 铃铛此前路由到不存在的 "reminder" 动作, 点击无任何反应)。
-// 只做「快速添加一次性提醒」—— 周期/整点提醒由配置驱动, 本窗不承担编辑职责。
+// 定时提醒窗 (补 B7: rail 铃铛原来路由到不存在的 "reminder" 动作, 点了没反应)。
+// 只做「快速添加一次性提醒」, 周期/整点提醒由配置驱动, 本窗不承担编辑职责。
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;

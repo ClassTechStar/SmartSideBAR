@@ -1,4 +1,4 @@
-// EventBusTests —— IPC 事件推送的结构性替代 (附录 A)
+// EventBusTests: IPC 事件推送的结构性替代 (附录 A)
 using SmartSideBAR.Core.Messaging;
 
 namespace SmartSideBAR.Core.Tests;

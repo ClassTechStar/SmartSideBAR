@@ -1,4 +1,4 @@
-// FloatBallLayoutTests —— shared/floatball-layout.ts 逐函数移植的行为对齐验证
+// FloatBallLayoutTests: shared/floatball-layout.ts 逐函数移植的行为对齐验证
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.FloatBall;
 

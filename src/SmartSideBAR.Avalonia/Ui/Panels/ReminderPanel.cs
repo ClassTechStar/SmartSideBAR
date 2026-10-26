@@ -1,4 +1,4 @@
-// ReminderPanel —— v1.2 同名面板的 Avalonia 实现。
+// ReminderPanel, v1.2 同名面板的 Avalonia 实现。
 // P2-1：由 697 行的 SidebarPanels.cs 拆出，一面板一文件（单文件 ≤600 行的拆分约定），
 // 便于单独单测、减少合并冲突。公共构件见 PanelKit.cs，基类见 SidebarPanel.cs。
 using Avalonia;
@@ -67,7 +67,7 @@ internal sealed class ReminderPanel(SidebarServices s, Palette p) : SidebarPanel
         return row;
     }
 
-    /// <summary>通知中心页 —— Seelen notifications 卡片语法: 计数 + 全部清除 + 卡片列表。</summary>
+        /// <summary>通知中心页, Seelen notifications 卡片语法: 计数 + 全部清除 + 卡片列表。</summary>
     private Control BuildNotifications()
     {
         var center = NotificationCenter.Instance;
@@ -151,7 +151,7 @@ internal sealed class ReminderPanel(SidebarServices s, Palette p) : SidebarPanel
         {
             root.Children.Add(PanelKit.EmptyState("bell", "还没有提醒",
                 "可以设置一次性、间隔或整点提醒，到点会在右下角弹出提示。", Palette));
-            // 空列表时也要能调铃声 —— 提醒还没建的时候正是最该先设好铃声的时机
+                        // 空列表时也要能调铃声, 还没建提醒时先设好铃声更合理
             root.Children.Add(PanelKit.Divider(Palette));
             root.Children.Add(BuildSoundCard());
             return root;
@@ -193,7 +193,7 @@ internal sealed class ReminderPanel(SidebarServices s, Palette p) : SidebarPanel
 
     /// <summary>
     /// 铃声设置（v1.2 sound-card 折叠区）：类型 / 音量 / 重复次数 / 自定义 MP3 / 试听。
-    /// 对应配置 reminderSound.*（Core 里早已建模，此前没有任何入口）。
+        /// 对应配置 reminderSound.* (Core 里已建模, 这里补上入口)。
     /// </summary>
     private Control BuildSoundCard()
     {

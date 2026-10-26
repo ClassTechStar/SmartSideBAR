@@ -1,4 +1,4 @@
-// Windows/Input/HotkeyService.cs —— §6.13 RegisterHotKey: 冲突检测从启发式变为系统事实 (P2-2)。
+// §6.13 RegisterHotKey: 冲突检测从启发式变为系统事实 (P2-2)。
 // WM_HOTKEY 经 §5.3 同一 WndProcHook 基础设施路由 → bus.Publish(HotkeyPressed)。
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Input;

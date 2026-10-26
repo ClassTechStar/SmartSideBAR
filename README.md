@@ -1,132 +1,99 @@
-<div align="center">
-  <img src="build/icon.ico" width="96" height="96" alt="SmartSideBAR Logo">
-  <h1>SmartSideBAR</h1>
-  <p><strong>常驻教学大屏侧边的快捷操作与设备提醒中心</strong></p>
-  <p>
-    <a href="#功能列表"><img src="https://img.shields.io/badge/功能-12%2B模块-blue" alt="Features"></a>
-    <a href="#技术栈"><img src="https://img.shields.io/badge/技术栈-Avalonia%20+%20.NET%2010-green" alt="Tech Stack"></a>
-    <a href="#测试与质量门禁"><img src="https://img.shields.io/badge/测试-130%20用例-brightgreen" alt="Tests"></a>
-    <a href="#license"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License"></a>
-  </p>
-</div>
+# SmartSideBAR
 
----
+给教学大屏用的侧边工具栏。贴在屏幕边上，把上课常用的那几个操作（截图、批注、切输入法、看 U 盘）收进一个抽屉里，不用再满屏幕找。
 
-## 项目介绍
+主要跑在希沃这类交互智能平板和 Windows OPS 一体机上，按触屏操作做的，不需要键盘也能用。
 
-**SmartSideBAR** 是一款专为希沃（Seewo）交互智能平板 / Windows OPS 教学环境设计的常驻侧边快捷键工具。它常驻屏幕侧边，一触即达，将输入法切换、区域截图、屏幕批注、长截图、MP4 录屏、板中板、U 盘监控、打印机状态、定时提醒、通知中心、网页快捷入口等高频操作整合到一个低打扰的侧边抽屉中。
+## 有哪些功能
 
-针对教师触屏场景优化，无需键盘快捷键，单手即可操作。内置完整的首次体验引导（OOBE），让非技术教师在 3 分钟内完成上手。当前版本还引入了**工作区**（上课/批注模式一键切换模块组合）、**墨迹识别转形**（手绘图形自动变干净）与**希沃式触发条**（防误触的收起形态）。
+**侧栏本体**
 
-## 架构与发布形态
-
-> **决策 (ADR-001)**：Avalonia (C# / .NET 10) 是唯一栈。Electron 栈已整体归档至 [`archive/electron-final`](https://github.com/ClassTechStar/SmartSideBAR/tree/archive/electron-final) 分支，主线仓库纯 dotnet。
-
-| 栈 | 技术 | 状态 | 发布物 |
-|----|------|------|--------|
-| **Avalonia（主线）** | C# .NET 10 + Avalonia 11 | 活跃开发 | **是**（Inno Setup 安装包） |
-| Electron（已归档） | Electron 30 + Vue 3 + TS | `archive/electron-final` 分支封存 | 否 |
-
-**实际安装产物**是 Avalonia 版 `SmartSideBAR.exe`（自包含单文件约 15MB），通过 Inno Setup 打包为 `SmartSideBAR-v{version}-Setup.exe`。版本号单一事实源：`Directory.Build.props` 的 `<Version>`。
-
-## 适用场景
-
-- **希沃交互智能平板** / Windows OPS 教学一体机
-- 4GB–8GB 内存的教育版 Windows 10/11 设备
-- 触屏优先、低资源占用、低打扰的课堂辅助工具
-
-## 功能列表
-
-**侧栏与交互**
-| 功能 | 说明 |
-|------|------|
-| 边缘图标轨 (rail) | 72px 图标轨 + 380px 滑出面板，选中项带品牌色指示条；**长按 500ms 拖拽排序**（持久化） |
-| 触发模式 | `常驻胶囊`（触屏教学）/ `极细触发条·点击展开`（防误触，对标希沃）/ `极细触发条·悬停滑出` |
-| 工作区 | 「默认 / 上课 / 批注」一键切换模块组合，按场景裁剪 rail |
-| 悬浮球 | 拖拽吸附 + 位置持久化 + 扇形玻璃菜单；闲时自动变暗；双击开合侧栏 |
-| 全屏自动收起 | 检测到全屏应用 1.2s 后收起为底角方块/触发条，退出自动恢复 |
-| 通知中心 | 提醒/USB/录屏等事件统一留档（≤50 条），「提醒与通知」面板回看、单条删除、全部清除 |
+| | |
+|---|---|
+| 图标轨 (rail) | 72px 图标条 + 380px 滑出面板；长按图标 500ms 可以拖着排序，松手就记住 |
+| 三种触发形态 | 常驻胶囊 / 极细触发条点击展开 / 极细触发条悬停滑出。后两种收起来时只占 14px，防误触 |
+| 工作区 | 「默认 / 上课 / 批注」三套预设，一键换掉 rail 上的模块组合 |
+| 悬浮球 | 可拖着走，松手自动贴边；闲时自己变暗；双击开合侧栏 |
+| 全屏时自动收起 | 检测到全屏应用 1.2 秒后缩成底角方块，退出后自己回来 |
+| 通知中心 | 提醒、U 盘、录屏这些事件都留一份记录，面板里能翻能删 |
 
 **截图与批注**
-| 功能 | 说明 |
-|------|------|
-| 区域截图 | 全屏覆盖框选 → 保存/复制，多屏与高 DPI 正确 |
-| 屏幕批注 | 全屏透明覆盖层：压感笔（速度模拟笔锋）、荧光笔、激光笔（自动消隐）、直线/箭头/矩形/椭圆、笔迹级橡皮、快照撤销 |
-| 墨迹识别转形 | 收笔后手绘圆/椭圆/矩形/三角形/直线自动替换为干净形状（纯几何识别，工具条可关） |
-| 板中板 | 独立浮动小黑板/小白板，临时演算纸，拖到任意位置，保存为 PNG |
-| 长截图 | 选窗口 → 自动滚动拼接 |
-| 录屏 | MP4（H.264 转码），帧率/麦克风可配 |
+
+| | |
+|---|---|
+| 区域截图 | 框一块，存或者复制。多屏和高 DPI 都是对的 |
+| 屏幕批注 | 全屏透明层上直接画：铅笔（按速度模拟笔锋）、荧光笔、激光笔、直线/箭头/矩形/椭圆、橡皮、撤销 |
+| 墨迹转形 | 手画的圆/矩形/三角形收笔后自动换成干净图形，工具条上可关 |
+| 板中板 | 一块 860×560 的浮动小白板，当演算纸用，能存成 PNG |
+| 长截图 | 选窗口后自动滚屏拼接 |
+| 录屏 | MP4 (H.264)，帧率和麦克风可配 |
 
 **设备与提醒**
-| 功能 | 说明 |
-|------|------|
-| 输入法切换 | rail 一键中英切换 + 角标；热键可配置 |
-| U 盘监控 | 插拔 ≤2s 提醒，移动硬盘识别，忽略类型可配 |
-| 打印机状态 | 轮询 + 异常状态 Toast 提醒 |
-| 定时提醒 | 一次性/间隔/整点，顺延/取消，铃声可换 MP3 |
-| 快捷链接 | 分类页签 + 方形卡片网格，内联新增网页入口（DeepSeek/GLM 等网页版 AI 一键直达） |
+
+| | |
+|---|---|
+| 输入法切换 | 一键中英切换，图标上带角标；热键可改 |
+| U 盘监控 | 插拔 2 秒内弹提醒，移动硬盘能认出来，忽略哪些类型可配 |
+| 打印机状态 | 定时查，缺纸/卡纸/离线会弹通知 |
+| 定时提醒 | 一次性的、间隔的、整点的都行，支持顺延和换铃声 |
+| 快捷链接 | 自己加网页入口，按分类分页，比如 DeepSeek、GLM 这类网页版 AI |
 | 任务管理器 | 一键拉起 |
 
-**效率**
-| 功能 | 说明 |
-|------|------|
-| 快捷设置面板 | rail 齿轮直达：80px 大磁贴开关（玻璃质感/动效/系统强调色/USB/录屏等） |
-| 完整设置窗 | 左导航 + 分组卡片，8 个分页（外观/常规/截图/录屏/设备/快捷键/诊断/关于） |
-| 主题 | 经典纯白（1.0 体感基线，出厂默认）⇄ 液态玻璃（v1.2 观感）双主题，强调色可跟随 Windows 系统色 |
-| OOBE | 6 步首次引导，按角色裁剪，可跳过 |
-| 白名单策略 | ProgramData 层 `policy.disabledModules` 下发，管控模块可见性 |
+**设置**
 
-## 安装方法
+| | |
+|---|---|
+| 快捷设置面板 | rail 齿轮点进去是 80px 大磁贴开关，常用的几个都在这 |
+| 完整设置窗 | 左侧导航，8 个分页 |
+| 两种主题 | 经典纯白（默认）和液态玻璃，强调色可以跟 Windows 系统色 |
+| OOBE | 首次启动 6 步引导，可以跳过 |
+| 白名单 | 管理员可通过 `ProgramData` 下的策略文件关掉某些模块 |
 
-### 方法一：下载安装包（推荐）
+## 装上就能用的版本
 
-从 [GitHub Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下载 `SmartSideBAR-v{version}-Setup.exe`，双击安装（按用户安装，无 UAC）。
+去 [Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下 `SmartSideBAR-v{version}-Setup.exe`，双击装。装在当前用户目录下，不需要管理员权限。
 
-> 安装包由源码构建（`dotnet publish` + Inno Setup），当前发布**不签名**（自签根证书方案已废除——往用户机器装根 CA 属于反模式；用户量起来后再购真实代码签名证书）。SmartScreen 提示「仍要运行」即可。
+安装包是源码构建的（`dotnet publish` + Inno Setup），**目前没有做代码签名**（之前试过自签根证书，往用户机器里装根 CA 这事风险太大，已经去掉了。等真有分发量再买正规证书）。SmartScreen 要弹「仍要运行」就点一下。
 
-### 方法二：从源码构建
+学校电教批量部署可以用 winget：清单在 `packaging/winget/`，等合进 winget-pkgs 之后就是 `winget install ClassTechStar.SmartSideBAR`。
+
+## 自己构建
+
+要 .NET 10 SDK。
 
 ```bash
-# 1. 克隆仓库（需要 .NET 10 SDK）
 git clone https://github.com/ClassTechStar/SmartSideBAR.git
 cd SmartSideBAR
 
-# 2. 构建 + 测试
+# 构建 + 跑测试
 dotnet build SmartSideBAR.slnx -c Release
 dotnet test SmartSideBAR.slnx
 
-# 3. 发布自包含单文件
+# 发布单文件
 dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
   --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true \
   -p:TrimMode=partial -p:EnableCompressionInSingleFile=true \
   -o artifacts/app
 
-# 4. 编译安装器 (需要 Inno Setup, 发版时改 iss 内 AppVersion 三处)
+# 打安装包（要装 Inno Setup；发版时改 iss 里的 AppVersion，一共三处）
 iscc installer/SmartSideBAR.iss
 ```
 
-### 方法三：开发运行（热重载调试）
+平时开发直接跑就行：
 
 ```bash
 dotnet run --project src/SmartSideBAR.Avalonia
 ```
 
-> 历史 Electron 版源码在 `archive/electron-final` 分支（v1.0.0/1.1/1.2.0 快照目录亦在仓库根，供观感对照）。
->
-> **winget 安装（推荐给学校电教）**：`packaging/winget/` 提供清单，winget-pkgs 合入后 `winget install ClassTechStar.SmartSideBAR`。
+> 早期 Electron 版本的源码在 `archive/electron-final` 分支。仓库根下的 `SmartSideBAR-1.0.0/1.1/1.2.0` 三个目录是当时留的版本快照，只是方便对着看界面，不参与构建。
 
-## 使用说明
+## 怎么用
 
-### 侧边栏
+**侧栏**：点屏幕边缘的图标轨展开；点轨底的箭头或者双击空白处收起。点图标出面板，`Esc` 或者鼠标离开 5 秒后自己收。长按图标 500ms 进入拖拽排序。工作区在快捷设置面板顶上切。
 
-- **展开/收起**：点击屏幕边缘图标轨；轨底箭头或双击空白区收起为底角方块（或触发条，取决于触发模式）
-- **面板**：点击 rail 图标展开对应功能面板，`Esc` 或鼠标离开 5s 自动收起
-- **重排序**：长按任意图标 500ms 进入拖拽排序，松手即保存
-- **工作区**：快捷设置面板顶部切换「默认 / 上课 / 批注」，rail 立即按场景裁剪
+**默认热键**（设置里能改）：
 
-### 全局热键（可在设置修改）
-
-| 默认键 | 动作 |
+| 按键 | 功能 |
 |--------|------|
 | `Ctrl+Shift+A` | 区域截图 |
 | `Ctrl+Shift+D` | 屏幕批注 |
@@ -134,132 +101,100 @@ dotnet run --project src/SmartSideBAR.Avalonia
 | `Alt+Q` | 悬浮球开关 |
 | `Ctrl+Shift+I` | 输入法切换 |
 
-### 批注工具条
+**批注工具条**：铅笔、荧光笔、激光笔、直线、箭头、矩形、椭圆、橡皮，6 种颜色，细中粗三档，转形开关，撤销/清空/存笔迹/存截图。收笔后手绘的闭合图形会自动转成规整形状。
 
-笔 / 荧光笔 / 激光笔 / 线 / 箭 / 框 / 圆 / 擦 + 6 色 + 细中粗 + 转形开关 + 撤销/清空/存笔迹/存截图。手绘闭合图形收笔后自动转为干净形状。
+**首次启动**：会有 6 步引导（欢迎 → 选角色 → 环境检测 → 偏好 → 上手练习 → 完成），两三分钟的事，也可以直接跳过。
 
-### 首次使用（OOBE）
+## 配置文件
 
-安装后首次启动自动弹出 6 步引导：欢迎 → 角色 → 环境检测 → 偏好设置 → 上手练习 → 完成，全程 ≤ 3 分钟。
+配置分三层，后一层盖前一层：程序内置默认 → `%ProgramData%\SeewoSidekick\config.json`（管理员策略）→ `%APPDATA%\SmartSideBAR\config.json`（用户自己的）。
 
-## 配置
+常用的几个键：
 
-配置三层覆盖：内置默认 → `%ProgramData%\SeewoSidekick\config.json`（策略层）→ `%APPDATA%\SmartSideBAR\config.json`（用户层）。常用键：
-
-| 键 | 说明 | 默认 |
+| 键 | 干什么的 | 默认 |
 |----|------|------|
-| `appearance.liquidGlass` | 液态玻璃质感（false = 经典纯白快面） | `false` |
+| `appearance.liquidGlass` | 液态玻璃质感，false 是经典纯白 | `false` |
 | `appearance.accent` | 强调色，`"auto"` 跟随 Windows 系统 | `"auto"` |
-| `appearance.reduceMotion` | 跳过过渡动画 | `false` |
-| `display.railTrigger` | 触发模式 `always`/`edge`/`edge-hover` | `"always"` |
-| `display.sidebarSide` | 停靠边 `left`/`right` | `"right"` |
-| `workspace.presets` | 工作区预设（name + modules） | 默认/上课/批注 |
-| `rail.order` | rail 图标顺序（长按排序写入） | `[]` |
-| `capture.inkToShape` | 墨迹识别转形 | `true` |
+| `appearance.reduceMotion` | 关掉过渡动画 | `false` |
+| `display.railTrigger` | 触发形态 `always`/`edge`/`edge-hover` | `"always"` |
+| `display.sidebarSide` | 停靠在 `left` 还是 `right` | `"right"` |
+| `workspace.presets` | 三套工作区预设（名字 + 模块列表） | 默认/上课/批注 |
+| `rail.order` | rail 图标顺序（长按排序后写入） | `[]` |
+| `capture.inkToShape` | 墨迹转形 | `true` |
 | `floatBall.idleOpacity/idleDelayMs` | 悬浮球闲时变暗 | `0.55` / `4000ms` |
 
-视觉规格单一真源：仓库根 `design-tokens.json`（几何/颜色/动效/阴影/指示条），随程序集嵌入，`DesignTokensTests` 钉死基线——改 UI 规格必须先改 JSON 再改测试。
+界面尺寸、颜色、动效这些规格集中在仓库根的 `design-tokens.json` 里，编译时嵌进程序。想改 UI 规格就先改这个文件，`DesignTokensTests` 会盯着别改坏。
 
 ## 技术栈
 
-### Avalonia 主线（当前发布）
-
-| 层级 | 技术 | 说明 |
+| 层 | 用什么 | |
 |------|------|------|
-| UI 框架 | [Avalonia](https://avaloniaui.net/) 11.x + Svg.Skia | 触屏优先 UI |
-| 运行时 | .NET 10（self-contained 单文件，≈15MB） | ReadyToRun + 裁剪 |
-| 核心逻辑 | `SmartSideBAR.Core`（纯逻辑层） | 配置/调度/悬浮球布局/墨迹识别/链接服务 |
-| 平台层 | `SmartSideBAR.Windows`（P/Invoke + WinRT） | AppBar/热键/WGC 录屏/USB/长截图 |
-| 测试 | xUnit（Core/Windows/Avalonia 三层） | 130 用例：单元 + headless 冒烟 7 链路 + 像素结构基线 3 态 |
+| UI | [Avalonia](https://avaloniaui.net/) 11.x + Svg.Skia | 界面 |
+| 运行时 | .NET 10，自包含单文件约 15MB | 开了 ReadyToRun 和裁剪 |
+| 核心逻辑 | `SmartSideBAR.Core` | 配置、调度、墨迹识别这些，不依赖 UI，能单测 |
+| 平台层 | `SmartSideBAR.Windows` | AppBar、热键、录屏、USB 监控，走 P/Invoke + WinRT |
+| 测试 | xUnit | 130 个用例：Core 94 + Windows 17 + Avalonia 19（含 headless 冒烟和像素基线） |
 
 ## 开发命令
 
 ```bash
 dotnet build SmartSideBAR.slnx -c Debug     # 构建
-dotnet test SmartSideBAR.slnx               # 全量测试 (130 用例, 含 headless 冒烟)
-dotnet run --project src/SmartSideBAR.Avalonia   # 运行主线
-dotnet format SmartSideBAR.slnx --verify-no-changes  # 格式检查 (CI 同款)
+dotnet test SmartSideBAR.slnx               # 全部测试（130 个）
+dotnet run --project src/SmartSideBAR.Avalonia   # 跑起来
+dotnet format SmartSideBAR.slnx --verify-no-changes  # 格式检查，CI 会卡这个
 dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 ...  # 发布
 ```
 
-CI：gitleaks 密钥扫描 → dotnet 构建/测试/覆盖率(≥40%)/格式门禁 → 发布 artifact；`v*` tag → Inno 安装包 → Release 草稿；**nightly** 每晚全量三遍抓偶发 + 冒烟留产物。
+CI 做的事：扫密钥 → 构建/测试/覆盖率(≥40%)/格式检查 → 上传产物；打 `v*` 标签时用 Inno 打安装包、建 Release 草稿；另外有个 nightly 每晚跑三遍全量测试抓偶发问题。
 
-## 项目结构
+## 目录结构
 
 ```
 SmartSideBAR/
-├── design-tokens.json            # 视觉规格单一真源 (几何/颜色/动效/阴影)
-├── Directory.Build.props         # 版本号单一事实源 (<Version>)
+├── design-tokens.json            # 界面规格（几何/颜色/动效/阴影）
+├── Directory.Build.props         # 版本号写在这（<Version>）
 ├── src/
-│   ├── SmartSideBAR.Avalonia/    # 主线 UI (WinExe)
-│   │   ├── Ui/                   # Theme/窗口/面板/Toast/通知中心/悬浮球/批注/板中板
-│   │   ├── Views/                # SidebarWindow (rail+面板主机)
-│   │   ├── ViewModels/           # rail/面板视图模型
-│   │   └── WindowManager.cs      # 窗口生命周期与动作路由
-│   ├── SmartSideBAR.Core/        # 纯逻辑层 (可单测)
-│   │   ├── Configuration/        # 三层配置 (SidekickConfig + 各域 Config)
-│   │   ├── Design/               # DesignTokens (令牌镜像)
-│   │   ├── Ink/                  # 墨迹识别转形 (纯几何)
-│   │   ├── Links/ Scheduling/ FloatBall/ Devices/ Diagnostics/ ...
-│   ├── SmartSideBAR.Windows/     # Win32/WinRT 平台层
-│   │   ├── AppBar/               # SHAppBarMessage 注册与自动收起
-│   │   ├── Recording/ Capture/ Devices/ Input/ Shell/ ...
-│   ├── SmartSideBAR.Avalonia/    # (见上)
+│   ├── SmartSideBAR.Avalonia/    # 主线 UI
+│   │   ├── Ui/                   # 主题、窗口、面板、Toast、悬浮球、批注
+│   │   ├── Views/                # SidebarWindow（rail + 面板容器）
+│   │   ├── ViewModels/           # rail 与面板的视图模型
+│   │   └── WindowManager.cs      # 窗口生命周期、动作分发
+│   ├── SmartSideBAR.Core/        # 纯逻辑，可单测
+│   │   ├── Configuration/        # 三层配置
+│   │   ├── Design/               # design-tokens 的 C# 镜像
+│   │   ├── Ink/                  # 墨迹识别
+│   │   └── Links/ Scheduling/ FloatBall/ Devices/ Diagnostics/ ...
+│   └── SmartSideBAR.Windows/     # Win32/WinRT 平台层
+│       ├── AppBar/               # 系统工作区预留（最大化窗口不压侧栏）
+│       └── Recording/ Capture/ Devices/ Input/ Shell/ ...
 ├── tests/                        # Core.Tests / Windows.Tests / Avalonia.Tests
-├── installer/                    # Inno Setup 安装脚本
-├── cert/                         # 自签名证书与信任脚本
-└── scripts/                      # 辅助脚本 (native 重建/冒烟/性能基准)
+├── installer/                    # Inno Setup 脚本
+├── packaging/winget/             # winget 清单
+├── scripts/                      # bench-p28.mjs 性能采样
+└── docs/                         # ARCHITECTURE.md 结构速览
 ```
 
-## 核心技术特性
+## 几件实现上的事
 
-### 触屏优先的交互与动效
+**动效**：全局统一了几档时长（微反馈 120ms、面板 180ms、窗口 250ms、菜单交错 32ms），都从令牌取。`reduceMotion` 打开后全部跳过。触屏按下去是填充加深加轻微缩放，选中是填充加贴边色条。
 
-- 全应用统一动效词汇（微反馈 120ms / 面板 180ms / 窗口 250ms / 交错 32ms），令牌驱动，`reduceMotion` 全局尊重
-- 触控按压 = 填充加深 + 缩放反馈；选中态 = 填充 + 贴屏侧品牌色指示条
-- 悬浮球闲时变暗、扇形菜单交错弹出；经典/玻璃双主题一键切换
+**稳定性**：单实例（二次启动会把已有窗口唤醒）；AppBar 注册失败就退回置顶模式，置顶模式下每 30 秒重申一次（一体机睡眠唤醒后置顶经常掉）；未处理异常写成 `crash-*.json`；日志按天滚动，留 14 天或 10MB 就清；截图和批注都有超时保护。
 
-### 稳定性保障
+**多屏与 DPI**：业务坐标统一用 DIP，缩放 100%–250% 都试过（含 1.75/2.25/2.5 这种非整数）。侧栏、悬浮球、板中板都跟着侧栏所在屏走。显示器热插拔会重新定位。全屏检测带 1.2 秒防抖——不加的话，窗口切换动画期间会把侧栏莫名其妙收起来。
 
-- 单实例守卫（二次启动唤醒既有实例）
-- AppBar 注册失败自动回退 Topmost，Topmost Keeper 每 30s 重申置顶（休眠唤醒/显示切换不掉置顶）
-- 未处理异常三路捕获 → `crash-*.json` 结构化落盘；`SSB_SAFE_MODE=1` 安全模式可跳过 AppBar/悬浮球自救启动
-- 日志按天滚动 + 14 天/10MB 上限清理
-- 操作超时保护（截图 60s，批注 5min）
-
-### DPI 与多显示器
-
-- DIP 为唯一业务坐标域，100%–250% 缩放（含 1.75/2.25/2.5 非整数倍）
-- AppBar 几何以目标显示器为准；悬浮球/触发条/板中板均定位到侧栏所在屏
-- 显示器热插拔自动重定位，全屏应用检测 1.2s 防抖
-
-### 性能
-
-| 指标 | 实际 |
-|------|------|
-| 安装包体积 | 自包含单文件 ≈ 15MB（Electron 版为 100MB+） |
-| 常驻渲染 | 经典主题零持久模糊，低配一体机合成开销最低 |
-| 启动 | ReadyToRun + 裁剪 + 压缩单文件 |
+**体积**：自包含单文件约 15MB。同样的功能用 Electron 做出来是 100MB 以上。
 
 ## 系统要求
 
-- **操作系统**：Windows 10 1803+ / Windows 11（64 位）
-- **内存**：≥ 4GB RAM
-- **屏幕**：1366×768 ~ 3840×2160，系统缩放 100%–250%
-- **开发**：.NET 10 SDK（Windows）；Node.js 20+ 仅 perf-bench 脚本（`scripts/bench-p28.mjs`）需要
+- Windows 10 1803+ 或 Windows 11，64 位
+- 4GB 内存以上
+- 1366×768 到 3840×2160，系统缩放 100%–250%
+- 开发要 .NET 10 SDK；只有 `scripts/bench-p28.mjs` 需要 Node.js 20+
 
-## 贡献指南
+## 参与开发
 
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库 → 创建功能分支 `feat/xxx` → 提交 → PR
-2. 主线改动请先跑 `dotnet test`；触碰 `design-tokens.json` 必须同步更新 `DesignTokensTests`
-3. 文档 `docs/ARCHITECTURE.md` 是结构速览——改架构先改它
+有想法开 Issue，或者直接发 PR。主线改动交之前跑一下 `dotnet test`；动了 `design-tokens.json` 记得同步 `DesignTokensTests`。改架构先改 `docs/ARCHITECTURE.md`。
 
 ## 许可证
 
 [Apache-2.0](LICENSE) © 2026 ClassTechStar
-
----
-
-<p align="center">Made with ❤️ for teachers and students</p>

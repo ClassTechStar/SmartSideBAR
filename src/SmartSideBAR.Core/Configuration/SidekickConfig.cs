@@ -1,4 +1,4 @@
-// Core/Configuration/SidekickConfig.cs —— 附录 B.1: 与 v1.2.0 src/shared/types.ts 逐字段同构
+// 附录 B.1: 与 v1.2.0 src/shared/types.ts 逐字段同构
 // JSON 命名 camelCase, 与 Electron 版 config.json 互认 (ADR-M8)。
 using System.Text.Json.Serialization;
 
@@ -31,7 +31,7 @@ public sealed record ImeConfig
     public string Slot1 { get; init; } = "Microsoft Pinyin";
     public string Slot2 { get; init; } = "US";
     public bool FallbackSwap { get; init; } = true;
-    /// <summary>输入法切换热键（此前硬编码 Ctrl+Shift+I 且设置界面不落盘）。</summary>
+        /// <summary>输入法切换热键 (原来硬编码 Ctrl+Shift+I 且设置界面不落盘)。</summary>
     public string Hotkey { get; init; } = "Ctrl+Shift+I";
 }
 
@@ -142,7 +142,7 @@ public sealed record Reminder
 {
     public string Id { get; init; } = "";
     public ReminderKind Kind { get; init; } = ReminderKind.Once;
-    /// <summary>epoch 毫秒 —— 与 v1.2.0 Reminder.at 语义一致</summary>
+        /// <summary>epoch 毫秒, 与 v1.2.0 Reminder.at 语义一致</summary>
     public long At { get; init; }
     public string? Note { get; init; }
     public int? RepeatMin { get; init; }

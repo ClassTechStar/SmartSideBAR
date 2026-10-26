@@ -1,4 +1,4 @@
-// Wave B 纯逻辑测试: 打印机映射 (E4 根修) + 热键解析/替代建议 (P2-2)
+// Wave B 纯逻辑测试: 打印机映射 (E4 修复) + 热键解析/替代建议 (P2-2)
 using SmartSideBAR.Core.Devices;
 using SmartSideBAR.Core.Input;
 

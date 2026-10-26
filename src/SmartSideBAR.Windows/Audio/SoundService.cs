@@ -1,4 +1,4 @@
-// Windows/Audio/SoundService.cs —— 提醒铃声: winmm 直调 (PlaySound 别名 + MCI 播 MP3)。
+// 提醒铃声: winmm 直调 (PlaySound 别名 + MCI 播 MP3)。
 // 替代 v1.2.0 的 PowerShell SystemSounds 子进程; 消费 reminderSound 全字段 (音量/重复/间隔)。
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Configuration;
@@ -57,7 +57,7 @@ public sealed class SoundService(ILogger<SoundService>? log = null) : ISoundServ
         var vol = Math.Clamp(volume, 0, 1);
         _ = Winmm.mciSendString($"setaudio {alias} volume to {(int)(vol * 1000)}", null, 0, 0);
         _ = Winmm.mciSendString($"play {alias}", null, 0, 0);
-        // 播放时长未知: 5s 兜底关闭 (课堂铃声场景足够)
+        // 播放时长未知: 5s 保底关闭 (课堂铃声场景足够)
         _ = Task.Run(async () =>
         {
             try

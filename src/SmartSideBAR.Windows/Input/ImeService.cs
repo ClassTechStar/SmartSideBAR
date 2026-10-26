@@ -1,4 +1,4 @@
-// Windows/Input/ImeService.cs —— §6.1 (ADR-M6): Win32 键盘布局直调, 零 PowerShell 子进程。
+// §6.1 (ADR-M6): Win32 键盘布局直调, 零 PowerShell 子进程。
 // v1.2.0 常驻 PS 守护 (<50ms) → 消息直发 (<5ms); config.ime.slot1/slot2 首次被消费 (审计 #1 遗留)。
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Core.Messaging;

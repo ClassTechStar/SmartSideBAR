@@ -1,67 +1,67 @@
-# ADR-001: 单栈路线决策 —— Avalonia 为主线
+# ADR-001: 技术栈定在 Avalonia
 
-- **状态**: 已接受 (Accepted)
+- **状态**: 已定
 - **日期**: 2026-09-30
-- **决策者**: SmartSideBAR 项目组
 - **关联**: optimization-backlog-2026-09-30.md Track B / R4
 
 ## 背景
 
-仓库同时存在两套完整实现：
+当时仓库里有两套完整实现：
 
 | 栈 | 技术 | 位置 | 测试 | CI | 发布物 |
 |----|------|------|------|-----|--------|
-| Electron | Electron 30 + Vue 3 + TS | `src/main`, `src/renderer` | 仅 smoke 4 用例 | typecheck+lint+test | 否 |
-| Avalonia | C# .NET 10 + Avalonia 11 | `src/SmartSideBAR.*` | 40+ 用例 | 构建+测试+覆盖率 | **是** (Inno/NSIS 均打包 Avalonia exe) |
+| Electron | Electron 30 + Vue 3 + TS | `src/main`, `src/renderer` | 4 个 smoke | typecheck+lint+test | 否 |
+| Avalonia | C# .NET 10 + Avalonia 11 | `src/SmartSideBAR.*` | 40+ 用例 | 构建+测试+覆盖率 | **是** |
 
-关键事实：
-1. **实际发布物是 Avalonia exe**（Inno `installer/SmartSideBAR-v1.3.iss` 与 NSIS 均打包 `SmartSideBAR.Avalonia.exe`）
-2. C# 侧 AppBar/测试/覆盖率基建更完整（含 FakeAppBarApi 测试替身）
-3. CI 注释自认 Electron 为「v1.2.0 冻结维护」
-4. 但近期用户反馈修复（外观对齐、2.5K 适配、SVG 图标、913dc35 AppBar 禁用）**两条栈都在改**——双栈维护正在真实发生
-5. 两套实现互不引用（Electron 全库 0 处引用 Avalonia/dotnet），逻辑已开始漂移
+几个事实：
 
-## 决策
+1. 装出去的 exe 是 Avalonia 编出来的（Inno 和 NSIS 打包脚本指的都是 `SmartSideBAR.Avalonia.exe`）
+2. C# 侧的 AppBar 有完整实现，测试也齐（FakeAppBarApi）；TS 侧只有 smoke
+3. Electron 那边的 CI 注释里自己写着「v1.2.0 冻结维护」
+4. 但用户反馈过来的修复（外观对齐、2.5K 适配、SVG 图标、AppBar 禁用）两条线都在改，双栈并行维护是真的在发生
+5. 两边互不引用，逻辑已经开始走岔
 
-**Avalonia (C# / .NET 10) 为唯一主线栈。Electron 栈停止功能开发，仅保安全修复，条件满足后归档。**
+## 决定
 
-## 理由
+**主线只留 Avalonia (C# / .NET 10)。Electron 不再做功能，只修安全问题，条件够了就归档。**
 
-1. **发布物一致性**: 安装器打包的是 Avalonia exe，继续在 Electron 上开发等于修的产品不发、发的产品不修
-2. **质量基建**: C# 侧 40+ 测试用例 + 覆盖率门禁 + format 检查 vs TS 侧 4 个 smoke 用例
-3. **技术债**: Electron 侧 AppBar 已因 BigInt 类型谎言禁用（`if (false)`），C# 侧 `AppBarService` 有完整可用实现（含测试）
-4. **维护成本**: 双栈使每个用户反馈修两遍，且 FloatBall 多显示器定位已现偏差（`WindowManager.cs:317` 用主屏 vs Electron 用目标屏）
-5. **性能**: 目标设备为 4-8GB 教学一体机，.NET 自包含单文件 14.7MB vs Electron 包 100MB+
+## 为什么
 
-## 影响
+1. 发出去的程序是 Avalonia 编的，继续在 Electron 上修等于修的没发、发的没修
+2. C# 侧 40+ 测试加覆盖率门禁，TS 侧 4 个 smoke
+3. Electron 的 AppBar 因为 BigInt 类型问题被 `if (false)` 关掉了；C# 侧 `AppBarService` 是能用的
+4. 双线维护意味着每个用户反馈都改两遍。而且已经漂了：悬浮球多显示器定位，`WindowManager.cs:317` 用主屏、Electron 用目标屏
+5. 目标机器是 4-8GB 的教学一体机。.NET 单文件 14.7MB，Electron 包 100MB 起
 
-### 立即执行
-- **B2**: Electron 侧 AppBar 死代码清理（`if (false)` / `updateAppBarPos` 死函数 / BigInt 谎言）
-- **C3**: TS 测试降级为仅保 smoke（不再补单测）
-- **C5**: 巨型文件重构不投入 Electron 侧
-- **D4**: TS 性能债不投入
-- **C6**: 双栈行为契约**不立项**（已无双栈）
+## 落地
 
-### 持续投入
-- **B3-B6**: 功能补全全部在 Avalonia 侧
-- **C1-C2**: 质量工程聚焦 C# 侧
-- **D1-D3**: 性能优化聚焦 Avalonia 侧
+马上做：
 
-### Electron 归档条件 (E3)
-1. FE-PARITY 76 通道逐行勾验完成（B3 通道补齐到位）
-2. README/文档全部指向 Avalonia 主线
-3. CI electron job 保留为安全门禁（typecheck+lint+test），不再跑功能测试
-4. 归档声明写入 README + 分支保护
+- Electron 侧 AppBar 死代码清掉（`if (false)` / `updateAppBarPos` / BigInt 相关）
+- TS 测试只留 smoke，不再补单测
+- 巨型文件重构、TS 性能优化都不投入
+- 不做双栈行为契约（已经没有双栈了）
 
-## 保留 Electron 的成本（若反悔）
+继续投入：
+
+- 功能补全、质量工程、性能优化全部在 Avalonia 侧
+
+Electron 归档要满足的条件：
+
+1. FE-PARITY 76 通道逐行勾验完成
+2. README/文档都指向 Avalonia 主线
+3. CI 的 electron job 只留安全门禁（typecheck+lint+test）
+4. 归档声明写进 README + 分支保护
+
+## 如果反悔的代价
 
 - 每个功能改动 x2 人天
-- 配置/热键/调度/悬浮球逻辑需持续双向同步
-- FloatBall 多显示器偏差等漂移 bug 持续出现
-- 约占总维护成本 40-50%
+- 配置/热键/调度/悬浮球逻辑要持续双向同步
+- 类似悬浮球多显示器偏差这种漂移 bug 会一直出现
+- 大概占总维护成本的 40-50%
 
 ## 变更记录
 
 | 日期 | 变更 |
 |------|------|
-| 2026-09-30 | 初版：Avalonia 为主线，Electron 冻结→归档 |
+| 2026-09-30 | 初版：定 Avalonia 主线，Electron 冻结→归档 |

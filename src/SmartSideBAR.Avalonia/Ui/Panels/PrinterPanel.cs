@@ -1,4 +1,4 @@
-// PrinterPanel —— v1.2 同名面板的 Avalonia 实现。
+// PrinterPanel, v1.2 同名面板的 Avalonia 实现。
 // P2-1：由 697 行的 SidebarPanels.cs 拆出，一面板一文件（单文件 ≤600 行的拆分约定），
 // 便于单独单测、减少合并冲突。公共构件见 PanelKit.cs，基类见 SidebarPanel.cs。
 using Avalonia;

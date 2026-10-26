@@ -1,4 +1,4 @@
-// SchedulerServiceTests —— FakeTimeProvider 驱动的可测调度 (方案 §6.10)
+// SchedulerServiceTests: FakeTimeProvider 驱动的可测调度 (方案 §6.10)
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;

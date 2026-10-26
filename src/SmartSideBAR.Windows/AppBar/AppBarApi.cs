@@ -1,5 +1,5 @@
-// Windows/AppBar/AppBarApi.cs —— SHAppBarMessage 真实现; QUERYPOS 语义逐行对齐 src/native/appbar.cc
-// 所有调用经 PhysicalDpiScope 强制 PMv2 线程上下文 —— 宿主线程上下文不确定, 物理像素必须自证 (K4)。
+// SHAppBarMessage 真实现; QUERYPOS 语义逐行对齐 src/native/appbar.cc
+// 所有调用经 PhysicalDpiScope 强制 PMv2 线程上下文。宿主线程上下文不确定, 物理像素必须自证 (K4)。
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Windows.Native;
@@ -71,7 +71,7 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
         // Query: 系统按任务栏/其他 AppBar 调整区间 (只动区间, 不保尺寸)
         _ = AppBarNative.SHAppBarMessage(AppBarNative.ABM_QUERYPOS, ref abd);
 
-        // 与 appbar.cc 一致: 按提议边恢复尺寸 (沿边维度保留系统裁剪 —— 自动避开任务栏)
+                // 与 appbar.cc 一致: 按提议边恢复尺寸 (沿边维度保留系统裁剪, 自动避开任务栏)
         switch (abd.uEdge)
         {
             case AppBarNative.ABE_LEFT: abd.rc.Right = abd.rc.Left + want.W; break;
@@ -134,7 +134,7 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
         var mi = new AppBarNative.MONITORINFO { cbSize = (uint)Marshal.SizeOf<AppBarNative.MONITORINFO>() };
         if (!AppBarNative.GetMonitorInfo(hMonitor, ref mi))
         {
-            // 兜底: 主显示器 96DPI 假设 (仅极端失败路径)
+            // 保底: 主显示器 96DPI 假设 (仅极端失败路径)
             log?.LogWarning("[AppBar] GetMonitorInfo 失败, 使用主屏兜底矩形");
             return new MonitorRects(new AppBarRect(0, 0, 1920, 1080), new AppBarRect(0, 0, 1920, 1040));
         }
@@ -143,7 +143,7 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
             new AppBarRect(mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H));
     }
 
-    /// <summary>B4: ABM_SETAUTOHIDEBAR —— 注册/注销自动隐藏 AppBar。</summary>
+        /// <summary>B4: ABM_SETAUTOHIDEBAR, 注册/注销自动隐藏 AppBar。</summary>
     public bool SetAutoHideBar(nint hwnd, uint edge, bool enable)
     {
         if (hwnd == 0) return false;

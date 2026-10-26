@@ -1,4 +1,4 @@
-// 日志轮转策略（P2-2）—— 纯逻辑，放 Core 便于单测。
+// 日志轮转策略 (P2-2), 纯逻辑放 Core 便于单测。
 // 背景：常驻教学一体机上 FileLoggerProvider 只按天分文件，长期不清理会无限增长。
 // 这里给出两条约束：按天保留 N 份 + 单文件超过阈值即滚动。
 namespace SmartSideBAR.Core.Diagnostics;

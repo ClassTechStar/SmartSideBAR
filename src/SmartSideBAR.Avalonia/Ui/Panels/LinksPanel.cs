@@ -1,4 +1,4 @@
-// LinksPanel —— 建议 #3/#5 落地: 标签页 + 正方形卡片网格（对标希沃网页快捷入口:
+// LinksPanel, 建议 #3/#5: 标签页 + 正方形卡片网格 (对标希沃网页快捷入口:
 // DeepSeek/GLM 等网页版 AI 一键直达），支持内联新增。分类来自 link.category,
 // 自定义值自动成页; 保存走 LinksService（读取过滤视图 / 全量回写语义见 Core）。
 using Avalonia;

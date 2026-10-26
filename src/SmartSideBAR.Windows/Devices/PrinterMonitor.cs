@@ -1,4 +1,4 @@
-// Windows/Devices/PrinterMonitor.cs —— §6.7: System.Management 同源 WMI, E4 状态映射根修。
+// §6.7: System.Management 同源 WMI, E4 状态映射修复。
 // 轮询间隔消费 config.printer.pollIntervalSec; 状态变化 → bus.Publish(PrinterChanged)。
 using System.Management;
 using Microsoft.Extensions.Logging;

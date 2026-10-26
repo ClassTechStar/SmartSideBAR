@@ -176,7 +176,7 @@ public sealed class WindowManager(
         bus.Subscribe<LongshotCompleted>(e =>
             ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error"));
 
-        // B7 根修: 提醒到点必须有可见反馈 (此前只播声音, 教师戴着耳麦听不到就等于没提醒)
+                // B7: 到点必须有可见反馈, 只播声音不够 (教师戴耳麦时听不见)
         bus.Subscribe<ReminderDue>(e =>
             ToastService.Instance.Show($"提醒: {e.Note ?? "时间到了"}", "warn"));
 
@@ -219,7 +219,7 @@ public sealed class WindowManager(
 
     /// <summary>
     /// KoBar topmostKeeper 策略移植: Windows 在显示切换/休眠唤醒/输入源切换后会悄悄
-    /// 丢弃 always-on-top —— 教学一体机睡眠唤醒尤其频繁。Topmost 回退模式下每 30s
+        /// 丢弃 always-on-top 的情况。教学一体机睡眠唤醒尤其频繁, Topmost 回退模式下每 30s
     /// 重申一次置顶 (toggle 触发 Win32 重新插入 topmost 带, 等价 KoBar 的 moveTop);
     /// AppBar 注册成功后自动停表。
     /// </summary>
@@ -405,7 +405,7 @@ public sealed class WindowManager(
         var fps = Math.Clamp(config.Current.Recorder.Fps, 5, 60);
         var mic = config.Current.Recorder.Mic;
         var path = Path.Combine(dir, $"record_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
-        // B5: 传递麦克风配置 (config.recorder.mic 已有配置, 此前未消费)
+                // B5: 传递麦克风配置 (读 config.recorder.mic)
         await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
     }
 
@@ -430,7 +430,7 @@ public sealed class WindowManager(
     {
         if (_floatBall is { IsVisible: true }) return;
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
-        // R4 修复: 悬浮球定位改用侧栏所在目标屏 (原来固定用主屏, 多显示器时偏差)
+                // R4: 悬浮球定位改用侧栏所在目标屏, 多显示器下主屏会偏
         var wa = GetSidebarWorkArea();
         var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
         _floatBall = new FloatBallWindow(config, config.Current.FloatBall,
@@ -468,7 +468,7 @@ public sealed class WindowManager(
     /// <summary>v1.1 dock/undock: 收起为工作区底角小方块 / 恢复玻璃胶囊。
     /// 勘误: 不复用侧栏窗口缩放 (透明窗外部 MoveWindow 缩放后 Avalonia 不出帧),
     /// dock 用独立 DockWindow; AppBar 先注销 (WorkArea 完整归还, v1.1 同语义),
-    /// undock 时对侧栏窗口重新 Attach (含孤儿注册自愈)。</summary>
+    /// undock 时对侧栏窗口重新 Attach (含残留注册的自动清理)。</summary>
     public void SetDocked(bool docked)
     {
         if (docked == _docked) return;
@@ -606,7 +606,7 @@ public sealed class WindowManager(
 
     /// <summary>
     /// R4 修复: 获取侧栏所在显示器的工作区 (物理像素)。
-    /// 原来固定用主屏 PrimaryWorkAreaPx, 多显示器时悬浮球/dock 定位偏差。
+        /// 早期固定用主屏 PrimaryWorkAreaPx, 多显示器时悬浮球/dock 会定位偏。
     /// 优先取侧栏窗口所在屏, 无侧栏时回退主屏。
     /// </summary>
     private (int X, int Y, int W, int H) GetSidebarWorkArea()

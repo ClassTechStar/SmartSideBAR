@@ -1,4 +1,4 @@
-// Windows/Native/Win32Display.cs —— 显示器/DPI 公共助手 (UI 层与互操作层的共享工具)
+// 显示器/DPI 公共助手 (UI 层与互操作层的共享工具)
 using System.Runtime.InteropServices;
 
 namespace SmartSideBAR.Windows.Native;
@@ -24,7 +24,7 @@ public static partial class Win32Display
         return (mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H);
     }
 
-    /// <summary>主屏完整矩形 (物理像素, 含任务栏) —— 全屏覆盖层用。</summary>
+        /// <summary>主屏完整矩形 (物理像素, 含任务栏), 全屏覆盖层用。</summary>
     public static (int X, int Y, int W, int H) PrimaryMonitorRectPx()
     {
         var hMonitor = MonitorFromPoint(new NativePoint { x = 0, y = 0 }, 1 /*MONITOR_DEFAULTTOPRIMARY*/);

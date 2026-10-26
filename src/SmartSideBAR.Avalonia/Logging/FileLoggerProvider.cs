@@ -1,4 +1,4 @@
-// Wave A 轻量文件日志 —— 按日滚动；P2-2 补上保留期与单文件上限。
+// 轻量文件日志, 按日滚动; P2-2 补上保留期与单文件上限。
 // 约束: 无第三方依赖, 同步写 + 锁 (日志量极小, 不构成瓶颈)。
 // 轮转策略本身在 Core/Diagnostics/LogRotation.cs（纯逻辑、可单测），这里只负责落地。
 using Microsoft.Extensions.Logging;

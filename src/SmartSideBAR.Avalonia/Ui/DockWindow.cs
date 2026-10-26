@@ -2,7 +2,7 @@
 // 点击 -> 展开侧栏 (undock)。AppBar 在 dock 期间注销。
 // v1.2 样式: 白色玻璃渐变底 (v6配方) + 向上箭头图标, v7 关闭边光环。
 // 动效: hover 微放大 + 按压缩放 (design-tokens.motion, 与 railBtn 同词汇);
-// 箭头改用与 rail 相同的 dock-up SVG (此前手绘 Path 与图标系统不一致)。
+// 箭头用与 rail 相同的 dock-up SVG, 手绘 Path 与图标系统不一致。
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
@@ -27,7 +27,7 @@ public sealed class DockWindow : Window
         SystemDecorations = SystemDecorations.None;
         ShowInTaskbar = false;
         ShowActivated = false;
-        // B23 根修: 缺了 Topmost —— 收起形态恰好发生在「有全屏/最大化窗口」时,
+                // B23: 需要 Topmost。收起形态恰好发生在「有全屏/最大化窗口」时,
         // 该窗口会把工作区底角的小方块压在下面: 既看不见也点不到 (实测点击落入前台窗口)。
         Topmost = true;
         Background = Brushes.Transparent;

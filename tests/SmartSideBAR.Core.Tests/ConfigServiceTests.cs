@@ -1,4 +1,4 @@
-// Core/Configuration/ConfigServiceTests —— 三层合并/迁移/白名单/钳制/未知字段保留
+// ConfigServiceTests: 三层合并/迁移/白名单/钳制/未知字段保留
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Messaging;
 using System.Text.Json.Nodes;

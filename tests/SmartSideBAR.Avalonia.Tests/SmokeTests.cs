@@ -1,19 +1,19 @@
-// Headless 冒烟 + 像素结构基线 (P1-6, Karpathy 裁决: march of nines)。
+// Headless 冒烟 + 像素结构基线 (P1-6)。
 //
 // 6+1 条链路 (真实控件/服务接线, 不 mock UI):
-//   1. Rail 点击 → 面板打开   —— headless 鼠标驱动真实窗口
+//   1. Rail 点击 → 面板打开   (headless 鼠标驱动真实窗口)
 //   2. 批注: 鼠标画圆 → 转形 → 工具条两级
 //   3. 工作区切换 → rail 重建裁剪
 //   4. 提醒面板: 种子提醒渲染 + 铃声入口
 //   5. Toast → 通知中心留档/清除
 //   6. 链接: 服务新增 → 卡片网格 + 分类页签
 //   7. 录屏态: 录制中 → 面板计时卡
-// (Win32/GDI 依赖的链路 —— 截图覆盖层/USB WMI/长截图拼接 —— 由 Core/Windows
+// (Win32/GDI 依赖的链路: 截图覆盖层/USB WMI/长截图拼接, 由 Core/Windows
 //  单测覆盖, headless 无法承载, 此处不伪装。)
 //
 // 像素结构基线 (3 态): 不做 golden 哈希 (CI 与本机字体/GPU 差异必抖),
-// 改断言结构不变量 —— 「胶囊有没有画出来、面板是不是白底、主题对比度对不对」。
-// 这类缺陷 (如 cbcdfec 玻璃高光根本没画) 恰是数字基线之外最该拦的。
+// 改断言结构不变量: 胶囊有没有画出来、面板是不是白底、主题对比度对不对。
+// 这类缺陷 (如 cbcdfec 玻璃高光根本没画) 是数字基线之外最该拦的。
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -269,7 +269,7 @@ public sealed class SmokeTests : IDisposable
         Assert.NotNull(frame);
         Assert.Equal(72, frame!.PixelSize.Width); // rail 基准宽 (design-tokens)
 
-        // 胶囊中央列必须大面积不透明且亮色 (经典白面) —— cbcdfec 类"没画出来"缺陷守卫
+                // 胶囊中央列必须大面积不透明且亮色 (经典白面), 防"没画出来"这类缺陷
         var samples = ReadColumn(frame, frame.PixelSize.Width / 2);
         var opaque = samples.Count(p => p.a > 0x40);
         Assert.True(opaque > frame.PixelSize.Height * 0.5,
@@ -297,7 +297,7 @@ public sealed class SmokeTests : IDisposable
         Assert.NotNull(frame);
         Assert.Equal(452, frame!.PixelSize.Width);
 
-        // 面板区域 (rail 右侧 380px) 应大面积不透明白 —— 面板底真的画出来了
+                // 面板区域 (rail 右侧 380px) 应大面积不透明白, 确认面板底画出来了
         foreach (var x in new[] { 100, 200, 300, 420 })
         {
             var col = ReadColumn(frame, x);

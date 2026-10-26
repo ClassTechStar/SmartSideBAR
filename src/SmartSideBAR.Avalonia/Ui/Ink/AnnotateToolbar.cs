@@ -1,4 +1,4 @@
-// 批注工具条 (P1-8/P1-9) —— AnnotateWindow 与 MiniBoardWindow 共享, 两级化:
+// 批注工具条 (P1-8/P1-9), AnnotateWindow 与 MiniBoardWindow 共享, 两级化:
 //   默认级 (Jobs 裁决「粉笔原则」): 笔 / 擦 / 撤销 / 存 / 退出 + 「⋯ 更多」, 6 项;
 //   展开级: 全部 8 工具 + 6 色 + 3 粗细 + 转形开关 + 清空 + (仅笔迹保存)。
 // 选中态 = accent 描边 (KoBar native-calm: 填充/描边变化, 不发光)。
@@ -84,7 +84,7 @@ internal sealed class AnnotateToolbar
         Button pen = null!, erase = null!;
         pen = ToolBtn("笔", () => SelectMinimalTool(AnnotateTool.Pen, pen, erase), minWidth: 34);
         erase = ToolBtn("擦", () => SelectMinimalTool(AnnotateTool.Eraser, pen, erase), minWidth: 34);
-        // 默认级进来总是笔 (上一会话若在展开级用了形状, 收起即回到笔 —— 粉笔原则)
+                // 默认级进来总是笔 (上一会话若在展开级用了形状, 收起即回到笔)
         _ink.SetTool(AnnotateTool.Pen);
         pen.BorderBrush = new SolidColorBrush(AccentEdge);
         _minimalToolButtons.AddRange([pen, erase]);

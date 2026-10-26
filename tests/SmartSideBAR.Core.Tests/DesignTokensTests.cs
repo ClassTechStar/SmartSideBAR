@@ -1,9 +1,7 @@
 // 视觉规格回归（P0-2）。
-// 这些断言把 v1.2 已确认的规格钉死在 design-tokens.json 上：
+// 这些断言把 v1.2 已确认的规格固定在 design-tokens.json 上：
 //   - 想改 UI 规格 → 必须改 JSON → 本测试红 → 强制走"改基线"而不是"改代码"的路径；
 //   - 谁手滑把 rail 改成 64、箭头改回 22，这里立刻红。
-// 背景：重建期 8 个提交是「对齐 v1.2」返工，停靠箭头被逐像素手调 22→26→30，
-// 根因就是没有这份可执行基线。
 using SmartSideBAR.Core.Design;
 
 namespace SmartSideBAR.Core.Tests;
@@ -46,7 +44,7 @@ public class DesignTokensTests
     [Fact]
     public void Dock_toggle_arrow_is_30px()
     {
-        // 用户连续两次要求放大（22 → 26 → 30），定在 30
+        // 按用户要求放大过两轮（22 → 26 → 30），现定 30
         Assert.Equal(52, T.Dock.ToggleSizeDip);
         Assert.Equal(30, T.Dock.ArrowSizePx);
     }
@@ -76,7 +74,7 @@ public class DesignTokensTests
     [Fact]
     public void Motion_vocabulary_matches_feel_baseline()
     {
-        // 1.0.0 动效词汇（体感最佳版本）：微反馈 120 / 面板 180 / 窗口 250
+        // 1.0.0 的动效时长：微反馈 120 / 面板 180 / 窗口 250
         Assert.Equal(220, T.Motion.AnimMs);
         Assert.Equal(120, T.Motion.AnimFastMs);
         Assert.Equal(250, T.Motion.WindowMs);
@@ -88,7 +86,7 @@ public class DesignTokensTests
     [Fact]
     public void Classic_surface_matches_v100()
     {
-        // 1.0.0「经典快」表面语言：纯白 + 发丝线 + 品牌浅蓝态色（体感最佳版本的根因之一）
+        // 1.0.0「经典快」表面语言：纯白 + 发丝线 + 品牌浅蓝态色
         Assert.Equal("#FFFFFF", T.Classic.Bg);
         Assert.Equal("#F5F7FA", T.Classic.BgHover);
         Assert.Equal("#E8F1FC", T.Classic.BrandLight);

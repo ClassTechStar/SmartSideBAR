@@ -1,5 +1,5 @@
 // 板中板 (ICC MiniWhiteboardWindow 模式): 独立浮动的临时小黑板/小白板。
-// 与全屏批注互补 —— 全屏批注覆盖在课件上讲, 板中板是"临时演算纸"。
+// 与全屏批注互补: 全屏批注覆盖在课件上讲, 板中板是临时演算纸。
 // P1-8 后工具条/引擎与全屏批注共享 (Ui/Ink/)。白板/黑板双底色 (ICC 配色)。
 using Avalonia;
 using Avalonia.Controls;

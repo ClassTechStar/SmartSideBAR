@@ -1,4 +1,4 @@
-// Windows.Tests 假件 —— 记录 SHAppBarMessage 调用序列, 供状态机断言 (方案 §7.1)
+// Windows.Tests 假件, 记录 SHAppBarMessage 调用序列, 供状态机断言 (方案 §7.1)
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Native;

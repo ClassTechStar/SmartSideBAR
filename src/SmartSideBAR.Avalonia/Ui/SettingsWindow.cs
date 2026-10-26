@@ -1,4 +1,4 @@
-// 设置窗 (§6.11) —— 参照 Seelen-UI 设置应用 (导航 + 分页) 与 KoBar (Surface 卡片 +
+// 设置窗 (§6.11), 参照 Seelen-UI 设置应用 (导航 + 分页) 与 KoBar (Surface 卡片 +
 // 「标签+描述在左 / 控件在右」的 Option 行语法) 重构。保存仍走 ConfigService.Set
 // 白名单路径 + 自动广播 ConfigChanged; 控件字段与旧版一一对应, Save() 语义不变。
 using Avalonia;
@@ -431,7 +431,7 @@ public sealed class SettingsWindow : Window
         var exportDiag = new Button { Content = "导出诊断包", Margin = new Thickness(8, 0, 0, 0) };
         exportDiag.Click += (_, _) =>
         {
-            // B13 根修: 日志文件被占用时 ZipFile 会抛 IOException; 点击处理器无保护
+            // B13  日志文件被占用时 ZipFile 会抛 IOException; 点击处理器无保护
             // → UI 线程未处理异常, 与 B1 同级别 (直接杀进程)。
             try
             {

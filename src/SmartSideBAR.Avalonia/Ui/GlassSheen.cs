@@ -1,6 +1,6 @@
-// 液态玻璃高光 —— v1.2 用 CSS 变量 --lg-mx/--lg-my 驱动"高光跟随光标"，
+// 液态玻璃高光。v1.2 用 CSS 变量 --lg-mx/--lg-my 驱动"高光跟随光标",
 // 并用 SVG feDisplacementMap 做折射色散。Avalonia 侧没有 CSS 变量与 backdrop 采样，
-// 这里用两层物理上等价的手段复现观感：
+// 这里用两层手段做出同样的效果:
 //   1) 镜面高光：径向渐变中心跟随光标在控件内的归一化位置（对应 --lg-mx/--lg-my）；
 //   2) 色散边：R/G/B 三条极淡的内描边按光标方向错位 1~2 px（对应 aberration）。
 // 真正的逐像素折射需要回读窗口背后画面（DWM 合成结果），代价远高于收益，此处不做。
@@ -56,7 +56,7 @@ internal sealed class GlassSheen
     public void Apply(Palette palette)
     {
         // 白色高光在近白胶囊上几乎不可见（实测上下半区亮度差 <1.5），
-        // 改用品牌色低透明度光斑：既保留"光随指针走"的观感，又能在白底上看得出来。
+                // 改用品牌色低透明度光斑: 既保留"光随指针走", 白底上又看得出来。
         var accent = palette.Accent;
         var core = (byte)(palette.Dark ? 0x1E : 0x1A);
         var mid = (byte)(core * 0.45);
@@ -80,7 +80,7 @@ internal sealed class GlassSheen
     }
 
     /// <summary>Canvas 只按子元素 DesiredSize 摆放、不拉伸，必须显式给尺寸，
-    /// 否则光斑与描边都是 0×0，画面上等于不存在（本实现初版即此问题）。</summary>
+        /// 否则光斑与描边都是 0×0, 画面上看不见。</summary>
     private void SyncSize()
     {
         var w = _layer.Bounds.Width;
@@ -108,7 +108,7 @@ internal sealed class GlassSheen
         var h = _layer.Bounds.Height;
         if (w <= 0 || h <= 0) return;
 
-        // 光斑固定在中心绘制，用平移把它带走 —— 直接改 RadialGradientBrush.Center
+                // 光斑固定在中心绘制, 用平移把它带走; 直接改 RadialGradientBrush.Center
         // 不会让已渲染的笔刷失效（实测画面完全不动），必须改几何变换。
         _spot.RenderTransform = new TranslateTransform(nx * w * 0.26, ny * h * 0.30);
 

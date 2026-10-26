@@ -1,4 +1,4 @@
-// Windows/Native/Win32InputDevice.cs —— Wave B 服务族共享的 P/Invoke 集合
+// Wave B 服务族共享的 P/Invoke 集合
 // (IME 键盘布局 / 全局热键 / 设备通知 / winmm 声音)
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
