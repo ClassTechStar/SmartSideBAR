@@ -135,7 +135,7 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
         if (!AppBarNative.GetMonitorInfo(hMonitor, ref mi))
         {
             // 保底: 主显示器 96DPI 假设 (仅极端失败路径)
-            log?.LogWarning("[AppBar] GetMonitorInfo 失败, 使用主屏兜底矩形");
+            log?.LogWarning("[AppBar] GetMonitorInfo 失败, 改用主屏矩形");
             return new MonitorRects(new AppBarRect(0, 0, 1920, 1080), new AppBarRect(0, 0, 1920, 1040));
         }
         return new MonitorRects(

@@ -136,7 +136,7 @@ export function glassCssVars(
     '--lg-tint-weak': `rgba(${glassRgb}, ${(tintAlpha * 0.55).toFixed(3)})`,
     '--lg-tint-strong': `rgba(${glassRgb}, ${Math.min(0.98, tintAlpha * 1.25).toFixed(3)})`,
     '--lg-veil': `rgba(${veilRgb}, ${dark ? 0.72 : 0.86})`,
-    // 玻璃关闭时的不透明兜底色（投影/低配场景）
+    // 玻璃关闭时的不透明保底色（投影/低配场景）
     '--lg-solid': dark ? '#171b22' : '#ffffff',
     // 边缘光 / 镜面高光
     '--lg-rim': dark ? `rgba(255, 255, 255, ${(0.14 + cfg.specular * 0.22).toFixed(3)})` : `rgba(255, 255, 255, ${(0.5 + cfg.specular * 0.45).toFixed(3)})`,

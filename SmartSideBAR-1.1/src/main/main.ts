@@ -188,7 +188,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
     }
     ipcMain.on(IPC_CHANNELS['overlay:ready'], readyHandler)
 
-    // overlay 窗口被外部关闭 (Alt+F4 / 系统关机) 时兜底, 避免 Promise 悬挂 + 引用泄漏
+    // overlay 窗口被外部关闭 (Alt+F4 / 系统关机) 时保底, 避免 Promise 悬挂 + 引用泄漏
     const winForClose = activeOverlayWin
     const closedHandler = () => {
       if (resolved) return
@@ -362,7 +362,7 @@ ipcMain.handle(IPC_CHANNELS['capture:annotate'], async () => {
     }
     ipcMain.on(IPC_CHANNELS['overlay:ready'], readyHandler)
 
-    // 批注窗口被外部关闭 (Alt+F4 / 系统关机) 时兜底, 避免 Promise 悬挂 + 引用泄漏
+    // 批注窗口被外部关闭 (Alt+F4 / 系统关机) 时保底, 避免 Promise 悬挂 + 引用泄漏
     const winForClose = activeAnnotatorWin
     const closedHandler = () => {
       if (resolved) return

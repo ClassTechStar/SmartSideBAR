@@ -236,7 +236,7 @@ export const WindowManager = {
 
     // P0-1 修复: 原实现 parent=侧边栏(尚未 show) + modal: true —— Windows 上模态子窗
     // 挂在隐藏父窗时可见性不可靠(体检 A1), 模态在此也无意义(侧边栏本来就没显示)。
-    // 改为独立置顶窗口; 「用户直接关闭 OOBE」的兜底见 main.ts bootstrap 的 closed 监听。
+    // 改为独立置顶窗口; 「用户直接关闭 OOBE」的保底见 main.ts bootstrap 的 closed 监听。
     oobeWin = new BrowserWindow({
       x,
       y,

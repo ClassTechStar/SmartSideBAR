@@ -34,7 +34,7 @@ public sealed class AppBarServiceTests
         Assert.Equal(874, first.Rect.H);                      // 工作区 84% 胶囊高
         Assert.Equal(83, first.Rect.Y);                       // 顶部 8% 边距
         Assert.Equal(1920 - Rail, first.Rect.X);              // 右缘贴齐
-        Assert.True(hook.HasHook(Hwnd));                      // K1 闭环的前提: 钩子已挂
+        Assert.True(hook.HasHook(Hwnd));                      // K1 的前提: 钩子已挂
         Assert.Single(geometry);                              // AppBarGeometryChanged 已广播
         Assert.True(svc.IsRegistered);
     }

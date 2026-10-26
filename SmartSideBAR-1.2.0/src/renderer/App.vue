@@ -31,7 +31,7 @@ onMounted(async () => {
     applyAppearance(snap)
     unsub = window.sidekick.appearance.onChanged(applyAppearance)
   } catch (e) {
-    console.warn('[App] 外观初始化失败（将使用兜底 token）:', e)
+    console.warn('[App] 外观初始化失败（改用默认 token）:', e)
   }
 })
 onUnmounted(() => {

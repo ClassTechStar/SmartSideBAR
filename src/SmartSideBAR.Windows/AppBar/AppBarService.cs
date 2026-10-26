@@ -183,7 +183,7 @@ public sealed class AppBarService(
             api.Remove(_hwnd);
             if (!api.Register(_hwnd, AppBarNative.AppBarCallbackMsg)) break;
             granted = api.QueryAndSetPos(_hwnd, _edge, want);
-            log?.LogInformation("[AppBar] 贴边自愈重协商 #{Attempt} → ({X},{Y}) {W}x{H}px",
+            log?.LogInformation("[AppBar] 贴边重协商 #{Attempt} → ({X},{Y}) {W}x{H}px",
                 attempt + 1, granted.X, granted.Y, granted.W, granted.H);
         }
         api.WindowPosChanged(_hwnd);                          // K2: 位置变更上报

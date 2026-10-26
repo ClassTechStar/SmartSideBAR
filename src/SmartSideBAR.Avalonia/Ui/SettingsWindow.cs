@@ -531,7 +531,7 @@ public sealed class SettingsWindow : Window
         _ = _config.Set("recorder.dir", string.IsNullOrWhiteSpace(_recorderDir.Text) ? c.Recorder.Dir : _recorderDir.Text.Trim());
         _ = _config.Set("recorder.fps", (int)(_fps.Value ?? 15));
         _ = _config.Set("recorder.mic", _mic.IsChecked == true);
-        _ = _config.Set("recorder.enabled", _recEnabled.IsChecked == true); // B8 根修: 此前漏写, 勾选后重开即丢
+        _ = _config.Set("recorder.enabled", _recEnabled.IsChecked == true); // B8: 之前漏写, 勾选后重开即丢
         _ = _config.Set("usb.enabled", _usbEnabled.IsChecked == true);
         _ = _config.Set("printer.pollIntervalSec", (int)(_printerSec.Value ?? 10));
         _ = _config.Set("capture.hotkey", _hkCapture.Text?.Trim());

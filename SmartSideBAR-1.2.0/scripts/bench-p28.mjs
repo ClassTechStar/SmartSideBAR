@@ -134,7 +134,7 @@ try {
   }
 } catch {}
 
-# 第 3 层: WQL ASSOCIATORS OF 兜底
+# 第 3 层: WQL ASSOCIATORS OF 回退
 if ($out.Count -eq 0) {
   foreach ($dd in @(Get-CimInstance Win32_DiskDrive)) {
     $isUsb = ($dd.InterfaceType -eq 'USB') -or ($dd.PNPDeviceID -like 'USBSTOR*') -or
@@ -310,7 +310,7 @@ async function main() {
   // ---- 阶段 1: 冷启动 ----
   let coldStartMs = null
   if (existing.length === 0) {
-    console.log('🚀 [阶段 1/4] 冷启动...')
+    console.log('[阶段 1/4] 冷启动...')
     const t0 = Date.now()
     const child = spawn(exePath, [], { detached: true, stdio: 'ignore', windowsHide: true })
     child.unref()

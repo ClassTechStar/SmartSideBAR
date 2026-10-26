@@ -88,7 +88,7 @@ async function bootstrap() {
       const oobeWin = WindowManager.createOobe()
       log.info('[BOOT] OOBE window created')
 
-      // P0-1 兜底: 用户直接关闭 OOBE 窗口 (Alt+F4 / 系统关机) 且未完成/未跳过时,
+      // P0-1 保底: 用户直接关闭 OOBE 窗口 (Alt+F4 / 系统关机) 且未完成/未跳过时,
       // 侧边栏仍需可见 —— 否则应用表现为「启动了但什么都没有」。
       oobeWin.on('closed', () => {
         const oobe = ConfigService.get().oobe
@@ -273,7 +273,7 @@ async function runRegionCapture(opts?: any): Promise<{ success: boolean; filepat
       return
     }
 
-    // overlay 窗口被外部关闭 (Alt+F4 / 系统关机) 时兜底, 避免 Promise 悬挂 + 引用泄漏
+    // overlay 窗口被外部关闭 (Alt+F4 / 系统关机) 时保底, 避免 Promise 悬挂 + 引用泄漏
     const winForClose = activeOverlayWin
     const closedHandler = () => {
       if (resolved) return
@@ -493,7 +493,7 @@ async function runAnnotate(): Promise<{ success: boolean; filepath?: string; err
       return
     }
 
-    // 批注窗口被外部关闭 (Alt+F4 / 系统关机) 时兜底, 避免 Promise 悬挂 + 引用泄漏
+    // 批注窗口被外部关闭 (Alt+F4 / 系统关机) 时保底, 避免 Promise 悬挂 + 引用泄漏
     const winForClose = activeAnnotatorWin
     const closedHandler = () => {
       if (resolved) return

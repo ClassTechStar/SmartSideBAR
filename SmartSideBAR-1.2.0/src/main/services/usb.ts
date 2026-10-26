@@ -32,7 +32,7 @@ let isRunning = false
 // 扫描互斥 + 合并: 扫描进行中到达的事件不再被丢弃, 而是置 rescanQueued,
 // 由 runScan() 在收尾后补跑一次。原实现 `if (isScanning) return` 会静默丢弃
 // 「最后一个事件触发的扫描」, 而此刻后台跑的可能是事件之前启动的旧扫描,
-// 结果就是状态停在陈旧数据上, 且要等下一次轮询才能自愈。
+// 结果就是状态停在陈旧数据上, 且要等下一次轮询才能自动恢复。
 let isScanning = false
 let rescanQueued = false
 let pendingScanTimer: NodeJS.Timeout | null = null
@@ -43,7 +43,7 @@ let watcherRestartTimer: NodeJS.Timeout | null = null
 let watcherStartedAt = 0
 // 轮询状态 (仅诊断用途): 当前生效的轮询间隔, 0 = 无轮询
 let currentPollMs = 0
-// 双定时器: 监听器健康时的低频巡检 + 监听器死亡时的高频降级兜底
+// 双定时器: 监听器健康时的低频巡检 + 监听器死亡时的高频降级保底
 let healthPollTimer: NodeJS.Timeout | null = null
 let degradedPollTimer: NodeJS.Timeout | null = null
 // D15: config.usb.ignoreTypes 过滤名单 (如 ['phone','carplay']), start() 时从配置读取
@@ -52,7 +52,7 @@ let ignoreTypes: string[] = []
 const DEBOUNCE_MS = 3_000
 // 后备轮询间隔 (P1-3):
 //  - 监听器健康: 仅每 5 分钟一次巡检扫描 —— 事件驱动可信时不轮询,
-//    巡检只为兜底「WMI 事件子系统静默失效」; 空闲 10 分钟约 2 次扫描 (验收 ≤3)
+//    巡检只为保底「WMI 事件子系统静默失效」; 空闲 10 分钟约 2 次扫描 (验收 ≤3)
 //  - 监听器异常退出: 临时回落 8s 高频, 保证重启完成前设备仍能被识别
 const FALLBACK_POLL_MS = 300_000
 const FALLBACK_POLL_MS_DEGRADED = 8_000
@@ -155,7 +155,7 @@ try {
     $storageOk = $false
 }
 
-# --- 第 3 层: WQL ASSOCIATORS OF, Storage 模块缺失或结果为空时兜底 (兼容 Win7+) ---
+# --- 第 3 层: WQL ASSOCIATORS OF, Storage 模块缺失或结果为空时回退 (兼容 Win7+) ---
 if (-not $storageOk -or $out.Count -eq 0) {
     foreach ($dd in @(Get-CimInstance Win32_DiskDrive)) {
         $isUsb = ($dd.InterfaceType -eq 'USB') -or
@@ -210,7 +210,7 @@ function parseWmiOutput(stdout: string): UsbDrive[] {
     try {
       data = JSON.parse(text)
     } catch {
-      // 兜底: 尝试从夹杂告警信息的输出中提取 JSON 片段
+      // 保底: 尝试从夹杂告警信息的输出中提取 JSON 片段
       const jsonMatch = text.match(/\[[\s\S]*\]/) || text.match(/\{[\s\S]*\}/)
       if (jsonMatch) data = JSON.parse(jsonMatch[0])
       else return []
@@ -377,7 +377,7 @@ function startWmiWatcher(): void {
   })
 }
 
-/** 监听器健康时: 仅低频巡检 (兜底 WMI 事件路径静默失效), 空闲期不产生额外 PowerShell 进程 */
+/** 监听器健康时: 仅低频巡检 (保底 WMI 事件路径静默失效), 空闲期不产生额外 PowerShell 进程 */
 function startHealthPolling(): void {
   if (healthPollTimer) clearInterval(healthPollTimer)
   healthPollTimer = setInterval(() => void runScan({ notify: false }), FALLBACK_POLL_MS)

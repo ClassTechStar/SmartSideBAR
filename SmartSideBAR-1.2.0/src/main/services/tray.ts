@@ -18,7 +18,7 @@ export const TrayService = {
     const iconPath = resolveIcon()
     let img = nativeImage.createFromPath(iconPath)
 
-    // 兜底: 图标文件缺失时用 1x1 透明像素, 避免 Tray 构造抛异常
+    // 保底: 图标文件缺失时用 1x1 透明像素, 避免 Tray 构造抛异常
     if (img.isEmpty()) {
       log.warn('[Tray] Icon not found at', iconPath, ', using fallback')
       img = nativeImage.createEmpty()

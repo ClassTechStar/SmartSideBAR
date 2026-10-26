@@ -1,4 +1,4 @@
-// services/ime.ts - 输入法服务 (PowerShell 兜底)
+// services/ime.ts - 输入法服务 (PowerShell 保底)
 
 import { exec } from 'child_process'
 import { promisify } from 'util'
