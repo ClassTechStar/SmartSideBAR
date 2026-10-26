@@ -51,7 +51,7 @@ public sealed class AppBarService(
         _userExpanded = false;
         _fullscreen = false;
 
-                // V6: 上次强杀可能残留注册, ABM_REMOVE 对未注册 hwnd 无副作用, 先补发一次
+        // V6: 上次强杀可能残留注册, ABM_REMOVE 对未注册 hwnd 无副作用, 先补发一次
         api.Remove(hwnd);
 
         if (!api.Register(hwnd, AppBarNative.AppBarCallbackMsg))
@@ -61,7 +61,7 @@ public sealed class AppBarService(
         }
         _registered = true;
 
-                // K1/K2/K3: 挂接 WndProc, v1.2.0 完全缺失的通知处理
+        // K1/K2/K3: 挂接 WndProc, v1.2.0 完全缺失的通知处理
         hook.Add(hwnd, OnWndProc);
         Reposition(CurrentWidthPx);
         log?.LogInformation("[AppBar] 已注册 edge={Edge} rail={Rail}px expanded={Expanded}px",
@@ -77,7 +77,7 @@ public sealed class AppBarService(
     }
 
     /// <summary>
-        /// B4: 自动隐藏 AppBar, 注册 ABM_SETAUTOHIDEBAR, 全屏时不遮挡, 鼠标贴边唤出。
+    /// B4: 自动隐藏 AppBar, 注册 ABM_SETAUTOHIDEBAR, 全屏时不遮挡, 鼠标贴边唤出。
     /// 这是 913dc35 用户抱怨「右侧屏幕被 AppBar 占用」的正面解:
     /// 既不偷 WorkArea, 又能在全屏应用下通过贴边唤出。
     /// </summary>
@@ -109,7 +109,7 @@ public sealed class AppBarService(
 
     /// <summary>重排: 注册后 / 展开收起 / ABN_POSCHANGED / 分辨率与任务栏变化 (K1/K4)。
     /// 锚点必须是 rcMonitor 全屏矩形: rcWork 已扣除自身 AppBar 占位, 若以它为锚,
-        /// 每次 Reposition 都会向屏幕内侧漂移一个带宽, 这是对方案 §5.3 蓝本的勘误。
+    /// 每次 Reposition 都会向屏幕内侧漂移一个带宽, 这是对方案 §5.3 蓝本的勘误。
     /// 垂直范围 = 工作区高度 84% 的悬浮胶囊 (上下各留 8%, 对齐 v1.1 玻璃胶囊设计);
     /// 水平锚定显示器边缘, 沿边裁剪交给 ABM_QUERYPOS。</summary>
     /// <summary>
@@ -139,7 +139,7 @@ public sealed class AppBarService(
         if (_docked && (_edge is AppBarNative.ABE_LEFT or AppBarNative.ABE_RIGHT))
         {
             // 先注销自身旧占位: QUERYPOS 会为已注册 AppBar(含我们自己)让位, 否则方块逐次左漂。
-                        // ABM_REMOVE 后系统 WorkArea 恢复滞后一步, 收敛循环直至授予位==期望位。
+            // ABM_REMOVE 后系统 WorkArea 恢复滞后一步, 收敛循环直至授予位==期望位。
             var dockWant = _edge == AppBarNative.ABE_RIGHT
                 ? new AppBarRect(mon.Work.X + mon.Work.W - _dockSizePx,
                     mon.Work.Y + mon.Work.H - _dockSizePx, _dockSizePx, _dockSizePx)
@@ -196,7 +196,7 @@ public sealed class AppBarService(
         log?.LogInformation("[AppBar] 重排 → ({X},{Y}) {W}x{H}px", granted.X, granted.Y, granted.W, granted.H);
     }
 
-        /// <summary>WndProc 状态机, K1/K2/K3/K7 的通知处理。</summary>
+    /// <summary>WndProc 状态机, K1/K2/K3/K7 的通知处理。</summary>
     private nint OnWndProc(nint hwnd, uint msg, nuint wParam, nint lParam, ref bool handled)
     {
         _inHook = true;
@@ -222,8 +222,8 @@ public sealed class AppBarService(
                     break;
 
                 case AppBarNative.ABN_FULLSCREENAPP: // 授课视频等全屏应用开/关 (K3)
-                                        // K3 勘误: 系统对「最大化窗口」同样上报 TRUE, 直接采信会让侧栏在普通桌面
-                    // 使用中被反复收进角落。此处用前台窗口实际几何复核, 只认真正铺满显示器的窗口。
+                                                     // K3 勘误: 系统对「最大化窗口」同样上报 TRUE, 直接采信会让侧栏在普通桌面
+                                                     // 使用中被反复收进角落。此处用前台窗口实际几何复核, 只认真正铺满显示器的窗口。
                     _fullscreen = lParam != 0 && (_fullscreenProbe() ?? true);
                     if (_fullscreen) log?.LogInformation("[AppBar] 判定全屏: 前台窗口 {Class}", DescribeForeground());
                     bus.Publish(new FullscreenAppChanged(_fullscreen));
@@ -254,7 +254,7 @@ public sealed class AppBarService(
         return 0; // handled=false → 其余消息交还原窗口过程
     }
 
-        /// <summary>退出/窗口销毁前必须调用, 否则系统 WorkArea 泄漏 (v1.2.0 语义保留)。</summary>
+    /// <summary>退出/窗口销毁前必须调用, 否则系统 WorkArea 泄漏 (v1.2.0 语义保留)。</summary>
     public void Detach()
     {
         if (!_registered) return;
@@ -279,7 +279,7 @@ public sealed class AppBarService(
         };
     }
 
-        /// <summary>前台窗口类名, 排查"误判全屏"时用 (无边框工具窗口也会铺满屏幕)。</summary>
+    /// <summary>前台窗口类名, 排查"误判全屏"时用 (无边框工具窗口也会铺满屏幕)。</summary>
     private static string DescribeForeground()
     {
         var fg = AppBarNative.GetForegroundWindow();
@@ -287,6 +287,27 @@ public sealed class AppBarService(
         Span<char> cls = stackalloc char[128];
         var n = AppBarNative.GetClassName(fg, cls, cls.Length);
         return n > 0 ? new string(cls[..n]) : "?";
+    }
+
+    /// <summary>
+    /// 前台窗口所属进程名(小写, 无扩展名); 取不到时返回 null。
+    /// 供"全屏排除名单"使用 (借鉴 ClassIsland 的 ExcludedFullscreenWindow)。
+    /// </summary>
+    public static string? ForegroundProcessName()
+    {
+        var fg = AppBarNative.GetForegroundWindow();
+        if (fg == 0) return null;
+        _ = AppBarNative.GetWindowThreadProcessId(fg, out var pid);
+        if (pid == 0) return null;
+        try
+        {
+            using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+            return p.ProcessName?.ToLowerInvariant();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>前台窗口是否真的铺满其所在显示器 (最大化窗口不算)。

@@ -27,7 +27,7 @@ public sealed class AppBarServiceTests
         Assert.Contains("QUERYPOS", api.Ops);
         Assert.Contains("SETPOS", api.Ops);
         Assert.Contains("WINDOWPOSCHANGED", api.Ops);
-                // 首次以 rail 宽度落位 (物理像素, K4), v1.1 悬浮胶囊: 上下各留 8% 工作区
+        // 首次以 rail 宽度落位 (物理像素, K4), v1.1 悬浮胶囊: 上下各留 8% 工作区
         var first = Assert.Single(api.MoveRequests);
         Assert.Equal(Hwnd, first.Hwnd);
         Assert.Equal(Rail, first.Rect.W);
@@ -59,7 +59,7 @@ public sealed class AppBarServiceTests
         svc.Attach(Hwnd, AppBarEdge.Right, Rail, Expanded);
         var q = Assert.Single(api.QueryCalls);
         Assert.Equal(AppBarNative.ABE_RIGHT, q.Edge);
-                // 勘误 (方案 §5.3): 锚点为 rcMonitor 全屏矩形, rcWork 会引发占位带逐次内漂
+        // 勘误 (方案 §5.3): 锚点为 rcMonitor 全屏矩形, rcWork 会引发占位带逐次内漂
         Assert.Equal(1920 - Rail, q.Want.X);
         Assert.Equal(Rail, q.Want.W);
         Assert.Equal(874, q.Want.H);  // 胶囊高提议 (工作区 84%)

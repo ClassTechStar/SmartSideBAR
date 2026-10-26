@@ -65,7 +65,7 @@ public sealed class LinksService(ConfigService config)
         });
     }
 
-        /// <summary>不变式 (E1): 变更计算在全量列表上进行, 回写也是全量列表,
+    /// <summary>不变式 (E1): 变更计算在全量列表上进行, 回写也是全量列表,
     /// 禁用/空链接项永不丢失。返回 Persist 运算是否生效。</summary>
     private bool Persist(Func<List<LinkItem>, bool> mutate)
     {

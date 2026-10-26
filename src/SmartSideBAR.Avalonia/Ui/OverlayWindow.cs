@@ -30,7 +30,7 @@ public sealed class OverlayWindow : Window
 
         // B25 同类 透明底必须在 Show 之前生效, 否则窗口按主题白底创建,
         // 遮罩层叠在白底上 → 用户看到的是"灰白幕布"而不是被压暗的桌面。
-                // 另: 不用 WindowState.FullScreen, 该状态会丢掉分层透明, 改为显式铺满显示器。
+        // 另: 不用 WindowState.FullScreen, 该状态会丢掉分层透明, 改为显式铺满显示器。
         Topmost = true;
         WindowStartupLocation = WindowStartupLocation.Manual;
         SystemDecorations = SystemDecorations.None;
@@ -39,7 +39,7 @@ public sealed class OverlayWindow : Window
         Background = Brushes.Transparent;
         TransparencyLevelHint = [];
 
-                // B25: 不依赖"窗口分层透明"来透出桌面, 大面积窗口在 Avalonia/Win32 下
+        // B25: 不依赖"窗口分层透明"来透出桌面, 大面积窗口在 Avalonia/Win32 下
         // 会退化为不透明表面 (实测整屏纯白, 用户看不见要截什么)。
         // 改为: 打开瞬间抓一张显示器快照作为底图, 用户看到的就是即将被截下的画面。
         _selection = new Border

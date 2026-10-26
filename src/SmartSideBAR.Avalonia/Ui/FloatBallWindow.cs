@@ -57,7 +57,7 @@ public sealed class FloatBallWindow : Window
         _snapThreshold = cfg.SnapThreshold;
         _workPx = workPx;
 
-                // Avalonia 的 Width/Height 是 DIP, Position 是物理像素, 两者不可混用 (B3)。
+        // Avalonia 的 Width/Height 是 DIP, Position 是物理像素, 两者不可混用 (B3)。
         Width = _sizeDip;
         Height = _sizeDip;
         SystemDecorations = SystemDecorations.None;
@@ -86,7 +86,7 @@ public sealed class FloatBallWindow : Window
             if (_expanded) CollapseFan(); // 双击的第一击可能已展开, 一并收起
         };
 
-                // 闲时变暗: 指针停留超时后降到 idleOpacity, 交互即恢复
+        // 闲时变暗: 指针停留超时后降到 idleOpacity, 交互即恢复
         _idleOpacity = cfg.IdleOpacity;
         if (cfg.IdleDelayMs > 0 && cfg.IdleOpacity < 1)
         {
@@ -189,7 +189,7 @@ public sealed class FloatBallWindow : Window
         _moved = false;
         _pressPos = p.Position;
         _pressWindowPos = Position;
-                // 抓取点在窗口内的物理偏移, 拖动时窗口位置 = 光标屏幕坐标 - 该偏移
+        // 抓取点在窗口内的物理偏移, 拖动时窗口位置 = 光标屏幕坐标 - 该偏移
         _grabOffsetPx = new PixelPoint(
             (int)Math.Round(_pressPos.X * _scale),
             (int)Math.Round(_pressPos.Y * _scale));
@@ -200,8 +200,8 @@ public sealed class FloatBallWindow : Window
     {
         if (!_dragging) return;
         var p = e.GetCurrentPoint(this).Position;
-                // B22: 不能用「相对窗口的指针位移」累加位置, 窗口本身又跟着指针移动,
-                // 否则算出的只是相对按下点的差, 窗口会被反复拉回, 拖动只能走一小段。
+        // B22: 不能用「相对窗口的指针位移」累加位置, 窗口本身又跟着指针移动,
+        // 否则算出的只是相对按下点的差, 窗口会被反复拉回, 拖动只能走一小段。
         // 改用「指针屏幕坐标 - 抓取偏移」直接定位 (物理像素)。
         var screen = this.PointToScreen(p);
         var dxPx = screen.X - _pressWindowPos.X - _grabOffsetPx.X;
@@ -225,7 +225,7 @@ public sealed class FloatBallWindow : Window
                 (Position.X, Position.Y), (_sizePx, _sizePx), _workPx, _snapThreshold);
             Position = new PixelPoint(snapped.X, snapped.Y);
             _restPosition = Position;
-                        // P1: 持久化位置到配置, 存「相对工作区偏移」, 与 ResolveBallPosition 的读法对称
+            // P1: 持久化位置到配置, 存「相对工作区偏移」, 与 ResolveBallPosition 的读法对称
             var rel = FloatBallLayout.ToRelativePosition((snapped.X, snapped.Y), _workPx);
             _ = _config.Set("floatBall.x", rel.X);
             _ = _config.Set("floatBall.y", rel.Y);
@@ -381,7 +381,7 @@ public sealed class FloatBallWindow : Window
         _ = grow.RunAsync(scale);
     }
 
-        /// <summary>收起: 窗口缩回球体尺寸, 位置与 Canvas 偏移都必须复位,
+    /// <summary>收起: 窗口缩回球体尺寸, 位置与 Canvas 偏移都必须复位,
     /// 否则球会被画在 (panel/2 - r, panel/2 - r) 而窗口只有球那么大 → 球不可见 (B2 修复)。</summary>
     private void CollapseFan()
     {

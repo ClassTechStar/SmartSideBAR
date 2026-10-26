@@ -39,6 +39,19 @@ public sealed class ConfigService(
     private JsonNode _root = new JsonObject();
     private SidekickConfig _current = new();
 
+    /// <summary>
+    /// 键级变更订阅与锁定键 (P1-4)。默认锁定 "policy." 段 —— 该段由 ProgramData 策略层下发,
+    /// 用户层写入应被拒绝并在界面置灰。
+    /// </summary>
+    public ConfigSubscription Subscriptions { get; } = CreateDefaultSubscriptions();
+
+    private static ConfigSubscription CreateDefaultSubscriptions()
+    {
+        var s = new ConfigSubscription();
+        s.Lock("policy.");
+        return s;
+    }
+
     public SidekickConfig Current { get { lock (_gate) return _current; } }
 
     /// <summary>持久化根 (含未知字段)。直接改写请走 <see cref="Set"/> 以走白名单与落盘。</summary>
@@ -99,7 +112,7 @@ public sealed class ConfigService(
     }
 
     /// <summary>按点分路径写入 (如 "capture.format" / "reminderSound.volume")。
-        /// B3: 键白名单, 路径必须在默认 schema 中存在; 成功后落盘并广播 ConfigChanged。</summary>
+    /// B3: 键白名单, 路径必须在默认 schema 中存在; 成功后落盘并广播 ConfigChanged。</summary>
     public bool Set(string dotPath, JsonNode? value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dotPath);
@@ -120,7 +133,12 @@ public sealed class ConfigService(
 
             RefreshTypedNoLock();
             var ok = SaveUserConfigNoLock();
-            if (ok) bus?.Publish(new ConfigChanged(_current));
+            if (ok)
+            {
+                bus?.Publish(new ConfigChanged(_current));
+                // P1-4: 键级订阅(借鉴 CW2 的 _on_change 按路径下发)
+                Subscriptions.Notify(dotPath);
+            }
             return ok;
         }
     }
@@ -132,7 +150,7 @@ public sealed class ConfigService(
         return Set(dotPath, node);
     }
 
-        /// <summary>C1 语义: 变更检测落盘, 仅 reminders 内容实际变化时写盘。返回是否落盘。</summary>
+    /// <summary>C1 语义: 变更检测落盘, 仅 reminders 内容实际变化时写盘。返回是否落盘。</summary>
     public bool SetRemindersIfChanged(IReadOnlyList<Reminder> reminders)
     {
         lock (_gate)

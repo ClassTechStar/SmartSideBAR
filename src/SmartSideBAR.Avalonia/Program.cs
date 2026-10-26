@@ -25,7 +25,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-                // 单实例: v1.2 用 app.requestSingleInstanceLock(), Avalonia 版也要有,
+        // 单实例: v1.2 用 app.requestSingleInstanceLock(), Avalonia 版也要有,
         // 双击两次图标会起两个进程（两个 AppBar 抢边缘、热键互抢、双托盘图标）。
         if (!SingleInstance.Acquire())
         {
@@ -48,7 +48,7 @@ internal static class Program
         services.AddSingleton<SchedulerService>();
 
         // Windows 互操作层 (接口 + 实现成对注册, 测试可替换)
-                // D1: 重服务延迟加载, 录屏/长截图模块只在首次使用时构造
+        // D1: 重服务延迟加载, 录屏/长截图模块只在首次使用时构造
         services.AddSingleton<IWndProcHook, WndProcHook>();
         services.AddSingleton<IAppBarApi, AppBarApi>();
         services.AddSingleton<AppBarService>();

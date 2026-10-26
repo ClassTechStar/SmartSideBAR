@@ -269,7 +269,7 @@ public sealed class SmokeTests : IDisposable
         Assert.NotNull(frame);
         Assert.Equal(72, frame!.PixelSize.Width); // rail 基准宽 (design-tokens)
 
-                // 胶囊中央列必须大面积不透明且亮色 (经典白面), 防"没画出来"这类缺陷
+        // 胶囊中央列必须大面积不透明且亮色 (经典白面), 防"没画出来"这类缺陷
         var samples = ReadColumn(frame, frame.PixelSize.Width / 2);
         var opaque = samples.Count(p => p.a > 0x40);
         Assert.True(opaque > frame.PixelSize.Height * 0.5,
@@ -297,7 +297,7 @@ public sealed class SmokeTests : IDisposable
         Assert.NotNull(frame);
         Assert.Equal(452, frame!.PixelSize.Width);
 
-                // 面板区域 (rail 右侧 380px) 应大面积不透明白, 确认面板底画出来了
+        // 面板区域 (rail 右侧 380px) 应大面积不透明白, 确认面板底画出来了
         foreach (var x in new[] { 100, 200, 300, 420 })
         {
             var col = ReadColumn(frame, x);

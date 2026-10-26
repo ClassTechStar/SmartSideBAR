@@ -84,7 +84,7 @@ internal sealed class AnnotateToolbar
         Button pen = null!, erase = null!;
         pen = ToolBtn("笔", () => SelectMinimalTool(AnnotateTool.Pen, pen, erase), minWidth: 34);
         erase = ToolBtn("擦", () => SelectMinimalTool(AnnotateTool.Eraser, pen, erase), minWidth: 34);
-                // 默认级进来总是笔 (上一会话若在展开级用了形状, 收起即回到笔)
+        // 默认级进来总是笔 (上一会话若在展开级用了形状, 收起即回到笔)
         _ink.SetTool(AnnotateTool.Pen);
         pen.BorderBrush = new SolidColorBrush(AccentEdge);
         _minimalToolButtons.AddRange([pen, erase]);

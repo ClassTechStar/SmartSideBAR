@@ -1,6 +1,7 @@
 // JSON 源生成 (AOT/Trim 友好, 方案 §9 风险缓解), camelCase 与 Electron config.json 互认。
 using System.Text.Json.Serialization;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Scheduling;
 
 namespace SmartSideBAR.Core.Configuration;
 
@@ -24,4 +25,9 @@ namespace SmartSideBAR.Core.Configuration;
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(LinkItem[]))]
 [JsonSerializable(typeof(Reminder[]))]
+// 迭代新增（P0/P1/P2）: 诊断配置与临时日程调整
+[JsonSerializable(typeof(DiagnosticsConfig))]
+[JsonSerializable(typeof(ScheduleOverride))]
+[JsonSerializable(typeof(List<ScheduleOverride>))]
+[JsonSerializable(typeof(ScheduleOverride[]))]
 public sealed partial class ConfigJsonContext : JsonSerializerContext;

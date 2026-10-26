@@ -71,7 +71,7 @@ public partial class SidebarWindow : Window
         _collapseTimer.Tick += (_, _) =>
         {
             _collapseTimer.Stop();
-                        // 指针仍在窗口内就不收起。合成/快速移动的指针事件会误触发 PointerExited,
+            // 指针仍在窗口内就不收起。合成/快速移动的指针事件会误触发 PointerExited,
             // 只靠离开事件判断会把正在操作的面板关掉。
             if (IsPointerOver)
             {
@@ -318,7 +318,7 @@ public partial class SidebarWindow : Window
 
         _railSheen?.Apply(p);
         _panelSheen?.Apply(p);
-                // 面板在构造时持有调色板副本, 用新调色板重建当前面板, 主题切换立即生效
+        // 面板在构造时持有调色板副本, 用新调色板重建当前面板, 主题切换立即生效
         if (DataContext is SidebarViewModel vm2 && vm2.PanelOpen) ShowPanel(vm2.ActivePanel);
     }
 
@@ -341,7 +341,7 @@ public partial class SidebarWindow : Window
 
     /// <summary>
     /// 把 design-tokens.json 的几何规格落到窗口（P0-2）。
-        /// XAML 里仍写着一份默认值以便设计器预览, 运行时一律以令牌为准,
+    /// XAML 里仍写着一份默认值以便设计器预览, 运行时一律以令牌为准,
     /// 这样停靠箭头这类"反复微调"的参数就只有一处可改。
     /// </summary>
     private void ApplyDesignTokens()
@@ -386,7 +386,7 @@ public partial class SidebarWindow : Window
 
     /// <summary>
     /// 面板滑入动效（1.0 手感基准: width 0→380 @180ms ease + 内容淡入）。
-        /// 窗口宽度由 AppBar 授予 (瞬时变化), 动效只作用于窗口内的 PanelHost,
+    /// 窗口宽度由 AppBar 授予 (瞬时变化), 动效只作用于窗口内的 PanelHost,
     /// 打开时窗口先变宽、面板再从 rail 侧向外滑出（动画期锚点临时切到 rail 侧）。
     /// reduceMotion 或安全模式下直接落位。
     /// </summary>

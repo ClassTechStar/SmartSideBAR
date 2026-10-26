@@ -69,8 +69,8 @@ public sealed class OobeWindow : Window
                 _body.Children.Add(_title);
                 var teacher = new RadioButton { Content = "教师 —— 常用教学功能 (推荐)", GroupName = "role", IsChecked = _role == "teacher" };
                 var admin = new RadioButton { Content = "管理员 —— 全部功能 + 策略下发", GroupName = "role", IsChecked = _role == "admin" };
-                                // B15: IsCheckedChanged 在「被取消选中」时也会触发, 选中教师会先把管理员
-                                // 置为 false, _role 就会被改成 admin。所以只在真正选中时写入。
+                // B15: IsCheckedChanged 在「被取消选中」时也会触发, 选中教师会先把管理员
+                // 置为 false, _role 就会被改成 admin。所以只在真正选中时写入。
                 teacher.IsCheckedChanged += (_, _) => { if (teacher.IsChecked == true) _role = "teacher"; };
                 admin.IsCheckedChanged += (_, _) => { if (admin.IsChecked == true) _role = "admin"; };
                 _body.Children.Add(teacher);
@@ -136,7 +136,7 @@ public sealed class OobeWindow : Window
         RenderStep();
     }
 
-        /// <summary>E2: OobeState 字段级合并, 仅写本次向导涉及的字段, 保留其他 (record with)。</summary>
+    /// <summary>E2: OobeState 字段级合并, 仅写本次向导涉及的字段, 保留其他 (record with)。</summary>
     private void Complete(bool skipped)
     {
         var current = _config.Current.Oobe;
@@ -160,7 +160,7 @@ public sealed class OobeWindow : Window
         _ = _config.Set("oobe", state);
 
         // 角色裁剪 → disabledModules (P2-3 语义)
-                // 只在既有列表上增删 recorder, 不整表覆盖, 否则会抹掉策略层下发的其他禁用项
+        // 只在既有列表上增删 recorder, 不整表覆盖, 否则会抹掉策略层下发的其他禁用项
         if (!skipped)
         {
             var disabled = _config.Current.Policy.DisabledModules

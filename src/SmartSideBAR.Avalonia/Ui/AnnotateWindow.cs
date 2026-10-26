@@ -40,7 +40,7 @@ public sealed class AnnotateWindow : Window
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-                // B25: 以打开瞬间的屏幕快照作底, 大面积窗口的分层透明在 Win32 上不可靠。
+        // B25: 以打开瞬间的屏幕快照作底, 大面积窗口的分层透明在 Win32 上不可靠。
         var backdrop = new Image { Stretch = Stretch.Fill, IsHitTestVisible = false };
         if (_backgroundPng is not null)
         {

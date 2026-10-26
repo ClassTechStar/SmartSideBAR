@@ -113,7 +113,7 @@ public sealed class UsbDeviceWatcher(
     {
         if (msg != WM_DEVICECHANGE) return 0;
         handled = true;
-                // 到达/移除/设备节点变化 三类都要重扫; 卷挂载后文件系统可能未就绪, 延迟再扫一次
+        // 到达/移除/设备节点变化 三类都要重扫; 卷挂载后文件系统可能未就绪, 延迟再扫一次
         RescanWithDiff();
         _ = Task.Run(async () =>
         {

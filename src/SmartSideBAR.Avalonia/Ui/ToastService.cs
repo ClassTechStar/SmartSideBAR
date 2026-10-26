@@ -1,7 +1,10 @@
 // 轻量进程内 Toast (右下角, 3.5s 自动消失), 替代 Electron renderer 通知。
-// C4-③: 加队列与去重, 相同消息 3s 内不重复弹出; 同时最多显示 3 条, 超出排队。
 // 动效: 滑入 (translateY 14→0 + fade, 200ms easeOut) / 淡出 150ms / 点击即消失。
+//
+// P0-2: 队列换成带优先级的 NotificationQueue (借鉴 ClassIsland 的 PriorityQueue 通知机制
+// 与 Class-Widgets-2 的来源/级别模型)。对外 Show(message, tone) 签名不变, 调用方零改动。
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -9,6 +12,7 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using SmartSideBAR.Core.Messaging;
 
 namespace SmartSideBAR.Avalonia.Ui;
 
@@ -19,11 +23,24 @@ public sealed class ToastService
     private const int MaxVisible = 3;
     private const int DedupWindowMs = 3000;
 
-    private readonly Queue<(string Message, string Tone)> _pending = new();
+    /// <summary>来源优先级: 越靠前越优先出队。</summary>
+    private static readonly string[] SourceOrder = ["app", "reminder", "usb", "recorder", "printer"];
+
+    private readonly NotificationQueue _queue = new(SourceRank, capacity: 50);
     private readonly Dictionary<string, long> _recentShown = new();
     private int _visibleCount;
 
-    public void Show(string message, string tone = "info")
+    private static int SourceRank(string source)
+    {
+        var i = System.Array.IndexOf(SourceOrder, source);
+        return i < 0 ? SourceOrder.Length : i;
+    }
+
+    /// <summary>原有入口: 按语气字符串弹一条。</summary>
+    public void Show(string message, string tone = "info") => Show("app", ToLevel(tone), message);
+
+    /// <summary>带来源与级别的入口。</summary>
+    public void Show(string source, NotificationLevel level, string message, bool priorityOverride = false)
     {
         Dispatcher.UIThread.Post(() =>
         {
@@ -34,7 +51,7 @@ public sealed class ToastService
             _recentShown[message] = now;
 
             // 通知中心留档（提醒历史/USB/录屏等事件统一可回看）
-            NotificationCenter.Instance.Push(message, tone);
+            NotificationCenter.Instance.Push(message, ToTone(level));
 
             // 清理过期去重记录
             if (_recentShown.Count > 50)
@@ -43,31 +60,56 @@ public sealed class ToastService
                 foreach (var key in expired) _recentShown.Remove(key);
             }
 
-            if (_visibleCount >= MaxVisible)
-            {
-                _pending.Enqueue((message, tone));
-                return;
-            }
-
-            ShowCore(message, tone);
+            _queue.Enqueue(source, message, level, priorityOverride);
+            Pump();
         });
     }
 
-    private void ShowCore(string message, string tone)
+    /// <summary>按优先级取出可显示的通知, 直到占满可视配额。</summary>
+    private void Pump()
+    {
+        while (_visibleCount < MaxVisible)
+        {
+            var next = _queue.Dequeue();
+            if (next is null) return;
+            ShowCore(next);
+        }
+    }
+
+    /// <summary>当前排队情况(设置窗/诊断可看)。</summary>
+    public IReadOnlyList<NotificationRequest> Pending => _queue.Snapshot();
+
+    private static NotificationLevel ToLevel(string tone) => tone switch
+    {
+        "success" => NotificationLevel.Success,
+        "warn" => NotificationLevel.Warn,
+        "error" => NotificationLevel.Error,
+        _ => NotificationLevel.Info,
+    };
+
+    private static string ToTone(NotificationLevel level) => level switch
+    {
+        NotificationLevel.Success => "success",
+        NotificationLevel.Warn => "warn",
+        NotificationLevel.Error => "error",
+        _ => "info",
+    };
+
+    private void ShowCore(NotificationRequest req)
     {
         try
         {
             _visibleCount++;
-            var color = tone switch
+            var color = req.Level switch
             {
-                "success" => "#2E7D32",
-                "warn" => "#B26A00",
-                "error" => "#C62828",
+                NotificationLevel.Success => "#2E7D32",
+                NotificationLevel.Warn => "#B26A00",
+                NotificationLevel.Error => "#C62828",
                 _ => "#243041",
             };
             var text = new TextBlock
             {
-                Text = message,
+                Text = req.Message,
                 Foreground = Brushes.White,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 360,
@@ -113,12 +155,8 @@ public sealed class ToastService
             void OnClosed()
             {
                 _visibleCount = Math.Max(0, _visibleCount - 1);
-                // 从队列取下一条
-                if (_pending.Count > 0)
-                {
-                    var next = _pending.Dequeue();
-                    ShowCore(next.Message, next.Tone);
-                }
+                // 释放配额后继续按优先级取
+                Pump();
             }
 
             void StartClose()
@@ -137,7 +175,7 @@ public sealed class ToastService
 
             timer.Tick += (_, _) => StartClose();
             timer.Start();
-                        // 点击即消失。教室场景里错误提示不该挡住操作 3.5s
+            // 点击即消失。教室场景里错误提示不该挡住操作 3.5s
             border.PointerPressed += (_, _) => StartClose();
         }
         catch

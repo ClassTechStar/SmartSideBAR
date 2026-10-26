@@ -5,7 +5,7 @@ public sealed record AppearanceConfig
 {
     public string Theme { get; init; } = "auto";         // light|dark|auto
     /// <summary>
-        /// false (默认) = 1.0「经典快」面: 纯白不透明 + 发丝线, 零持久模糊,
+    /// false (默认) = 1.0「经典快」面: 纯白不透明 + 发丝线, 零持久模糊,
     /// 低配教学一体机的合成开销最低。true = v1.2 液态玻璃（设置中可开启）。
     /// </summary>
     public bool LiquidGlass { get; init; } = false;

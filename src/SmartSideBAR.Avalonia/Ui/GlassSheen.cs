@@ -56,7 +56,7 @@ internal sealed class GlassSheen
     public void Apply(Palette palette)
     {
         // 白色高光在近白胶囊上几乎不可见（实测上下半区亮度差 <1.5），
-                // 改用品牌色低透明度光斑: 既保留"光随指针走", 白底上又看得出来。
+        // 改用品牌色低透明度光斑: 既保留"光随指针走", 白底上又看得出来。
         var accent = palette.Accent;
         var core = (byte)(palette.Dark ? 0x1E : 0x1A);
         var mid = (byte)(core * 0.45);
@@ -80,7 +80,7 @@ internal sealed class GlassSheen
     }
 
     /// <summary>Canvas 只按子元素 DesiredSize 摆放、不拉伸，必须显式给尺寸，
-        /// 否则光斑与描边都是 0×0, 画面上看不见。</summary>
+    /// 否则光斑与描边都是 0×0, 画面上看不见。</summary>
     private void SyncSize()
     {
         var w = _layer.Bounds.Width;
@@ -108,7 +108,7 @@ internal sealed class GlassSheen
         var h = _layer.Bounds.Height;
         if (w <= 0 || h <= 0) return;
 
-                // 光斑固定在中心绘制, 用平移把它带走; 直接改 RadialGradientBrush.Center
+        // 光斑固定在中心绘制, 用平移把它带走; 直接改 RadialGradientBrush.Center
         // 不会让已渲染的笔刷失效（实测画面完全不动），必须改几何变换。
         _spot.RenderTransform = new TranslateTransform(nx * w * 0.26, ny * h * 0.30);
 

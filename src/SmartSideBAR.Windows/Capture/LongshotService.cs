@@ -93,8 +93,8 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
                     frame = captured;
                 }
 
-                                // B6: 参与比对的必须是「已拼图的尾部若干行」, 不能传 RowHashes(canvas, n)
-                                // 那是画布顶部 n 行, 与「尾部重叠」语义相反。
+                // B6: 参与比对的必须是「已拼图的尾部若干行」, 不能传 RowHashes(canvas, n)
+                // 那是画布顶部 n 行, 与「尾部重叠」语义相反。
                 var overlapWindow = Math.Min(canvas.Height, frame.Height);
                 var tailHashes = RowHashes(canvas, canvas.Height - overlapWindow, overlapWindow);
                 var frameHashes = RowHashes(frame, 0, frame.Height);

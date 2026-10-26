@@ -1,6 +1,7 @@
 // 附录 B.1: 与 v1.2.0 src/shared/types.ts 逐字段同构
 // JSON 命名 camelCase, 与 Electron 版 config.json 互认 (ADR-M8)。
 using System.Text.Json.Serialization;
+using SmartSideBAR.Core.Scheduling;
 
 namespace SmartSideBAR.Core.Configuration;
 
@@ -24,6 +25,11 @@ public sealed record SidekickConfig
     public ReminderSoundConfig ReminderSound { get; init; } = new();
     public OobeState Oobe { get; init; } = new();
     public PolicyConfig Policy { get; init; } = new();
+    public DiagnosticsConfig Diagnostics { get; init; } = new();
+    /// <summary>
+    /// 临时日程调整（借鉴 CW2 的 schedule overrides）: 暂停某天或改到某时刻, 跨天自动清理。
+    /// </summary>
+    public List<ScheduleOverride> Overrides { get; init; } = [];
 }
 
 public sealed record ImeConfig
@@ -31,7 +37,7 @@ public sealed record ImeConfig
     public string Slot1 { get; init; } = "Microsoft Pinyin";
     public string Slot2 { get; init; } = "US";
     public bool FallbackSwap { get; init; } = true;
-        /// <summary>输入法切换热键 (原来硬编码 Ctrl+Shift+I 且设置界面不落盘)。</summary>
+    /// <summary>输入法切换热键 (原来硬编码 Ctrl+Shift+I 且设置界面不落盘)。</summary>
     public string Hotkey { get; init; } = "Ctrl+Shift+I";
 }
 
@@ -84,6 +90,26 @@ public sealed record DisplayConfig
     /// edge-hover = 触发条悬停滑出（程序员习惯）。
     /// </summary>
     public string RailTrigger { get; init; } = "always";
+    /// <summary>
+    /// 全屏判定排除名单（进程名小写, 借鉴 ClassIsland 的 ExcludedFullscreenWindow）。
+    /// 命中名单的窗口即使铺满屏幕也不触发自动收起, 避免资源管理器/无边框工具窗口导致误收缩。
+    /// </summary>
+    public List<string> ExcludedFullscreenWindows { get; init; } = ["explorer"];
+    /// <summary>
+    /// 目标显示器索引（借鉴 ClassIsland 的 WindowDockingMonitorIndex）。
+    /// null = 沿用现状（跟随侧栏所在屏）; 指定后按索引定位, 越界自动回落主屏。
+    /// </summary>
+    public int? MonitorIndex { get; init; }
+}
+
+public sealed record DiagnosticsConfig
+{
+    /// <summary>内存看门狗开关（借鉴 ClassIsland 的 MemoryWatchDogService）。</summary>
+    public bool MemoryWatchDogEnabled { get; init; } = true;
+    /// <summary>内存上限 (MB), 连续多次采样超限才重启。目标机 4-8GB, 阈值取 800MB。</summary>
+    public int MemoryLimitMb { get; init; } = 800;
+    /// <summary>连续超限次数阈值, 避免一次性抖动误杀。</summary>
+    public int MemoryBreachCount { get; init; } = 3;
 }
 
 /// <summary>KoBar 工作区（建议: 教师场景一键切换模块组合）。空 Modules = 不限制（跟随 policy）。</summary>
@@ -142,11 +168,17 @@ public sealed record Reminder
 {
     public string Id { get; init; } = "";
     public ReminderKind Kind { get; init; } = ReminderKind.Once;
-        /// <summary>epoch 毫秒, 与 v1.2.0 Reminder.at 语义一致</summary>
+    /// <summary>epoch 毫秒, 与 v1.2.0 Reminder.at 语义一致</summary>
     public long At { get; init; }
     public string? Note { get; init; }
     public int? RepeatMin { get; init; }
     public long? SnoozedUntil { get; init; }
+    /// <summary>
+    /// 重复规则编码串: "mode|interval|weekday|minute"（借鉴 CW2 的重复日程）。
+    /// mode: none|daily|weekly|biweekly; weekday 0=周日; minute 为当日起的分钟数。
+    /// 空或解析失败 = 不重复（等同现状的一次性/间隔/整点语义）。
+    /// </summary>
+    public string? Recurrence { get; init; }
 }
 
 public sealed record ReminderSoundConfig

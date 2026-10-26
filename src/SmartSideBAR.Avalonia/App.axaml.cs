@@ -63,6 +63,17 @@ public partial class App : Application
             ConfigureSmokeExit(desktop);
             ConfigureAutoDock(windowManager);
             ConfigureAutoUndock(windowManager);
+
+            // P0-4: 上次运行若发生过致命异常, 界面就绪后提示用户(可一键安全模式重启)
+            Ui.CrashReportWindow.ShowIfPending();
+            // P0-1: 启动统一时钟
+            Ui.ClockHost.EnsureStarted();
+            // P1-3: 主题注册(带失败回退)
+            Ui.ThemeRegistry.RegisterBuiltIns();
+            // P1-2: 内存看门狗(配置可关)
+            new Diagnostics.MemoryWatchDogHost(
+                _sp.GetRequiredService<ConfigService>(),
+                _sp.GetService<Microsoft.Extensions.Logging.ILogger<Diagnostics.MemoryWatchDogHost>>()).Start();
         }
         base.OnFrameworkInitializationCompleted();
     }

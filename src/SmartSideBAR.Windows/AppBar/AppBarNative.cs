@@ -83,7 +83,7 @@ internal static partial class AppBarNative
     public static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
 
     /// <summary>切换调用线程 DPI 感知上下文, 返回原上下文 (恢复用)。
-        /// 宿主 (Avalonia) 线程上下文不受我们控制, AppBar 协商一律临时切到 PMv2,
+    /// 宿主 (Avalonia) 线程上下文不受我们控制, AppBar 协商一律临时切到 PMv2,
     /// 保证 MonitorInfo/MoveWindow 全部物理像素 (K4 单轨的硬保证)。</summary>
     [LibraryImport("user32.dll")]
     internal static partial nint SetThreadDpiAwarenessContext(nint context);

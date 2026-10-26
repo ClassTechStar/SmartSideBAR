@@ -183,7 +183,7 @@ public sealed class InkCanvas : Control
             if (_current.Kind == StrokeKind.Pen)
             {
                 // 墨迹识别转形: 命中则整个笔画替换为干净形状 (撤销快照在 BeginStroke 已压栈,
-                                // 再撤销一次即回到手绘前, 转形不额外消耗撤销步数)
+                // 再撤销一次即回到手绘前, 转形不额外消耗撤销步数)
                 if (InkToShape && TryRecognize(_current) is { } shape)
                 {
                     _current = shape;
@@ -272,7 +272,7 @@ public sealed class InkCanvas : Control
             0.5 * ((2 * p1.Y) + (-p0.Y + p2.Y) * t + (2 * p0.Y - 5 * p1.Y + 4 * p2.Y - p3.Y) * t2 + (-p0.Y + 3 * p1.Y - 3 * p2.Y + p3.Y) * t3));
     }
 
-        // ---- 形状 (预览由 (起点, 当前点) 整体重生成, ICC 不变量) ----
+    // ---- 形状 (预览由 (起点, 当前点) 整体重生成, ICC 不变量) ----
 
     private void UpdateShape(Point p)
     {

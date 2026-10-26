@@ -71,7 +71,7 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
         // Query: 系统按任务栏/其他 AppBar 调整区间 (只动区间, 不保尺寸)
         _ = AppBarNative.SHAppBarMessage(AppBarNative.ABM_QUERYPOS, ref abd);
 
-                // 与 appbar.cc 一致: 按提议边恢复尺寸 (沿边维度保留系统裁剪, 自动避开任务栏)
+        // 与 appbar.cc 一致: 按提议边恢复尺寸 (沿边维度保留系统裁剪, 自动避开任务栏)
         switch (abd.uEdge)
         {
             case AppBarNative.ABE_LEFT: abd.rc.Right = abd.rc.Left + want.W; break;
@@ -143,7 +143,7 @@ public sealed class AppBarApi(ILogger<AppBarApi>? log = null) : IAppBarApi
             new AppBarRect(mi.rcWork.Left, mi.rcWork.Top, mi.rcWork.W, mi.rcWork.H));
     }
 
-        /// <summary>B4: ABM_SETAUTOHIDEBAR, 注册/注销自动隐藏 AppBar。</summary>
+    /// <summary>B4: ABM_SETAUTOHIDEBAR, 注册/注销自动隐藏 AppBar。</summary>
     public bool SetAutoHideBar(nint hwnd, uint edge, bool enable)
     {
         if (hwnd == 0) return false;

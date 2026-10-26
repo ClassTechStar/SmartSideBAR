@@ -21,7 +21,7 @@ internal abstract class SidebarPanel : UserControl
     protected Palette Palette { get; }
 
     /// <summary>构建面板内容。每次刷新都会重新构建（面板内容轻量，可整体替换）。
-        /// 注意: 不要在子控件的事件处理器里同步重建面板, 控件会在派发事件过程中被销毁,
+    /// 注意: 不要在子控件的事件处理器里同步重建面板, 控件会在派发事件过程中被销毁,
     /// Avalonia 的原生渲染层会因此崩溃（无托管异常、无崩溃日志）。统一走 Refresh()。</summary>
     protected abstract Control Build();
 

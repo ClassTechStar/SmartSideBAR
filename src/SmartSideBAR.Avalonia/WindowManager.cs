@@ -51,7 +51,7 @@ public sealed class WindowManager(
     private bool _docked;
     private AppBarEdge _side = AppBarEdge.Right;
     private (nint Hwnd, int RailPx, int ExpandedPx) _attachInfo;
-    private global::Avalonia.Threading.DispatcherTimer? _topmostKeeper;
+    private bool _topmostKeeperActive;
     private EdgeTriggerWindow? _edgeTrigger;
     private MiniBoardWindow? _miniBoard;
 
@@ -176,7 +176,7 @@ public sealed class WindowManager(
         bus.Subscribe<LongshotCompleted>(e =>
             ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error"));
 
-                // B7: 到点必须有可见反馈, 只播声音不够 (教师戴耳麦时听不见)
+        // B7: 到点必须有可见反馈, 只播声音不够 (教师戴耳麦时听不见)
         bus.Subscribe<ReminderDue>(e =>
             ToastService.Instance.Show($"提醒: {e.Note ?? "时间到了"}", "warn"));
 
@@ -205,6 +205,13 @@ public sealed class WindowManager(
             {
                 if (!config.Current.Display.AutoCollapseOnFullscreen) return;
                 var active = appBar.FullscreenActive;
+                // P0-3: 排除名单命中时不收缩 (借鉴 ClassIsland 的 ExcludedFullscreenWindow)。
+                // 资源管理器/无边框工具窗口常把最大化报成全屏, 现场可自行加名单。
+                if (active && IsFullscreenExcluded(config.Current.Display.ExcludedFullscreenWindows))
+                {
+                    active = false;
+                    log.LogDebug("[Window] 全屏应用命中排除名单 → 不收缩侧栏");
+                }
                 if (active == _docked) return;
                 log.LogInformation(active
                     ? "[Window] 确认全屏应用在场 → 自动收缩侧栏"
@@ -218,27 +225,40 @@ public sealed class WindowManager(
     }
 
     /// <summary>
+    /// 全屏排除名单判定。名单为空则一律不排除; 取不到前台进程名时按"不排除"处理(保守不收缩)。
+    /// </summary>
+    private static bool IsFullscreenExcluded(IReadOnlyList<string>? excluded)
+    {
+        if (excluded is null || excluded.Count == 0) return false;
+        var name = global::SmartSideBAR.Windows.AppBar.AppBarService.ForegroundProcessName();
+        if (string.IsNullOrEmpty(name)) return false;
+        return excluded.Any(x =>
+            string.Equals(x?.Trim().ToLowerInvariant(), name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// KoBar topmostKeeper 策略移植: Windows 在显示切换/休眠唤醒/输入源切换后会悄悄
-        /// 丢弃 always-on-top 的情况。教学一体机睡眠唤醒尤其频繁, Topmost 回退模式下每 30s
+    /// 丢弃 always-on-top 的情况。教学一体机睡眠唤醒尤其频繁, Topmost 回退模式下每 30s
     /// 重申一次置顶 (toggle 触发 Win32 重新插入 topmost 带, 等价 KoBar 的 moveTop);
     /// AppBar 注册成功后自动停表。
     /// </summary>
     private void StartTopmostKeeper(SidebarWindow win)
     {
-        if (_topmostKeeper is not null) return;
-        _topmostKeeper = new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
-        _topmostKeeper.Tick += (_, _) =>
+        if (_topmostKeeperActive) return;
+        _topmostKeeperActive = true;
+        // P0-1: 交给统一时钟驱动, 不再单独起一个 30s 定时器
+        ClockHost.Register("topmost-keeper", 30_000, () =>
         {
             if (appBar.IsRegistered)
             {
-                _topmostKeeper!.Stop();
+                ClockHost.Unregister("topmost-keeper");
+                _topmostKeeperActive = false;
                 return;
             }
             if (_docked || !win.IsVisible) return;
             win.Topmost = false;
             win.Topmost = true;
-        };
-        _topmostKeeper.Start();
+        });
     }
 
     public void RegisterConfiguredHotkeys()
@@ -344,7 +364,8 @@ public sealed class WindowManager(
     }
 
     private void StartAnnotate()
-    {        byte[]? background = null;
+    {
+        byte[]? background = null;
         try
         {
             // 打开瞬间抓全屏底图 (WithBackground 导出用); 失败允许仅笔迹
@@ -405,7 +426,7 @@ public sealed class WindowManager(
         var fps = Math.Clamp(config.Current.Recorder.Fps, 5, 60);
         var mic = config.Current.Recorder.Mic;
         var path = Path.Combine(dir, $"record_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
-                // B5: 传递麦克风配置 (读 config.recorder.mic)
+        // B5: 传递麦克风配置 (读 config.recorder.mic)
         await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
     }
 
@@ -430,7 +451,7 @@ public sealed class WindowManager(
     {
         if (_floatBall is { IsVisible: true }) return;
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
-                // R4: 悬浮球定位改用侧栏所在目标屏, 多显示器下主屏会偏
+        // R4: 悬浮球定位改用侧栏所在目标屏, 多显示器下主屏会偏
         var wa = GetSidebarWorkArea();
         var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
         _floatBall = new FloatBallWindow(config, config.Current.FloatBall,
@@ -606,11 +627,22 @@ public sealed class WindowManager(
 
     /// <summary>
     /// R4 修复: 获取侧栏所在显示器的工作区 (物理像素)。
-        /// 早期固定用主屏 PrimaryWorkAreaPx, 多显示器时悬浮球/dock 会定位偏。
+    /// 早期固定用主屏 PrimaryWorkAreaPx, 多显示器时悬浮球/dock 会定位偏。
     /// 优先取侧栏窗口所在屏, 无侧栏时回退主屏。
     /// </summary>
     private (int X, int Y, int W, int H) GetSidebarWorkArea()
     {
+        // P1-5: 显式指定目标显示器时优先按索引取(越界自动回退主屏)
+        var monitorIndex = config.Current.Display.MonitorIndex;
+        if (monitorIndex is >= 0)
+        {
+            try
+            {
+                return Windows.Native.Win32Display.WorkAreaByIndex(monitorIndex.Value);
+            }
+            catch { /* fallback */ }
+        }
+
         // 尝试从侧栏 HWND 获取所在显示器的工作区
         if (_attachInfo.Hwnd != 0)
         {

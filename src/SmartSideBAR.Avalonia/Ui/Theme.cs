@@ -58,7 +58,7 @@ public static class AppTheme
         catch { return Color.Parse(fallback); }
     }
 
-        /// <summary>仅显式选择 dark 才走深色, auto/light 一律浅色 (保持 v1.2 出厂的白色玻璃外观)。</summary>
+    /// <summary>仅显式选择 dark 才走深色, auto/light 一律浅色 (保持 v1.2 出厂的白色玻璃外观)。</summary>
     public static bool IsDark(string mode) =>
         string.Equals(mode, "dark", StringComparison.OrdinalIgnoreCase);
 
@@ -67,10 +67,18 @@ public static class AppTheme
         var a = AppearanceNormalize.Clamp(appearance);
         var dark = IsDark(a.Theme);
         var accent = ToColor(a.Accent);
-        // liquidGlass=false → 1.0「经典快」: 纯白不透明表面（实测手感最好; 低配设备零模糊合成开销）。
-        // 深色主题无经典变体时保持玻璃深色, 避免另起一套深色平面规格。
-        if (!a.LiquidGlass && !dark) return ClassicLight(accent);
-        return dark ? Dark(accent, a) : Light(accent, a);
+        // P1-3: 主题生成失败时回退经典白面, 而不是白屏/崩溃 (借鉴 CW2 的 ThemeRecoveryController)。
+        try
+        {
+            // liquidGlass=false → 1.0「经典快」: 纯白不透明表面（低配设备零模糊合成开销）。
+            // 深色主题无经典变体时保持玻璃深色, 避免另起一套深色平面规格。
+            if (!a.LiquidGlass && !dark) return ClassicLight(accent);
+            return dark ? Dark(accent, a) : Light(accent, a);
+        }
+        catch
+        {
+            return ClassicLight(accent);
+        }
     }
 
     private static Color ToColor(string hex)

@@ -42,7 +42,7 @@ public sealed class SchedulerService(
                 log?.LogInformation("[Scheduler] 清理 {Count} 条过期 once 提醒", expired.Count);
             }
 
-                        // 方案 §6.10: 过期周期提醒启动时不补触发, 直接推进到下一个未来槽位
+            // 方案 §6.10: 过期周期提醒启动时不补触发, 直接推进到下一个未来槽位
             foreach (var r in _reminders.ToArray()) // 快照遍历: 循环体内会原位替换元素
             {
                 if (r.Kind == ReminderKind.Once || EffectiveAt(r) > now) continue;

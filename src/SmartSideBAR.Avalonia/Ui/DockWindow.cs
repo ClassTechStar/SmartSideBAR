@@ -27,7 +27,7 @@ public sealed class DockWindow : Window
         SystemDecorations = SystemDecorations.None;
         ShowInTaskbar = false;
         ShowActivated = false;
-                // B23: 需要 Topmost。收起形态恰好发生在「有全屏/最大化窗口」时,
+        // B23: 需要 Topmost。收起形态恰好发生在「有全屏/最大化窗口」时,
         // 该窗口会把工作区底角的小方块压在下面: 既看不见也点不到 (实测点击落入前台窗口)。
         Topmost = true;
         Background = Brushes.Transparent;

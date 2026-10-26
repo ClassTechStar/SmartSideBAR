@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Design;
 using SmartSideBAR.Windows.Devices;
@@ -446,9 +447,21 @@ public sealed class SettingsWindow : Window
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         row.Children.Add(runDiag);
         row.Children.Add(exportDiag);
+
+        // P2-5: 配置备份/恢复(借鉴 ClassIsland 的导入导出入口)。导出会抹掉本机路径类信息。
+        var exportCfg = new Button { Content = "导出配置", Margin = new Thickness(8, 0, 0, 0) };
+        exportCfg.Click += async (_, _) => await ExportConfigAsync();
+        var importCfg = new Button { Content = "导入配置", Margin = new Thickness(8, 0, 0, 0) };
+        importCfg.Click += async (_, _) => await ImportConfigAsync();
+        var cfgRow = new StackPanel { Orientation = Orientation.Horizontal };
+        cfgRow.Children.Add(exportCfg);
+        cfgRow.Children.Add(importCfg);
+
         return Page("诊断",
             Section("自检与排障",
                 Row("", "检查系统信息/内存/显示器/各服务健康度", row)),
+            Section("配置备份",
+                Row("", "导出当前配置（自动脱敏）；导入时只接受已知配置键", cfgRow)),
             new Border
             {
                 Background = new SolidColorBrush(_p.Card),
@@ -542,5 +555,74 @@ public sealed class SettingsWindow : Window
         _shell.SetAutoLaunch(_autoLaunch.IsChecked == true);
         ToastService.Instance.Show("设置已保存", "success");
         Close();
+    }
+
+    /// <summary>P2-5: 导出配置(自动脱敏), 写到用户选择的位置。</summary>
+    private async Task ExportConfigAsync()
+    {
+        try
+        {
+            var node = System.Text.Json.JsonSerializer.SerializeToNode(
+                _config.Current, ConfigJsonContext.Default.SidekickConfig);
+            if (node is null) return;
+
+            var json = ConfigTransfer.Export(node, desensitize: true);
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "导出配置",
+                SuggestedFileName = "smartsidebar-config.json",
+                DefaultExtension = "json",
+                FileTypeChoices = [new FilePickerFileType("JSON") { Patterns = ["*.json"] }],
+            });
+            if (file is null) return;
+
+            await using var stream = await file.OpenWriteAsync();
+            await using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(json);
+            ToastService.Instance.Show($"配置已导出: {file.Name}", "success");
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.Show($"导出配置失败: {ex.Message}", "error");
+        }
+    }
+
+    /// <summary>P2-5: 导入配置。逐键走 Set, 由白名单过滤未知键, 策略段不可覆盖。</summary>
+    private async Task ImportConfigAsync()
+    {
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "导入配置",
+                AllowMultiple = false,
+                FileTypeFilter = [new FilePickerFileType("JSON") { Patterns = ["*.json"] }],
+            });
+            if (files.Count == 0) return;
+
+            await using var stream = await files[0].OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            var text = await reader.ReadToEndAsync();
+            var imported = ConfigTransfer.Import(text);
+            if (imported is null)
+            {
+                ToastService.Instance.Show("配置文件无法解析", "error");
+                return;
+            }
+
+            var applied = 0;
+            foreach (var (path, value) in ConfigTransfer.EnumerateLeaves(imported))
+            {
+                if (_config.Subscriptions.IsLocked(path)) continue;
+                // 版本号不覆盖(由程序自管)
+                if (path.Equals("version", StringComparison.OrdinalIgnoreCase)) continue;
+                if (_config.Set(path, value)) applied++;
+            }
+            ToastService.Instance.Show($"已导入 {applied} 项配置（未知键已忽略）", "success");
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.Show($"导入配置失败: {ex.Message}", "error");
+        }
     }
 }

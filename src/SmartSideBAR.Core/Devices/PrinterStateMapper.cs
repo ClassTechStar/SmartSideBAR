@@ -36,7 +36,7 @@ public static class PrinterStateMapper
         _ => "unknown",
     };
 
-        /// <summary>纯映射函数, 单测锁定语义。</summary>
+    /// <summary>纯映射函数, 单测锁定语义。</summary>
     public static PrinterState Map(uint? detectedErrorState, ushort? printerStatus)
     {
         switch (detectedErrorState)

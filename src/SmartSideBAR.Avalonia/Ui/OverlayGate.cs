@@ -11,7 +11,7 @@ internal static class OverlayGate
 
     public static void Enter() => Interlocked.Increment(ref _open);
 
-        /// <summary>全部覆盖层关闭后触发, 侧栏据此刷新"最近文件"等状态。</summary>
+    /// <summary>全部覆盖层关闭后触发, 侧栏据此刷新"最近文件"等状态。</summary>
     public static event Action? AllClosed;
 
     public static void Exit()

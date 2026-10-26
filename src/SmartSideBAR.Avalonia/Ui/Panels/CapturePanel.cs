@@ -68,7 +68,8 @@ internal sealed class CapturePanel : SidebarPanel
                     Services.Dispatch("record");
                     // 录制启动有异步开销，稍后再刷新成计时态
                     global::Avalonia.Threading.DispatcherTimer.RunOnce(Refresh, TimeSpan.FromMilliseconds(600));
-                }),
+                }
+            ),
                 ("sidebar", "板中板", () => Services.Dispatch("miniboard"))
             ));
         }

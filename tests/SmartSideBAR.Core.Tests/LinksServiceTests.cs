@@ -22,7 +22,7 @@ public sealed class LinksServiceTests : IDisposable
     public void List_FiltersDisabledAndEmptyUrl_OnlyInView()
     {
         var (_, links, _) = Create();
-                // 默认链接含 l4/l5 两个 disabled, 全量 5 条, 视图 3 条
+        // 默认链接含 l4/l5 两个 disabled, 全量 5 条, 视图 3 条
         Assert.Equal(5, links.ListAll().Count);
         Assert.Equal(3, links.List().Count);
     }
