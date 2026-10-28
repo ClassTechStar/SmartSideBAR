@@ -18,12 +18,20 @@ internal sealed class LinksPanel(SidebarServices s, Palette p, Action<LinkItem> 
 
     private string _tab = "全部";
     private bool _adding;
+    // P2-3: 分类切换时的入场转场（首次构建不动画）
+    private string? _lastTab;
+    private int _enterDirection = 1;
 
     protected override Control Build()
     {
         var links = Services.Config.Current.Links
             .Where(l => l.Enabled && !string.IsNullOrWhiteSpace(l.Url))
             .ToList();
+
+        // 页签变化 → 记下方向，供 OnBuilt 播放入场动画
+        _enterDirection = _lastTab is null ? 0
+            : string.Compare(_tab, _lastTab, StringComparison.Ordinal) >= 0 ? 1 : -1;
+        _lastTab = _tab;
 
         var root = Stack(8);
         root.Children.Add(BuildTabs(links));
@@ -43,6 +51,14 @@ internal sealed class LinksPanel(SidebarServices s, Palette p, Action<LinkItem> 
             root.Children.Add(BuildGrid(links));
         }
         return root;
+    }
+
+    /// <summary>P2-3: 分类切换后播放横向入场动画；关闭动效时直接显示。</summary>
+    protected override void OnBuilt()
+    {
+        if (_enterDirection == 0 || Bounds.Width <= 0) return;
+        var animate = !Services.Config.Current.Appearance.ReduceMotion;
+        _ = PageTransition.SlideInAsync(this, Bounds.Width, _enterDirection, animate);
     }
 
     /// <summary>页签: 已知分类 ∪ 数据里出现过的自定义分类; 「全部」恒在首位。</summary>

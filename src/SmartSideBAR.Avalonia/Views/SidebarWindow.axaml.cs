@@ -40,6 +40,10 @@ public partial class SidebarWindow : Window
         ApplyDesignTokens();
         ApplySide();
 
+        // P2-2: 面板内容统一由 PanelScroll 承载，在这里接一次触屏拖动滚动，
+        // 提醒/链接/设置等所有面板一并生效（借鉴 DiffiTouch 的 TouchListView）。
+        Ui.TouchScroll.Attach(PanelScroll);
+
         if (services is null) return; // 设计器 / 运行时加载器路径
 
         DataContext = new SidebarViewModel(services, services.Config.Current.Links);

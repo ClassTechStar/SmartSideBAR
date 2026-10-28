@@ -25,6 +25,35 @@ public static class PageTransition
     }
 
     /// <summary>
+    /// 入场滑动：目标从屏幕外滑到原位。用于页签/分类切换这类"内容整体替换"的场景。
+    /// direction &gt; 0 表示从右侧滑入（下一页），&lt; 0 表示从左侧滑入。
+    /// </summary>
+    public static async Task SlideInAsync(Control target, double width, int direction, bool animate = true)
+    {
+        if (!animate || width <= 0)
+        {
+            target.RenderTransform = null;
+            return;
+        }
+
+        var from = direction > 0 ? width : -width;
+        target.RenderTransform = new TranslateTransform(from, 0);
+        var anim = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(DurationMs),
+            Easing = new CubicEaseOut(),
+            FillMode = FillMode.Forward,
+            Children =
+            {
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(TranslateTransform.XProperty, from) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(TranslateTransform.XProperty, 0d) } },
+            },
+        };
+        await anim.RunAsync(target);
+        target.RenderTransform = null;
+    }
+
+    /// <summary>
     /// 横向滑动转场：current 滑出、next 滑入。direction &gt; 0 表示下一页（向左）。
     /// </summary>
     public static async Task SlideAsync(Control current, Control next, double width, int direction, bool animate = true)

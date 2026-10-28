@@ -19,17 +19,31 @@ internal sealed class ReminderPanel(SidebarServices s, Palette p) : SidebarPanel
     private int _tab; // 0=提醒 1=通知（Seelen 通知中心页签）
     private bool _hooked;
     private Action? _onNotificationsChanged;
+    // P2-3: 页签切换时的入场转场（首次构建不动画）
+    private int _lastTab = -1;
+    private int _enterDirection;
 
     protected override Control Build()
     {
         var root = Stack(10);
         root.Children.Add(BuildTabs());
         root.Children.Add(_tab == 1 ? BuildNotifications() : BuildReminders());
+
+        // 页签变化 → 记下方向，供 OnBuilt 播放入场动画
+        _enterDirection = _lastTab < 0 ? 0 : (_tab >= _lastTab ? 1 : -1);
+        _lastTab = _tab;
         return root;
     }
 
     protected override void OnBuilt()
     {
+        // P2-3: 页签切换后播放横向入场动画；关闭动效时直接显示
+        if (_enterDirection != 0 && Bounds.Width > 0)
+        {
+            var animate = !Services.Config.Current.Appearance.ReduceMotion;
+            _ = PageTransition.SlideInAsync(this, Bounds.Width, _enterDirection, animate);
+        }
+
         // 通知有更新时刷新通知页签（只挂一次; 面板脱离可视树时摘除）
         if (_hooked) return;
         _hooked = true;

@@ -276,7 +276,7 @@
 |---|---|---|
 | P1-2 接入扇形菜单 | 核心已就绪，**未接线** | 现有扇形菜单按指针命中测试选条目（非角度判定），接入角度选择属于交互改造，需先确认产品形态 |
 | P2-1 面板改用注册表驱动 | 注册表已就绪，**面板仍是代码构建** | 计划本就是「先加注册层，面板逐个迁移」，本次未动既有面板渲染路径 |
-| P2-2 / P2-3 接入具体面板 | 能力已就绪，**未接入** | 需在提醒/链接等具体列表上调用 `TouchScroll.Attach`，分页转场需配合多页面板改造 |
+| ~~P2-2 / P2-3 接入具体面板~~ | **已接入**（2026-10-29 补完） | `TouchScroll.Attach(PanelScroll)` 接在 `SidebarWindow` 的面板滚动宿主上，提醒/链接/设置等**所有面板**一并生效；`PageTransition.SlideInAsync` 接入链接面板分类切换与提醒面板「提醒/通知」页签切换，关闭动效时直接显示 |
 
 ### 跳过（按"不确定的先别碰"约定）
 
@@ -291,3 +291,14 @@
 - `dotnet test SmartSideBAR.slnx -c Release`：**220 项全过**（Core 184 / Windows 17 / Avalonia 19，较本轮前 180 项增加 40 项）
 - `dotnet format --verify-no-changes`：通过
 - 新增单测：位置策略、拖拽换算与合并队列、方向选择迟滞、面板注册表、默认值迁移、版本比较与安装包匹配
+
+### 补完记录（2026-10-29 后续）
+
+- **P2-2 触屏滚动接入**：面板内容统一由 `SidebarWindow.axaml` 的 `PanelScroll` 承载，
+  在 `SidebarWindow` 构造里 `TouchScroll.Attach(PanelScroll)` 一次即可覆盖全部面板，
+  无需逐面板改造（提醒、链接、设置、快捷设置等均生效）。
+- **P2-3 分页转场接入**：新增 `PageTransition.SlideInAsync`（入场滑动，方向可正可负）。
+  链接面板按分类字符串比较决定滑入方向，提醒面板按「提醒/通知」页签序号决定方向；
+  首次构建不播放动画，`appearance.reduceMotion` 打开时直接显示。
+- 验证补充：构建 0 错误；220 项测试全过（含 headless 冒烟 7 链路，动画在 Bounds 为 0 时自动跳过）；
+  `dotnet format --verify-no-changes` 通过。
