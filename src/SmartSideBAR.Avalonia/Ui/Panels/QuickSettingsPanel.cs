@@ -19,6 +19,9 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
         var root = Stack(12);
 
         root.Children.Add(Card("工作区", BuildWorkspaceTiles(cfg)));
+        // P1-4: 课堂常用的亮度/音量（借鉴 DiffiTouch）；设备不支持时整段不显示
+        var classroom = BuildClassroomSliders();
+        if (classroom is not null) root.Children.Add(Card("课堂常用", classroom));
         root.Children.Add(Card("快捷开关", BuildToggleTiles(cfg)));
 
         var more = PanelKit.Flat("全部设置…", Palette, () => Services.Dispatch("settings"), primary: true);
@@ -106,6 +109,60 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
     }
 
     /// <summary>Seelen quick-settings: 2 列 min-height 80px 大磁贴, 选中 = accent 实心。</summary>
+    /// <summary>
+    /// P1-4: 亮度 / 音量滑杆。两者都不支持时返回 null，调用方不渲染该卡片。
+    /// 借鉴 DiffiTouch 的 brightness_page / sound_page。
+    /// </summary>
+    private Control? BuildClassroomSliders()
+    {
+        var stack = new StackPanel { Spacing = 10 };
+        var any = false;
+
+        var brightness = new global::SmartSideBAR.Windows.Devices.BrightnessService();
+        if (brightness.IsSupported)
+        {
+            var current = brightness.Get() ?? 50;
+            stack.Children.Add(SliderRow("屏幕亮度", current, v => brightness.Set(v)));
+            any = true;
+        }
+
+        var volume = new global::SmartSideBAR.Windows.Audio.VolumeService();
+        if (volume.IsSupported)
+        {
+            var current = volume.Get() ?? 50;
+            stack.Children.Add(SliderRow("系统音量", current, v => volume.Set(v)));
+            any = true;
+        }
+
+        return any ? stack : null;
+    }
+
+    private Control SliderRow(string label, int value, Action<int> apply)
+    {
+        var text = new TextBlock
+        {
+            Text = $"{label}  {value}%",
+            FontSize = 12.5,
+            Foreground = Palette.TextBrush,
+        };
+        var slider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = value,
+            TickFrequency = 5,
+            // P0-2: 滑杆也要满足触屏最小高度
+            MinHeight = Math.Max(28, PanelKit.MinHitDip * 0.8),
+        };
+        slider.ValueChanged += (_, _) =>
+        {
+            var v = (int)Math.Round(slider.Value);
+            text.Text = $"{label}  {v}%";
+            apply(v);
+        };
+        return new StackPanel { Spacing = 4, Children = { text, slider } };
+    }
+
     private Control BuildToggleTiles(SidekickConfig cfg)
     {
         (string Label, bool On, Action<string> Apply)[] toggles =

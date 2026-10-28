@@ -9,9 +9,13 @@ internal static class SingleInstance
 {
     private const string MutexName = @"Local\SmartSideBAR.Instance.v1";
     private const string EventName = @"Local\SmartSideBAR.Activate.v1";
+    // P2-6: 回环探测端口（借鉴 CyreneCompass）。命名互斥量在跨完整性级别
+    //（普通用户 vs 管理员）时可能各自创建成功，用回环端口再兜一次。
+    private const int ProbePort = 51871;
 
     private static Mutex? _mutex;
     private static EventWaitHandle? _event;
+    private static System.Net.Sockets.TcpListener? _probe;
 
     /// <summary>首次启动返回 true；已有实例返回 false（调用方应 Signal 后退出）。</summary>
     public static bool Acquire()
@@ -20,12 +24,41 @@ internal static class SingleInstance
         {
             _mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
             _event = new EventWaitHandle(false, EventResetMode.AutoReset, EventName);
+            // 互斥量说是"新建"，但不同完整性级别（普通用户 / 管理员）会各自创建成功，
+            // 再用回环端口兜一次：抢不到端口说明已有一个实例在跑。
+            if (createdNew && !TryHoldProbePort()) createdNew = false;
             return createdNew;
         }
         catch
         {
             return true; // 极端情况下不因判重失败而拒绝启动
         }
+    }
+
+    /// <summary>尝试占用回环探测端口并保持占用（进程退出即释放）。占用成功返回 true。</summary>
+    private static bool TryHoldProbePort()
+    {
+        try
+        {
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, ProbePort)
+            {
+                ExclusiveAddressUse = true,
+            };
+            listener.Start();
+            _probe = listener;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>释放探测端口（退出前调用）。</summary>
+    public static void ReleaseProbe()
+    {
+        try { _probe?.Stop(); } catch { /* 停不掉不影响退出 */ }
+        _probe = null;
     }
 
     /// <summary>唤醒已运行的实例（第二次启动时调用）。</summary>

@@ -502,6 +502,17 @@ public sealed class SettingsWindow : Window
             Foreground = _p.MutedBrush,
             Opacity = 0.8,
         });
+
+        // P2-4: 应用内更新检查（借鉴 CyreneCompass）。只下载并提示，不静默替换运行中的程序。
+        var updateBtn = new Button
+        {
+            Content = "检查更新",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 8, 0, 0),
+            Padding = new Thickness(14, 8),
+        };
+        updateBtn.Click += async (_, _) => await CheckUpdateAsync(version);
+        stack.Children.Add(updateBtn);
         return Page("关于",
             new Border
             {
@@ -555,6 +566,32 @@ public sealed class SettingsWindow : Window
         _shell.SetAutoLaunch(_autoLaunch.IsChecked == true);
         ToastService.Instance.Show("设置已保存", "success");
         Close();
+    }
+
+    /// <summary>P2-4: 检查更新；发现新版本则下载并提示用户自行安装。</summary>
+    private async Task CheckUpdateAsync(string currentVersion)
+    {
+        try
+        {
+            ToastService.Instance.Show("正在检查更新…", "info");
+            var service = new global::SmartSideBAR.Avalonia.Updater.UpdateService();
+            var info = await service.CheckAsync(currentVersion);
+            if (info is null)
+            {
+                ToastService.Instance.Show("已经是最新版本", "success");
+                return;
+            }
+            var path = await service.DownloadAsync(info);
+            ToastService.Instance.Show(
+                path is null
+                    ? $"发现 {info.Version}，但下载失败，请到 Release 页面手动获取"
+                    : $"已下载 {info.Version}: {path}",
+                path is null ? "error" : "success");
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.Show($"检查更新失败: {ex.Message}", "error");
+        }
     }
 
     /// <summary>P2-5: 导出配置(自动脱敏), 写到用户选择的位置。</summary>

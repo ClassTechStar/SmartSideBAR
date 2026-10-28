@@ -98,5 +98,9 @@
     "width": 3,
     "height": 18,
     "radius": 2
+  },
+  "touch": {
+    "$comment": "触屏可达性：任意 UI 缩放下可交互元素的物理最小点击区（借鉴 CyreneCompass 的 32px 保底）",
+    "minHitPx": 32
   }
 }

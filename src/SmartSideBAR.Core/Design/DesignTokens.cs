@@ -26,6 +26,7 @@ public sealed class DesignTokens
     public SpacingTokens Spacing { get; set; } = new();
     public ShadowTokens Shadow { get; set; } = new();
     public IndicatorTokens Indicator { get; set; } = new();
+    public TouchTokens Touch { get; set; } = new();
 
     private static DesignTokens? _default;
 
@@ -191,6 +192,15 @@ public sealed class IndicatorTokens
     public double Width { get; set; } = 3;
     public double Height { get; set; } = 18;
     public double Radius { get; set; } = 2;
+}
+
+/// <summary>
+/// 触屏可达性 (P0-2): 任意 UI 缩放下可交互元素的物理最小点击区，借鉴 CyreneCompass 的 32px 保底。
+/// 单位为物理像素；实际尺寸 = max(设计尺寸 × 缩放, minHitPx)。设为 0 表示不启用该约束。
+/// </summary>
+public sealed class TouchTokens
+{
+    public double MinHitPx { get; set; } = 32;
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

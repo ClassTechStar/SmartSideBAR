@@ -14,6 +14,23 @@ internal static class PanelKit
 {
     private static Core.Design.ShapeTokens Shape => DesignTokens.Current.Shape;
 
+    /// <summary>
+    /// P0-2: 当前 UI 缩放（1.0 = 100%）。由窗口层在 DPI/缩放变化时写入，
+    /// 用于把「物理最小点击区」折算成 DIP。未设置时按 1.0 处理。
+    /// </summary>
+    public static double UiScale { get; set; } = 1.0;
+
+    /// <summary>触屏最小点击区折算成 DIP；令牌为 0 时返回 0（不启用约束）。</summary>
+    public static double MinHitDip
+    {
+        get
+        {
+            var min = DesignTokens.Current.Touch.MinHitPx;
+            if (min <= 0) return 0;
+            return min / Math.Max(0.25, UiScale);
+        }
+    }
+
     public static TextBlock Section(string text, Palette p) => new()
     {
         Text = text,
@@ -129,6 +146,8 @@ internal static class PanelKit
         {
             Content = stack,
             Padding = new Thickness(8, 14),
+            // P0-2: 触屏最小点击区（令牌 touch.minHitPx，物理像素折算成 DIP）
+            MinHeight = Math.Max(60, MinHitDip),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Background = p.HoverBrush,

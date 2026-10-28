@@ -41,6 +41,7 @@ public sealed class FloatBallWindow : Window
     private DateTime _lastTap = DateTime.MinValue;
     private readonly DispatcherTimer? _idleTimer;   // 闲时变暗 (config.floatBall.idleDelayMs/idleOpacity 首次接入)
     private readonly double _idleOpacity;
+    private DragSample _lastScreenSample;   // P1-1: 上一次指针屏幕采样 (物理像素)
 
     /// <param name="workPx">侧栏所在显示器的工作区 (物理像素)。</param>
     /// <param name="scale">窗口 DPI 缩放 (物理 = DIP × scale)。</param>
@@ -72,7 +73,19 @@ public sealed class FloatBallWindow : Window
         Content = _root;
 
         var pos = FloatBallLayout.ResolveBallPosition((cfg.X, cfg.Y), _workPx, _sizePx, "right");
-        Position = new PixelPoint(pos.X, pos.Y);
+        // P0-1: 记录位置是否仍完整落在工作区内（拔屏/改分辨率/休眠唤醒后可能已越界）
+        var restored = FloatBallPositionPolicy.Restore(
+            pos.X, pos.Y, _sizePx, _sizePx,
+            new WorkAreaRect(_workPx.X, _workPx.Y, _workPx.X + _workPx.Width, _workPx.Y + _workPx.Height),
+            PrimaryWorkArea());
+        Position = new PixelPoint(restored.X, restored.Y);
+        if (restored.Reset)
+        {
+            // 越界: 用修正后的坐标回写配置, 下次启动不再漂
+            var rel = FloatBallLayout.ToRelativePosition((restored.X, restored.Y), _workPx);
+            _ = _config.Set("floatBall.x", rel.X);
+            _ = _config.Set("floatBall.y", rel.Y);
+        }
         _restPosition = Position;
 
         PointerPressed += OnPress;
@@ -101,6 +114,23 @@ public sealed class FloatBallWindow : Window
                 AnimateOrbOpacity(_idleOpacity);
             };
             _idleTimer.Start();
+        }
+
+        // P1-3: 置顶但不抢焦点 —— 点击悬浮球时焦点留在教师当前输入处（PPT 放映 / 白板书写）
+        Opened += (_, _) => ApplyNoActivate();
+    }
+
+    /// <summary>给本窗口加上 WS_EX_NOACTIVATE。失败静默（不影响主流程）。</summary>
+    private void ApplyNoActivate()
+    {
+        try
+        {
+            var handle = TryGetPlatformHandle()?.Handle ?? 0;
+            if (handle != 0) global::SmartSideBAR.Windows.Native.Win32WindowStyle.SetNoActivate(handle);
+        }
+        catch
+        {
+            // 样式设置失败不影响悬浮球可用性
         }
     }
 
@@ -204,12 +234,38 @@ public sealed class FloatBallWindow : Window
         // 否则算出的只是相对按下点的差, 窗口会被反复拉回, 拖动只能走一小段。
         // 改用「指针屏幕坐标 - 抓取偏移」直接定位 (物理像素)。
         var screen = this.PointToScreen(p);
+        // P1-1: 位移换算集中在边界做一次（上一窗口位置 + 两次屏幕采样 × 缩放）
+        var target = PointerDrag.Target(
+            new DragSample(Position.X, Position.Y),
+            _lastScreenSample,
+            new DragSample(screen.X, screen.Y),
+            _scale);
+        _lastScreenSample = new DragSample(screen.X, screen.Y);
         var dxPx = screen.X - _pressWindowPos.X - _grabOffsetPx.X;
         var dyPx = screen.Y - _pressWindowPos.Y - _grabOffsetPx.Y;
-        if (!_moved && Math.Abs(dxPx) + Math.Abs(dyPx) > 6 * _scale) _moved = true;
+        // P1-1: 阈值判定沿用"按下点位移"，超过阈值才认为是在拖
+        if (!_moved && PointerDrag.Exceeds(
+                new DragSample(_pressWindowPos.X, _pressWindowPos.Y),
+                new DragSample(screen.X, screen.Y),
+                (int)Math.Round(6 * _scale))) _moved = true;
         if (_moved && !_expanded)
         {
-            Position = new PixelPoint(screen.X - _grabOffsetPx.X, screen.Y - _grabOffsetPx.Y);
+            Position = new PixelPoint(target.X - _grabOffsetPx.X, target.Y - _grabOffsetPx.Y);
+        }
+    }
+
+    /// <summary>P0-1: 主屏工作区（越界回中时的落点）。</summary>
+    private static WorkAreaRect PrimaryWorkArea()
+    {
+        try
+        {
+            var (x, y, w, h) = global::SmartSideBAR.Windows.Native.Win32Display.PrimaryWorkAreaPx();
+            return new WorkAreaRect(x, y, x + w, y + h);
+        }
+        catch
+        {
+            // 取不到时给一个保守的主屏左上角区域
+            return new WorkAreaRect(0, 0, 1920, 1080);
         }
     }
 

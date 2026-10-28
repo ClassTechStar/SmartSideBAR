@@ -90,6 +90,9 @@ internal static class Program
         var manager = sp.GetRequiredService<WindowManager>();
         SingleInstance.Listen(manager.NotifyAlreadyRunning);
 
+        // P2-6: 主循环退出后释放回环探测端口，保证下次能正常启动
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => SingleInstance.ReleaseProbe();
+
         return AppBuilder.Configure(() => new App(sp))
             .UsePlatformDetect()
             .With(new Win32PlatformOptions())
