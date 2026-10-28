@@ -366,18 +366,10 @@ public partial class SidebarWindow : Window
 
     private void ShowPanel(PanelKind kind)
     {
-        _panel = kind switch
-        {
-            PanelKind.Capture => new CapturePanel(_services, _palette),
-            PanelKind.Usb => new UsbPanel(_services, _palette),
-            PanelKind.Printer => new PrinterPanel(_services, _palette),
-            PanelKind.Links => new LinksPanel(_services, _palette, link => Vm.OpenLink(link)),
-            PanelKind.Reminder => new ReminderPanel(_services, _palette),
-            PanelKind.TaskMgr => new TaskMgrPanel(_services, _palette),
-            PanelKind.Settings => new SettingsPanel(_services, _palette),
-            PanelKind.QuickSettings => new QuickSettingsPanel(_services, _palette),
-            _ => null,
-        };
+        // P2-1: 面板改由注册表 + 工厂创建（见 PanelCatalog），新增面板不再改这里
+        _panel = PanelCatalog.Create(
+            kind,
+            new PanelContext(_services, _palette, link => Vm.OpenLink(link)));
         PanelBody.Content = _panel;
         PanelScroll.Offset = default;
         _panel?.Refresh();

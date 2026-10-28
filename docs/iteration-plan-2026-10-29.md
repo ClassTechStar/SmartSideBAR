@@ -274,8 +274,8 @@
 
 | 任务 | 状态 | 说明 |
 |---|---|---|
-| P1-2 接入扇形菜单 | 核心已就绪，**未接线** | 现有扇形菜单按指针命中测试选条目（非角度判定），接入角度选择属于交互改造，需先确认产品形态 |
-| P2-1 面板改用注册表驱动 | 注册表已就绪，**面板仍是代码构建** | 计划本就是「先加注册层，面板逐个迁移」，本次未动既有面板渲染路径 |
+| ~~P1-2 接入扇形菜单~~ | **已接线**（2026-10-29 后续） | 新增 `FanArcSelector`（按本项目**弧段**布局判定，非 8 方向罗盘）：死区 24 DIP + 迟滞 4°，指针朝某方向移动即选中并高亮白边，回到死区取消；精确点中按钮仍走 `Click`（用 `IsPointerOver` 去重，不会双触发） |
+| ~~P2-1 面板改用注册表驱动~~ | **已完成**（2026-10-29 后续） | 新增 `PanelCatalog`：元数据登记进 `Core/Panels/PanelRegistry`（id/名称/图标/Order），构造方式登记为工厂；`SidebarWindow.ShowPanel` 的 switch 换成 `PanelCatalog.Create(kind, context)`。新增面板只需注册一条定义 + 一个工厂 |
 | ~~P2-2 / P2-3 接入具体面板~~ | **已接入**（2026-10-29 补完） | `TouchScroll.Attach(PanelScroll)` 接在 `SidebarWindow` 的面板滚动宿主上，提醒/链接/设置等**所有面板**一并生效；`PageTransition.SlideInAsync` 接入链接面板分类切换与提醒面板「提醒/通知」页签切换，关闭动效时直接显示 |
 
 ### 跳过（按"不确定的先别碰"约定）
@@ -301,4 +301,17 @@
   链接面板按分类字符串比较决定滑入方向，提醒面板按「提醒/通知」页签序号决定方向；
   首次构建不播放动画，`appearance.reduceMotion` 打开时直接显示。
 - 验证补充：构建 0 错误；220 项测试全过（含 headless 冒烟 7 链路，动画在 Bounds 为 0 时自动跳过）；
+  `dotnet format --verify-no-changes` 通过。
+
+### 补完记录（2026-10-29 后续 · 第二轮）
+
+- **P1-2 扇形菜单角度判定**：实际布局是一段圆弧（`FanStartDeg=4°`，`FanSweepDeg=92°`），
+  不是绕一圈的 8 方向罗盘，因此新增 `Core/FloatBall/FanArcSelector`：
+  先判死区（`FloatBallLayout.FanDeadZoneDip = 24`），再按弧段分索引，并带 4° 迟滞；
+  悬浮球展开后 `OnMove` 走角度判定并高亮（白边 2.5px），`OnRelease` 按结果派发；
+  指针正落在某个按钮上时交给按钮 `Click`，避免重复触发。
+- **P2-1 面板注册表驱动**：新增 `Avalonia/Ui/Panels/PanelCatalog`（注册表 + 工厂 + `PanelContext`），
+  `ShowPanel` 由 switch 改为 `PanelCatalog.Create(...)`；面板 id 与 `PanelKind` 的映射集中在目录里，
+  定义被禁用时直接返回 null。headless 冒烟 7 链路仍全绿，说明渲染路径与原实现一致。
+- 验证补充：构建 0 错误 0 警告；测试 **227 项全过**（Core 191 / Windows 17 / Avalonia 19）；
   `dotnet format --verify-no-changes` 通过。

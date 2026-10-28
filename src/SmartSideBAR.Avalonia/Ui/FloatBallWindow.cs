@@ -13,6 +13,7 @@ using Avalonia.Threading;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Design;
 using SmartSideBAR.Core.FloatBall;
+using SmartSideBAR.Core.FloatBall;
 using SmartSideBAR.Windows.Native;
 
 namespace SmartSideBAR.Avalonia.Ui;
@@ -42,6 +43,13 @@ public sealed class FloatBallWindow : Window
     private readonly DispatcherTimer? _idleTimer;   // 闲时变暗 (config.floatBall.idleDelayMs/idleOpacity 首次接入)
     private readonly double _idleOpacity;
     private DragSample _lastScreenSample;   // P1-1: 上一次指针屏幕采样 (物理像素)
+
+    // P1-2: 扇形菜单的角度判定（死区 + 迟滞），替代"必须精确点中按钮"
+    private readonly List<Button> _fanButtons = new();
+    private readonly List<IBrush?> _fanBorders = new();
+    private Point _fanCenter;               // 扇形原点（DIP，窗口内坐标）
+    private int _selectedFan = FanArcSelector.None;
+    private bool _fanClickHandled;          // 已由按钮 Click 处理，避免与释放判定重复触发
 
     /// <param name="workPx">侧栏所在显示器的工作区 (物理像素)。</param>
     /// <param name="scale">窗口 DPI 缩放 (物理 = DIP × scale)。</param>
@@ -228,6 +236,12 @@ public sealed class FloatBallWindow : Window
 
     private void OnMove(object? s, PointerEventArgs e)
     {
+        // P1-2: 展开态走角度判定 —— 朝某个方向移动即选中，不必精确点中按钮
+        if (_expanded)
+        {
+            UpdateFanSelection(e.GetCurrentPoint(this).Position);
+            return;
+        }
         if (!_dragging) return;
         var p = e.GetCurrentPoint(this).Position;
         // B22: 不能用「相对窗口的指针位移」累加位置, 窗口本身又跟着指针移动,
@@ -269,8 +283,54 @@ public sealed class FloatBallWindow : Window
         }
     }
 
-    private void OnRelease(object? s, PointerReleasedEventArgs e)
+    /// <summary>
+    /// P1-2: 按指针相对扇形原点的角度选中一项（死区 + 迟滞），并更新高亮。
+    /// 朝某个方向移动即选中，回到死区内即取消 —— 不必精确点中 46px 的按钮。
+    /// </summary>
+    private void UpdateFanSelection(Point p)
     {
+        if (_fanButtons.Count == 0) return;
+        var dx = p.X - _fanCenter.X;
+        var dy = p.Y - _fanCenter.Y;
+        var index = FanArcSelector.Select(
+            dx, dy, _fanButtons.Count,
+            FloatBallLayout.FanStartDeg, FloatBallLayout.FanSweepDeg,
+            _selectedFan, FloatBallLayout.FanDeadZoneDip);
+
+        if (index == _selectedFan) return;
+
+        // 复原上一项
+        if (_selectedFan >= 0 && _selectedFan < _fanButtons.Count)
+        {
+            _fanButtons[_selectedFan].BorderBrush = _fanBorders[_selectedFan];
+            _fanButtons[_selectedFan].BorderThickness = new Thickness(1.5);
+        }
+        _selectedFan = index;
+        if (index >= 0 && index < _fanButtons.Count)
+        {
+            _fanButtons[index].BorderBrush = SelectedFanBorder;
+            _fanButtons[index].BorderThickness = new Thickness(2.5);
+        }
+    }
+
+    private static readonly IBrush SelectedFanBorder = new SolidColorBrush(Colors.White);
+
+    private void OnRelease(object? s, PointerEventArgs e)
+    {
+        // P1-2: 展开态按角度结果派发；指针正落在某个扇项上时交给按钮 Click，避免重复触发
+        if (_expanded)
+        {
+            _dragging = false;
+            Wake();
+            if (_fanButtons.Any(b => b.IsPointerOver)) return;
+            var picked = _selectedFan >= 0 && _selectedFan < _actions.Length
+                ? _actions[_selectedFan]
+                : null;
+            CollapseFan();
+            if (picked is not null) _dispatch(picked);
+            return;
+        }
+
         if (!_dragging) return;
         _dragging = false;
         Wake();
@@ -316,6 +376,12 @@ public sealed class FloatBallWindow : Window
 
         var centerX = layout.BallOffset.X + _sizeDip / 2.0;
         var centerY = layout.BallOffset.Y + _sizeDip / 2.0;
+        // P1-2: 记录扇形原点与项列表，供角度判定使用
+        _fanCenter = new Point(centerX, centerY);
+        _fanButtons.Clear();
+        _fanBorders.Clear();
+        _selectedFan = FanArcSelector.None;
+        _fanClickHandled = false;
 
         for (var i = 0; i < count; i++)
         {
@@ -368,9 +434,13 @@ public sealed class FloatBallWindow : Window
             };
             button.Click += (_, _) =>
             {
+                // 精确点中按钮仍可触发（触屏直接点选）；置位避免释放判定再触发一次
+                _fanClickHandled = true;
                 CollapseFan();
                 _dispatch(action);
             };
+            _fanButtons.Add(button);
+            _fanBorders.Add(button.BorderBrush);
             Canvas.SetLeft(button, centerX + ox - FloatBallLayout.FanItemSize / 2.0);
             Canvas.SetTop(button, centerY + oy - FloatBallLayout.FanItemSize / 2.0);
             _root.Children.Add(button);

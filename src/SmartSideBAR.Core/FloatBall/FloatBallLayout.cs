@@ -12,6 +12,8 @@ public static class FloatBallLayout
     public const int FanMargin = 12;
     public const int FanRadiusMin = 96;
     public const int FanRadiusMax = 260;
+    /// <summary>扇形菜单的死区半径（DIP）：手指在球体附近的微动不算选中。</summary>
+    public const int FanDeadZoneDip = 24;
 
     public static (int X, int Y) ClampToArea((int X, int Y) pos, (int W, int H) size, RectLike area)
     {
