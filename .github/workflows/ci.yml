@@ -48,9 +48,19 @@ jobs:
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
           dotnet test SmartSideBAR.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+          # 测试项目必须引用 coverlet.collector，否则 --collect 会静默不产出报告。
+          # 这里显式校验，避免 reportgenerator 读到空输入后只报一句含糊的取文件失败。
+          $reports = Get-ChildItem -Path TestResults -Recurse -Filter coverage.cobertura.xml -ErrorAction SilentlyContinue
+          if (-not $reports) {
+            throw "没有生成 coverage.cobertura.xml —— 请确认各测试项目已引用 coverlet.collector"
+          }
+          Write-Host "coverage reports: $($reports.Count)"
           reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:cover -reporttypes:TextSummary
+          if (-not (Test-Path cover/Summary.txt)) { throw "reportgenerator 未生成 cover/Summary.txt" }
           $txt = Get-Content cover/Summary.txt -Raw
-          $line = [regex]::Match($txt, 'Line coverage:\s+([\d.]+)%').Groups[1].Value
+          $m = [regex]::Match($txt, 'Line coverage:\s+([\d.]+)%')
+          if (-not $m.Success) { throw "Summary.txt 中未找到行覆盖率" }
+          $line = $m.Groups[1].Value
           Write-Host "Line coverage: $line%"
           $min = 40
           if ([double]$line -lt $min) { throw "coverage $line% < $min%" }

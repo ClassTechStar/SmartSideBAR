@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <!-- P1-1：VM 层测试用 Avalonia.Headless，无需真实窗口即可驱动 ViewModel -->
     <PackageReference Include="Avalonia.Headless" Version="11.3.20" />
     <!-- P1-6：冒烟/像素基线需要 xUnit 集成 + Skia 真渲染 -->
