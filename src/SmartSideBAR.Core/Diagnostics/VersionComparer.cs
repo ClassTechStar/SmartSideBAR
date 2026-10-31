@@ -26,6 +26,10 @@ public static class VersionComparer
     {
         var s = (value ?? string.Empty).Trim();
         if (s.StartsWith("v", StringComparison.OrdinalIgnoreCase)) s = s[1..];
+        // 预发布段在首个 '-' 处截断: 否则 "1.6.0-beta.1" 会解析成 [1,6,0,1],
+        // 比稳定版 [1,6,0,0] 还"新" —— 更新检查会把 beta 当升级推给稳定版用户
+        var dash = s.IndexOf('-');
+        if (dash >= 0) s = s[..dash];
         if (s.Length == 0) return [0];
         var parts = s.Split('.');
         var result = new int[parts.Length];

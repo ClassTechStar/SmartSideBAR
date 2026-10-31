@@ -50,6 +50,7 @@ internal sealed class AnnotateToolbar
         _inkToShapeOn = inkToShape;
         _ink.InkToShape = inkToShape;
         _lastColor = PaletteHex[defaultColorIndex];
+        _ink.SetColor(_lastColor); // 出厂色落引擎: 否则默认级首笔是引擎默认红, 与色点指示不符
         Rebuild();
     }
 
@@ -141,7 +142,6 @@ internal sealed class AnnotateToolbar
             (AnnotateTool.Line, "线"), (AnnotateTool.Arrow, "箭"), (AnnotateTool.Rect, "框"),
             (AnnotateTool.Ellipse, "圆"), (AnnotateTool.Eraser, "擦"),
         ];
-        var currentTool = AnnotateTool.Pen;
         foreach (var (tool, label) in tools)
         {
             var t = tool;
@@ -154,7 +154,9 @@ internal sealed class AnnotateToolbar
             _toolButtons.Add(btn);
             panel.Children.Add(btn);
         }
-        if (_toolButtons.Count > 0) MarkActive(_toolButtons, _toolButtons[0]);
+        // 高亮跟随引擎真实状态 (收起前选了擦/细, 展开不再谎报 笔/中)
+        var toolIdx = Array.FindIndex(tools, x => x.Tool == _ink.PeekTool());
+        if (toolIdx >= 0) MarkActive(_toolButtons, _toolButtons[toolIdx]);
 
         panel.Children.Add(Separator());
 
@@ -179,8 +181,10 @@ internal sealed class AnnotateToolbar
             _colorButtons.Add(btn);
             panel.Children.Add(btn);
         }
-        if (_colorButtons.Count > _defaultColorIndex) MarkActive(_colorButtons, _colorButtons[_defaultColorIndex]);
-        _ink.SetColor(PaletteHex[_defaultColorIndex]);
+        // 恢复用户上次所选墨色 (无条件重置出厂色会让 换色→收起→展开 的选择凭空丢失)
+        _ink.SetColor(_lastColor);
+        var colorIdx = Array.FindIndex(PaletteHex, c => c == _lastColor);
+        if (colorIdx >= 0) MarkActive(_colorButtons, _colorButtons[colorIdx]);
 
         panel.Children.Add(Separator());
 
@@ -196,7 +200,8 @@ internal sealed class AnnotateToolbar
             _widthButtons.Add(btn);
             panel.Children.Add(btn);
         }
-        if (_widthButtons.Count > 1) MarkActive(_widthButtons, _widthButtons[1]);
+        var widthIdx = Array.FindIndex(new[] { 2.0, 5.0, 10.0 }, w => Math.Abs(w - _ink.PeekWidth()) < 0.01);
+        if (widthIdx >= 0) MarkActive(_widthButtons, _widthButtons[widthIdx]);
 
         // 转形开关: 选中 = accent 描边
         _shapeBtn = ToolBtn("转形", () =>

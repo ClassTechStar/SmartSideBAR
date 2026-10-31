@@ -13,7 +13,6 @@ using Avalonia.Threading;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Design;
 using SmartSideBAR.Core.FloatBall;
-using SmartSideBAR.Core.FloatBall;
 using SmartSideBAR.Windows.Native;
 
 namespace SmartSideBAR.Avalonia.Ui;
@@ -48,8 +47,10 @@ public sealed class FloatBallWindow : Window
     private readonly List<Button> _fanButtons = new();
     private readonly List<IBrush?> _fanBorders = new();
     private Point _fanCenter;               // 扇形原点（DIP，窗口内坐标）
+    private (double X, double Y) _fanDir = (1, 1); // 扇形展开方向 (自由空间决定, 角度判定必须镜像)
     private int _selectedFan = FanArcSelector.None;
-    private bool _fanClickHandled;          // 已由按钮 Click 处理，避免与释放判定重复触发
+    // 注: 按钮命中路径的双触发防护由两道既有机制承担 —— Button 把 PointerReleased
+    // 标记为已处理 (窗口级 OnRelease 不会收到) + OnRelease 的 IsPointerOver 守卫。
 
     /// <param name="workPx">侧栏所在显示器的工作区 (物理像素)。</param>
     /// <param name="scale">窗口 DPI 缩放 (物理 = DIP × scale)。</param>
@@ -103,8 +104,14 @@ public sealed class FloatBallWindow : Window
         PointerMoved += (_, _) => Wake();
         DoubleTapped += (_, _) =>
         {
-            _toggleSidebar();
             if (_expanded) CollapseFan(); // 双击的第一击可能已展开, 一并收起
+            // floatBall.doubleClick 此前是无消费方的死配置
+            switch (_config.Current.FloatBall.DoubleClick)
+            {
+                case "capture": _dispatch("capture"); break;
+                case "none": break;
+                default: _toggleSidebar(); break; // toggleSidebar
+            }
         };
 
         // 闲时变暗: 指针停留超时后降到 idleOpacity, 交互即恢复
@@ -290,8 +297,10 @@ public sealed class FloatBallWindow : Window
     private void UpdateFanSelection(Point p)
     {
         if (_fanButtons.Count == 0) return;
-        var dx = p.X - _fanCenter.X;
-        var dy = p.Y - _fanCenter.Y;
+        // 关键: 按钮坐标已经过 Dir 镜像, 角度判定必须同样镜像 —— 否则默认摆位
+        // (右缘中下, Dir=(-1,-1), 扇面朝左上) 下角度恒落在弧段之外, 选择完全失效
+        var dx = (p.X - _fanCenter.X) * _fanDir.X;
+        var dy = (p.Y - _fanCenter.Y) * _fanDir.Y;
         var index = FanArcSelector.Select(
             dx, dy, _fanButtons.Count,
             FloatBallLayout.FanStartDeg, FloatBallLayout.FanSweepDeg,
@@ -378,10 +387,10 @@ public sealed class FloatBallWindow : Window
         var centerY = layout.BallOffset.Y + _sizeDip / 2.0;
         // P1-2: 记录扇形原点与项列表，供角度判定使用
         _fanCenter = new Point(centerX, centerY);
+        _fanDir = layout.Dir;
         _fanButtons.Clear();
         _fanBorders.Clear();
         _selectedFan = FanArcSelector.None;
-        _fanClickHandled = false;
 
         for (var i = 0; i < count; i++)
         {
@@ -435,7 +444,6 @@ public sealed class FloatBallWindow : Window
             button.Click += (_, _) =>
             {
                 // 精确点中按钮仍可触发（触屏直接点选）；置位避免释放判定再触发一次
-                _fanClickHandled = true;
                 CollapseFan();
                 _dispatch(action);
             };

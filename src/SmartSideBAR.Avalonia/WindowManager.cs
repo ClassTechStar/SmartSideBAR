@@ -435,6 +435,7 @@ public sealed class WindowManager(
     {
         _ = config.Set("workspace.current", name);
         if (_sidebar?.DataContext is ViewModels.SidebarViewModel vm) vm.RebuildRail();
+        _sidebar?.RefreshOpenPanel();
         ToastService.Instance.Show($"已切换到「{name}」工作区", "success");
     }
 
@@ -450,6 +451,8 @@ public sealed class WindowManager(
     public void ShowFloatBall()
     {
         if (_floatBall is { IsVisible: true }) return;
+        if (_floatBall is not null) { _floatBall.Show(); return; } // 旧实例仅隐藏 → 复用, 不重造泄漏
+        if (!config.Current.FloatBall.Enabled) return; // 死配置接线: floatBall.enabled 此前无消费方
         if (config.Current.Policy.DisabledModules.Contains("floatball", StringComparer.OrdinalIgnoreCase)) return;
         // R4: 悬浮球定位改用侧栏所在目标屏, 多显示器下主屏会偏
         var wa = GetSidebarWorkArea();
@@ -474,6 +477,7 @@ public sealed class WindowManager(
             _miniBoard.Activate();
             return;
         }
+        if (_miniBoard is not null) { _miniBoard.Show(); return; } // 旧实例仅隐藏 → 复用
         _miniBoard = new MiniBoardWindow(config.Current.Capture.Dir, config.Current.Capture.InkToShape);
         // 定位到侧栏所在屏的工作区居中 (多屏时不出现在教师不看的屏上)
         var wa = GetSidebarWorkArea();
@@ -548,6 +552,7 @@ public sealed class WindowManager(
                 log.LogError(ex, "[Window] AppBar 重新 Attach 失败");
             }
             sidebar.Topmost = !appBar.IsRegistered; // Attach 失败回退置顶
+            if (!appBar.IsRegistered) StartTopmostKeeper(sidebar); // keeper 此前可能已自注销
             // B24: dock 期间 WorkArea 归还 / 窗口隐藏, undock 后 Avalonia 与系统几何会差一拍。
             // 事件循环空转后再协商一次, 把位置钉回显示器外缘 (否则栏位会内缩一个自身宽度)。
             global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>

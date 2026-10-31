@@ -4,6 +4,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Threading;
 using Avalonia.Media;
 using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Core.Configuration;
@@ -154,11 +155,24 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
             // P0-2: 滑杆也要满足触屏最小高度
             MinHeight = Math.Max(28, PanelKit.MinHitDip * 0.8),
         };
+        DispatcherTimer? pending = null;
         slider.ValueChanged += (_, _) =>
         {
             var v = (int)Math.Round(slider.Value);
             text.Text = $"{label}  {v}%";
-            apply(v);
+            // 拖动中只刷新标签; 停止 450ms 后才落盘/下发 —— 亮度 WMI 与音量逐 tick
+            // 调用会卡死拖动 (WMI 一次调用可到几十 ms)
+            if (pending is null)
+            {
+                pending = new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+                pending.Tick += (_, _) =>
+                {
+                    pending!.Stop();
+                    apply((int)Math.Round(slider.Value));
+                };
+            }
+            pending.Stop();
+            pending.Start();
         };
         return new StackPanel { Spacing = 4, Children = { text, slider } };
     }
@@ -174,7 +188,9 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
             ("全屏自动收起", cfg.Display.AutoCollapseOnFullscreen,
                 v => Services.Config.Set("display.autoCollapseOnFullscreen", v == "1")),
             ("跟随系统色", string.Equals(cfg.Appearance.Accent, "auto", StringComparison.OrdinalIgnoreCase),
-                v => Services.Config.Set("appearance.accent", v)),
+                v => Services.Config.Set("appearance.accent", v == "1" ? "auto" : "#2B6EE0")),
+            // 注意: 此磁贴的 apply 收到的是 "0"/"1" 开关值, 必须映射成真正的 accent 值。
+            // 此前直接把 "0"/"1" 写进 accent —— NormalizeAccent 回退品牌蓝, 「跟随系统」永远开不出来。
             ("USB 监控", cfg.Usb.Enabled,
                 v => Services.Config.Set("usb.enabled", v == "1")),
             ("录屏", cfg.Recorder.Enabled,
@@ -221,7 +237,10 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
             {
                 apply(on ? "0" : "1");
                 Refresh();
-                (TopLevel.GetTopLevel(this) as Views.SidebarWindow)?.ApplyTheme();
+                // ApplyTheme 会同步替换 PanelBody.Content —— 在点击事件派发中销毁可视树
+                // 是本项目记录在案的原生崩溃源, 必须与 Refresh 一样延后
+                global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    (TopLevel.GetTopLevel(this) as Views.SidebarWindow)?.ApplyTheme());
             };
             Grid.SetRow(tile, i / 2);
             Grid.SetColumn(tile, i % 2);

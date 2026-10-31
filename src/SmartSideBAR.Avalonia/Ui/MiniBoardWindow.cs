@@ -17,6 +17,7 @@ public sealed class MiniBoardWindow : Window
     private static readonly Color BlackBoard = Color.FromRgb(22, 41, 36);
 
     private readonly InkCanvas _ink = new();
+    private readonly AnnotateToolbar _toolbar;
     private readonly Border _boardSurface;
     private readonly string _dir;
     private bool _darkBoard;
@@ -96,6 +97,7 @@ public sealed class MiniBoardWindow : Window
         };
         inkHost.PointerPressed += (_, e) =>
         {
+            if (_ink.HasActiveStroke) return; // 多指/掌压保护: 活动笔画进行中, 第二触点不得覆盖
             var p = e.GetCurrentPoint(inkHost);
             if (!p.Properties.IsLeftButtonPressed) return;
             _ink.BeginStroke(p.Position, e.Pointer, inkHost);
@@ -114,6 +116,8 @@ public sealed class MiniBoardWindow : Window
             e.Pointer.Capture(null);
             e.Handled = true;
         };
+        // 系统抢走捕获 (无 Released) 时收尾, 否则活动笔画悬挂
+        inkHost.PointerCaptureLost += (_, _) => _ink.EndStroke();
         _boardSurface = new Border
         {
             Background = new SolidColorBrush(WhiteBoard),
@@ -124,12 +128,13 @@ public sealed class MiniBoardWindow : Window
         grid.Children.Add(_boardSurface);
 
         // ---- 共享两级工具条 (默认 5 项 + ⋯ 展开; 板中板无「存笔迹」双保存)
-        var toolbar = new AnnotateToolbar(_ink,
+        _toolbar = new AnnotateToolbar(_ink,
             save: Save,
             close: Close,
             saveInkOnly: null,
             defaultColorIndex: 5,           // 小白板出厂配黑笔 (色板末位 #111111)
             inkToShape: inkToShape);
+        var toolbar = _toolbar;
         var toolbarHost = new StackPanel
         {
             Orientation = AloLayout.Orientation.Horizontal,
@@ -157,6 +162,7 @@ public sealed class MiniBoardWindow : Window
         var darkInk = IsDark(_ink.PeekColor());
         if (_darkBoard && darkInk) _ink.SetColor(Colors.White);
         if (!_darkBoard && !darkInk) _ink.SetColor(Color.Parse("#111111"));
+        _toolbar.Rebuild(); // 同步工具条墨色圆点 (自动换墨后指示必须跟上)
     }
 
     private static bool IsDark(Color c) => 0.299 * c.R + 0.587 * c.G + 0.114 * c.B < 128;

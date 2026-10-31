@@ -129,6 +129,8 @@ public sealed class UsbDeviceWatcher(
 
     private void RescanWithDiff()
     {
+        // 监控被关掉后快照清空, 差分会把仍在位的 U 盘全部误报"已移除"
+        if (!config.Current.Usb.Enabled) return;
         List<UsbDriveInfo> added;
         List<UsbDriveInfo> removed;
         lock (_gate)

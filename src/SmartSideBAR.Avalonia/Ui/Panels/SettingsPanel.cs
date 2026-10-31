@@ -33,7 +33,9 @@ internal sealed class SettingsPanel(SidebarServices s, Palette p) : SidebarPanel
         {
             var value = theme.SelectedIndex == 1 ? "dark" : "light";
             Services.Config.Set("appearance.theme", value);
-            (TopLevel.GetTopLevel(this) as SidebarWindow)?.ApplyTheme();
+            // 同 QuickSettingsPanel: 点击事件派发中禁止同步替换面板可视树
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                (TopLevel.GetTopLevel(this) as SidebarWindow)?.ApplyTheme());
         };
         root.Children.Add(theme);
 

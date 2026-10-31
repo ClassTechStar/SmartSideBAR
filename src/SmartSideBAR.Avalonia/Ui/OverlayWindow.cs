@@ -139,7 +139,7 @@ public sealed class OverlayWindow : Window
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
-        if (!_dragging) return;
+        if (!_dragging || e.Pointer.Captured != this) return; // 第二触点不得改动选框
         var p = e.GetCurrentPoint(this).Position;
         var x = Math.Min(_start.X, p.X);
         var y = Math.Min(_start.Y, p.Y);

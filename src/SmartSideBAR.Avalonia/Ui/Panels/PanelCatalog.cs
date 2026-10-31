@@ -36,14 +36,31 @@ internal static class PanelCatalog
         Factories[kind] = factory;
     }
 
-    /// <summary>按 kind 创建面板；未注册或定义被禁用时返回 null。</summary>
+    /// <summary>按 kind 创建面板；未注册、定义被禁用或命中策略禁用名单时返回 null。</summary>
     public static SidebarPanel? Create(PanelKind kind, PanelContext context)
     {
         EnsureInitialized();
         if (!Factories.TryGetValue(kind, out var factory)) return null;
         var definition = Registry.Get(IdOf(kind));
-        if (definition is { Enabled: false }) return null;
+        if (definition is not { Enabled: true }) return null;
+        // 策略禁用必须拦住直达打开: 此前只查静态 Enabled —— rail 隐藏了, 但 CapturePanel
+        // 的磁贴仍能派发被禁动作 (策略绕过)。id 与 rail 模块名存在 v1.2 历史别名。
+        if (IsPolicyDisabled(definition, context)) return null;
         return factory(context);
+    }
+
+    private static bool IsPolicyDisabled(PanelDefinition definition, PanelContext context)
+    {
+        var disabled = context.Services.Config.Current.Policy.DisabledModules;
+        if (disabled.Count == 0) return false;
+        string[] aliases = definition.Id switch
+        {
+            "links" => ["links", "link"],
+            "reminder" => ["reminder", "bell"],
+            "quickSettings" => ["quickSettings", "settings"],
+            _ => [definition.Id],
+        };
+        return aliases.Any(a => disabled.Contains(a, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>当前可见的面板定义（按 Order 排序，已应用禁用名单）。</summary>

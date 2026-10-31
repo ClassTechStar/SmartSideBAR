@@ -100,7 +100,9 @@ internal sealed class CrashReportWindow : Window
         {
             var exe = Environment.ProcessPath;
             if (string.IsNullOrEmpty(exe)) return;
-            var psi = new ProcessStartInfo(exe) { UseShellExecute = true };
+            // UseShellExecute=true 时 Environment 字典历来不可靠 (ShellExecuteEx 忽略),
+            // 安全模式标记会被静默丢弃 → 改用直接进程启动 (exe 为绝对路径)
+            var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
             psi.Environment["SSB_SAFE_MODE"] = "1";
             Process.Start(psi);
         }

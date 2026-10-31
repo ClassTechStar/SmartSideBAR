@@ -54,7 +54,9 @@ public sealed class ClockConsumers
     {
         _epochMs = nowMs;
         var fired = 0;
-        foreach (var kv in _handlers)
+        // 快照迭代: 处理方可在回调里 Unregister 自己 (topmost-keeper 正是这么干的),
+        // 直接枚举字典会在 MoveNext 时抛 "Collection was modified" —— 且逃出 try 之外
+        foreach (var kv in _handlers.ToArray())
         {
             var (interval, handler) = kv.Value;
             var last = _lastRun.TryGetValue(kv.Key, out var v) ? v : long.MinValue / 4;

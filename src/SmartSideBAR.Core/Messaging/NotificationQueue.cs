@@ -79,14 +79,15 @@ public sealed class NotificationQueue
         NotificationLevel level = NotificationLevel.Info,
         bool priorityOverride = false)
     {
-        var req = new NotificationRequest(
-            (++_seq).ToString("D12"), source, message, level, priorityOverride);
         lock (_gate)
         {
+            // 序号必须在锁内生成: 并发 Enqueue 竞争 ++ 会发出重复 Id, 破坏 FIFO 决胜
+            var req = new NotificationRequest(
+                (++_seq).ToString("D12"), source, message, level, priorityOverride);
             _items.Add(req);
             if (_items.Count > Capacity) EvictOne();
+            return req;
         }
-        return req;
     }
 
     public NotificationRequest? Dequeue()
@@ -124,14 +125,14 @@ public sealed class NotificationQueue
 
     public void Clear() { lock (_gate) _items.Clear(); }
 
-    /// <summary>淘汰一条: 优先丢级别最低且最早入队的。</summary>
+    /// <summary>淘汰一条: 丢级别最低、来源最不重要、最晚入队的那条。</summary>
     private void EvictOne()
     {
         var comparer = new NotificationPriorityComparer(_sourceRank);
-        _items.Sort(comparer);
-        // 排序后末尾即最低优先级 + 最晚入队, 但我们要丢"最低级别且最早", 取级别最小的第一条
+        _items.Sort(comparer); // 最优在前
         var minLevel = _items.Min(x => x.Level);
-        var victim = _items.First(x => x.Level == minLevel);
+        // 取该级别分组的【末位】: First 会选中来源最关键的一条, 把重要通知挤掉
+        var victim = _items.Last(x => x.Level == minLevel);
         _items.Remove(victim);
     }
 }

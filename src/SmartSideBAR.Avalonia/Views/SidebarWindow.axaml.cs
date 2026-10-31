@@ -156,9 +156,12 @@ public partial class SidebarWindow : Window
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         _dragItem = (e.Source as Visual)!.FindAncestorOfType<Button>(includeSelf: true)!.DataContext as RailItem;
         _activePointer = e.Pointer;
-        _longPressTimer ??= new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        if (_longPressTimer is null)
+        {
+            _longPressTimer = new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _longPressTimer.Tick += OnLongPressTick; // 只订阅一次 (每次按压叠加订阅 = N 次/tick)
+        }
         _longPressTimer.Stop();
-        _longPressTimer.Tick += OnLongPressTick;
         _longPressTimer.Start();
     }
 
@@ -370,6 +373,12 @@ public partial class SidebarWindow : Window
         _panel = PanelCatalog.Create(
             kind,
             new PanelContext(_services, _palette, link => Vm.OpenLink(link)));
+        if (_panel is null)
+        {
+            // 策略禁用的面板: 不展示空壳, 直接收起 (rail 高亮已清, 面板关闭)
+            Vm.ClosePanel();
+            return;
+        }
         PanelBody.Content = _panel;
         PanelScroll.Offset = default;
         _panel?.Refresh();
@@ -475,6 +484,15 @@ public partial class SidebarWindow : Window
         base.OnOpened(e);
         LoadSvgIcons(this);
         if (DataContext is SidebarViewModel vm) vm.RefreshIme();
+        // P0-2: 触屏最小点击区的 DPI 折算 (此前 UiScale 从未被写入, 折算恒按 1.0)
+        var scale = Windows.Native.Win32Display.GetScaling(TryGetPlatformHandle()?.Handle ?? 0);
+        if (scale > 0) Ui.Panels.PanelKit.UiScale = scale;
+    }
+
+    /// <summary>刷新当前打开的面板 (工作区切换等外部状态变化后调用)。</summary>
+    public void RefreshOpenPanel()
+    {
+        if (DataContext is SidebarViewModel { PanelOpen: true }) _panel?.Refresh();
     }
 
     /// <summary>Tag="svg:名称" → Assets/icons/名称.svg (1.1 图标, 深色); "svgw:" → 白色变体。

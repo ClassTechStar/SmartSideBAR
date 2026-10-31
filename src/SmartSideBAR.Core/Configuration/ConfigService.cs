@@ -40,19 +40,23 @@ public sealed class ConfigService(
     private SidekickConfig _current = new();
 
     /// <summary>
-    /// 键级变更订阅与锁定键 (P1-4)。默认锁定 "policy." 段 —— 该段由 ProgramData 策略层下发,
-    /// 用户层写入应被拒绝并在界面置灰。
+    /// 键级变更订阅与锁定键 (P1-4)。"policy." 段由 ProgramData 策略层下发,
+    /// 用户层写入应被拒绝 —— 但仅在 OOBE 完成/跳过之后: 首启向导 (OobeWindow)
+    /// 是该段的合法作者 (角色/偏好 → disabledModules), 完成前必须可写。
+    /// 此前无条件上锁, OOBE 的策略写入被静默拒绝 (冒烟审计发现)。
     /// </summary>
-    public ConfigSubscription Subscriptions { get; } = CreateDefaultSubscriptions();
-
-    private static ConfigSubscription CreateDefaultSubscriptions()
-    {
-        var s = new ConfigSubscription();
-        s.Lock("policy.");
-        return s;
-    }
+    public ConfigSubscription Subscriptions { get; } = new();
 
     public SidekickConfig Current { get { lock (_gate) return _current; } }
+
+    /// <summary>OOBE 完成后把 policy. 段交给管理员; 首启向导期间保持可写。</summary>
+    private void ApplyOobePhaseLock()
+    {
+        if (Current.Oobe.Completed || Current.Oobe.Skipped)
+        {
+            Subscriptions.Lock("policy.");
+        }
+    }
 
     /// <summary>持久化根 (含未知字段)。直接改写请走 <see cref="Set"/> 以走白名单与落盘。</summary>
     internal JsonNode RootForTests { get { lock (_gate) return _root.DeepClone(); } }
@@ -108,6 +112,7 @@ public sealed class ConfigService(
             }
 
             bus?.Publish(new ConfigChanged(_current));
+            ApplyOobePhaseLock(); // OOBE 完成态变化 → policy. 锁相位刷新
         }
     }
 
@@ -124,12 +129,34 @@ public sealed class ConfigService(
                 return false;
             }
             var segments = dotPath.Split('.');
+            // 锁定检查覆盖所有中间段 —— 手工构造的 {"policy":{}} 导入叶会产生精确键
+            // "policy", 前缀锁 "policy." 匹配不到它, 一旦写入即抹掉整个策略子树
+            for (var i = 1; i <= segments.Length; i++)
+            {
+                if (Subscriptions.IsLocked(string.Join('.', segments[..i])))
+                {
+                    // P1-4 文档承诺的「policy. 段用户层写入拒绝」此前只在 UI 调用点拦截
+                    log?.LogWarning("[Config] 键被锁定, 拒绝写入: {Key}", dotPath);
+                    return false;
+                }
+            }
             var node = _root;
             for (var i = 0; i < segments.Length - 1; i++)
             {
                 node = node[segments[i]]!; // 白名单已保证存在
             }
-            node[segments[^1]] = value?.DeepClone();
+            // JSON null 一律视为「恢复默认」: 移除该键, 反序列化时回落 schema 默认值。
+            // 直接写显式 null 会让非可空字段在 RefreshTyped 时 NRE —— 配置导出→导入
+            // 闭环 (Desensitize 写入 "dir":null) 必踩。
+            if (value is null || value.ToJsonString() == "null")
+            {
+                if (node is System.Text.Json.Nodes.JsonObject obj) obj.Remove(segments[^1]);
+                else log?.LogWarning("[Config] null 写入目标非对象容器, 跳过: {Key}", dotPath);
+            }
+            else
+            {
+                node[segments[^1]] = value.DeepClone();
+            }
 
             RefreshTypedNoLock();
             var ok = SaveUserConfigNoLock();

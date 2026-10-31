@@ -45,6 +45,7 @@ public sealed class InkCanvas : Control
     private readonly List<LaserStroke> _lasers = [];
     private DispatcherTimer? _laserTimer; // 激光笔消隐时钟 (惰性创建, 全窗共用)
     private Stroke? _current;
+    private bool _eraseSnapshotDone;
     private Point _shapeStart;
     private Color _color = Color.Parse("#E53935");
     private double _width = 4;
@@ -62,6 +63,13 @@ public sealed class InkCanvas : Control
 
     /// <summary>当前墨色 (板中板切底色时判定对比度用)。</summary>
     public Color PeekColor() => _color;
+
+    /// <summary>是否已有笔画进行中 (多指/掌压保护: 第二触点不得覆盖活动笔画)。</summary>
+    public bool HasActiveStroke => _current is not null;
+
+    public AnnotateTool PeekTool() => _tool;
+
+    public double PeekWidth() => _width;
 
     public int Count => _strokes.Count;
 
@@ -99,7 +107,7 @@ public sealed class InkCanvas : Control
         switch (_tool)
         {
             case AnnotateTool.Eraser:
-                PushUndo();
+                _eraseSnapshotDone = false; // 首次真正擦除时才压栈 (空擦不耗撤销步数)
                 EraseAt(p);
                 break;
             case AnnotateTool.Line or AnnotateTool.Arrow or AnnotateTool.Rect or AnnotateTool.Ellipse:
@@ -122,6 +130,7 @@ public sealed class InkCanvas : Control
                     Kind = kind,
                     Pressure = kind == StrokeKind.Pen ? [0.7] : null,
                 };
+                if (kind != StrokeKind.Laser) PushUndo(); // 激光不持久化, 压栈只会留下幽灵撤销
                 _current.Points.Add(p);
                 break;
         }
@@ -172,7 +181,13 @@ public sealed class InkCanvas : Control
         }
         if (_current.Kind == StrokeKind.Shape)
         {
-            if (_current.SubPaths is { Count: > 0 }) _strokes.Add(_current);
+            // 退化形状 (原地轻点) 不入历史; 有效形状必须补压撤销快照 —— 显式形状工具此前
+            // 从不压栈, 撤销要么是死按钮要么把上一笔手绘一起吞掉
+            if (_current.SubPaths is { Count: > 0 } && BboxLargeEnough(_current))
+            {
+                PushUndo();
+                _strokes.Add(_current);
+            }
         }
         else if (_current.Kind == StrokeKind.Laser)
         {
@@ -322,6 +337,11 @@ public sealed class InkCanvas : Control
         for (var i = _strokes.Count - 1; i >= 0; i--)
         {
             if (!HitsStroke(_strokes[i], p, _eraserRadius)) continue;
+            if (!_eraseSnapshotDone)
+            {
+                PushUndo(); // 真正要擦第一笔时才快照
+                _eraseSnapshotDone = true;
+            }
             _strokes.RemoveAt(i);
             removed = true;
         }
@@ -349,7 +369,12 @@ public sealed class InkCanvas : Control
 
     private void EnsureLaserTimer()
     {
-        if (_laserTimer is not null) return;
+        if (_laserTimer is not null)
+        {
+            // 上一轮排空后自停了; 新激光轨迹必须重新走表, 否则轨迹冻结在屏上
+            if (!_laserTimer.IsEnabled) _laserTimer.Start();
+            return;
+        }
         _laserTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
         _laserTimer.Tick += (_, _) =>
         {
@@ -364,13 +389,34 @@ public sealed class InkCanvas : Control
 
     public override void Render(DrawingContext context) => DrawAll(context, 1.0);
 
-    internal void DrawAll(DrawingContext ctx, double opacity)
+    /// <param name="includeLasers">导出 PNG 时传 false —— 消隐中的激光轨迹不该被烤进文件。</param>
+    internal void DrawAll(DrawingContext ctx, double opacity, bool includeLasers = true)
     {
         using var _ = ctx.PushOpacity(opacity);
         // 荧光笔在最底层 (ICC 同序), 激光笔最顶层
         foreach (var stroke in _strokes.Where(s => s.Kind == StrokeKind.Highlighter)) DrawStroke(ctx, stroke);
         foreach (var stroke in _strokes.Where(s => s.Kind != StrokeKind.Highlighter)) DrawStroke(ctx, stroke);
-        foreach (var laser in _lasers) DrawLaser(ctx, laser);
+        if (includeLasers)
+        {
+            foreach (var laser in _lasers) DrawLaser(ctx, laser);
+        }
+        // 进行中笔迹实时渲染 (拆分 Ink/InkCanvas 时曾整段丢失 —— 用户画笔全程隐形直到松笔)
+        if (_current is { Kind: not StrokeKind.Laser } current) DrawStroke(ctx, current);
+    }
+
+    /// <summary>形状笔画是否非退化 (原地轻点会生成零尺寸形状, 不该进历史/命中测试)。</summary>
+    private static bool BboxLargeEnough(Stroke s)
+    {
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var path in s.SubPaths ?? [s.Points])
+        {
+            foreach (var p in path)
+            {
+                minX = Math.Min(minX, p.X); minY = Math.Min(minY, p.Y);
+                maxX = Math.Max(maxX, p.X); maxY = Math.Max(maxY, p.Y);
+            }
+        }
+        return maxX - minX >= 3 || maxY - minY >= 3;
     }
 
     private static void DrawStroke(DrawingContext ctx, Stroke stroke)
@@ -463,13 +509,21 @@ public sealed class InkCanvas : Control
     public Bitmap ExportStrokesOnly(int width, int height, double scale)
     {
         var rtb = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
-        using (var ctx = rtb.CreateDrawingContext())
+        try
         {
-            using (ctx.PushTransform(Matrix.CreateScale(scale, scale)))
+            using (var ctx = rtb.CreateDrawingContext())
             {
-                DrawAll(ctx, 1.0);
+                using (ctx.PushTransform(Matrix.CreateScale(scale, scale)))
+                {
+                    DrawAll(ctx, 1.0, includeLasers: false);
+                }
             }
+            return rtb;
         }
-        return rtb;
+        catch
+        {
+            rtb.Dispose(); // 渲染中途抛出时不把 RTB 留给终结器
+            throw;
+        }
     }
 }

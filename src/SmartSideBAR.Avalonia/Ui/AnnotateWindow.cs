@@ -44,8 +44,18 @@ public sealed class AnnotateWindow : Window
         var backdrop = new Image { Stretch = Stretch.Fill, IsHitTestVisible = false };
         if (_backgroundPng is not null)
         {
-            using var bgStream = new MemoryStream(_backgroundPng);
-            backdrop.Source = new Bitmap(bgStream);
+            try
+            {
+                using var bgStream = new MemoryStream(_backgroundPng);
+                backdrop.Source = new Bitmap(bgStream);
+            }
+            catch
+            {
+                // 坏底图退化为深色幕布 —— 这里抛出会让 OverlayGate.Enter 永久泄漏
+                // (ctor 之后无人调 Exit), 侧栏自动收起从此失效
+                backdrop.Source = null;
+                grid.Background = new SolidColorBrush(Color.FromArgb(255, 32, 38, 48));
+            }
         }
         else
         {
@@ -70,6 +80,7 @@ public sealed class AnnotateWindow : Window
         };
         inkHost.PointerPressed += (_, e) =>
         {
+            if (_ink.HasActiveStroke) return; // 多指/掌压保护: 活动笔画进行中, 第二触点不得覆盖
             var p = e.GetCurrentPoint(inkHost);
             if (!p.Properties.IsLeftButtonPressed) return;
             _ink.BeginStroke(p.Position, e.Pointer, inkHost); // 捕获到 inkHost 自身 (B5)
@@ -88,6 +99,8 @@ public sealed class AnnotateWindow : Window
             e.Pointer.Capture(null);
             e.Handled = true;
         };
+        // 系统抢走捕获 (无 Released) 时收尾, 否则活动笔画悬挂
+        inkHost.PointerCaptureLost += (_, _) => _ink.EndStroke();
         Grid.SetRow(inkHost, 0);
         Grid.SetRowSpan(inkHost, 2);
         grid.Children.Add(inkHost);

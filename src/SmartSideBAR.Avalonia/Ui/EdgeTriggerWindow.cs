@@ -71,16 +71,20 @@ public sealed class EdgeTriggerWindow : Window
         {
             PointerEntered += (_, _) =>
             {
-                dwell ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
-                dwell.Tick += (_, _) =>
+                if (dwell is null)
                 {
-                    dwell.Stop();
-                    if (IsPointerOver && !_fired)
+                    dwell = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+                    dwell.Tick += (_, _) =>
                     {
-                        _fired = true;
-                        _expand();
-                    }
-                };
+                        dwell!.Stop();
+                        if (IsPointerOver && !_fired)
+                        {
+                            _fired = true;
+                            _expand();
+                        }
+                    };
+                }
+                dwell.Stop(); // 只订阅一次; 每次进入都叠加 Tick = N 次/150ms
                 dwell.Start();
             };
             PointerExited += (_, _) => dwell?.Stop();
