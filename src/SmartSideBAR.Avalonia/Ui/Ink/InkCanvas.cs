@@ -12,7 +12,7 @@ using SmartSideBAR.Core.Ink;
 
 namespace SmartSideBAR.Avalonia.Ui;
 
-public enum AnnotateTool { Pen, Highlighter, Laser, Line, Arrow, Rect, Ellipse, Eraser }
+public enum AnnotateTool { Pen, Highlighter, Laser, Text, Line, Arrow, Rect, Ellipse, Eraser }
 
 /// <summary>笔迹画布: 全类型指针接受, 渲染即状态。</summary>
 public sealed class InkCanvas : Control
@@ -53,6 +53,9 @@ public sealed class InkCanvas : Control
     private double _eraserRadius = 16;
 
     public event EventHandler? StrokesChanged;
+
+    /// <summary>「转文字」工具收笔后携带该组笔画, 由宿主渲染 → OCR → 展示结果卡。</summary>
+    public event EventHandler<Stroke>? TextInkSubmitted;
 
     public void SetColor(Color c) => _color = c;
     public void SetWidth(double w) => _width = w;
@@ -116,7 +119,6 @@ public sealed class InkCanvas : Control
                 UpdateShape(p);
                 break;
             default:
-                PushUndo();
                 var kind = _tool switch
                 {
                     AnnotateTool.Highlighter => StrokeKind.Highlighter,
@@ -211,6 +213,7 @@ public sealed class InkCanvas : Control
                 if (_current.Points.Count >= 3) SmoothCurrent();
             }
             _strokes.Add(_current);
+            if (_tool == AnnotateTool.Text) TextInkSubmitted?.Invoke(this, _current);
         }
         _current = null;
         InvalidateVisual();
@@ -523,6 +526,65 @@ public sealed class InkCanvas : Control
         catch
         {
             rtb.Dispose(); // 渲染中途抛出时不把 RTB 留给终结器
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 导出指定一组笔画 (仅这些笔画, 白底, 浅色笔强制改黑) —— 供 OCR 使用:
+    /// 手写文字在白底上比在玻璃/黑板底上识别率高一个档次。
+    /// </summary>
+    public Bitmap ExportStrokeGroup(IReadOnlyList<Stroke> strokes, double scale)
+    {
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var s in strokes)
+        {
+            foreach (var path in s.SubPaths ?? [s.Points])
+            {
+                foreach (var p in path)
+                {
+                    minX = Math.Min(minX, p.X); minY = Math.Min(minY, p.Y);
+                    maxX = Math.Max(maxX, p.X); maxY = Math.Max(maxY, p.Y);
+                }
+            }
+        }
+        const double pad = 8;
+        var w = (int)Math.Ceiling((maxX - minX + pad * 2) * scale);
+        var h = (int)Math.Ceiling((maxY - minY + pad * 2) * scale);
+        if (w <= 0 || h <= 0) throw new ArgumentException("笔画组尺寸为零");
+
+        var rtb = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96, 96));
+        try
+        {
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                using (ctx.PushTransform(Matrix.CreateTranslation(pad - minX, pad - minY)))
+                using (ctx.PushTransform(Matrix.CreateScale(scale, scale)))
+                {
+                    ctx.FillRectangle(global::Avalonia.Media.Brushes.White,
+                        new Rect(minX - pad, minY - pad, maxX - minX + pad * 2, maxY - minY + pad * 2));
+                    foreach (var s in strokes)
+                    {
+                        // OCR 对深色字更友好: 浅色笔迹强制改黑
+                        var lum = 0.299 * s.Color.R + 0.587 * s.Color.G + 0.114 * s.Color.B;
+                        var color = lum > 140 ? Colors.Black : s.Color;
+                        DrawStroke(ctx, new Stroke
+                        {
+                            Points = s.Points,
+                            SubPaths = s.SubPaths,
+                            Color = color,
+                            Width = s.Width,
+                            Kind = s.Kind,
+                            Pressure = null, // 压感粗细在低分辨率下伤识别
+                        });
+                    }
+                }
+            }
+            return rtb;
+        }
+        catch
+        {
+            rtb.Dispose();
             throw;
         }
     }

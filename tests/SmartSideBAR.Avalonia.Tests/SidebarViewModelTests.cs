@@ -7,6 +7,7 @@ using Avalonia.Headless.XUnit;
 using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Links;
+using SmartSideBAR.Core.Telemetry;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
@@ -165,6 +166,7 @@ public sealed class SidebarViewModelTests : IDisposable
             new SchedulerService(_config, _bus, TimeProvider.System),
             new FakeRecorder(), new FakeSound(),
             new LinksService(_config),
+            new LessonStatsService(_bus, _dir),
             action => _dispatched.Add(action));
         return new SidebarViewModel(services, _config.Current.Links);
     }

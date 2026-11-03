@@ -30,4 +30,7 @@ namespace SmartSideBAR.Core.Configuration;
 [JsonSerializable(typeof(ScheduleOverride))]
 [JsonSerializable(typeof(List<ScheduleOverride>))]
 [JsonSerializable(typeof(ScheduleOverride[]))]
+// 智能课堂: 课表 (设置页文本解析 → List<LessonPeriod> 走 Set<T>)
+[JsonSerializable(typeof(List<Scheduling.LessonPeriod>))]
+[JsonSerializable(typeof(Scheduling.LessonPeriod))]
 public sealed partial class ConfigJsonContext : JsonSerializerContext;

@@ -30,6 +30,7 @@ using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Scheduling;
+using SmartSideBAR.Core.Telemetry;
 using SmartSideBAR.Windows.AppBar;
 
 namespace SmartSideBAR.Avalonia.Tests;
@@ -71,6 +72,7 @@ public sealed class SmokeTests : IDisposable
             c, appBar, new FakeIme(), new FakeShell(), new FakeUsb(), new FakePrinter(),
             new SchedulerService(c, _bus, TimeProvider.System),
             new FakeRecorder(), new FakeSound(), new LinksService(c),
+            new LessonStatsService(_bus, _dir),
             _ => { });
     }
 

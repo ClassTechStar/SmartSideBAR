@@ -19,6 +19,7 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
         var cfg = Services.Config.Current;
         var root = Stack(12);
 
+        root.Children.Add(Card("本节课", BuildLessonStatsCard()));
         root.Children.Add(Card("工作区", BuildWorkspaceTiles(cfg)));
         // P1-4: 课堂常用的亮度/音量（借鉴 DiffiTouch）；设备不支持时整段不显示
         var classroom = BuildClassroomSliders();
@@ -31,6 +32,47 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
         root.Children.Add(more);
         root.Children.Add(PanelKit.Hint("热键、保存目录、打印机轮询等高级选项在完整设置中。", Palette));
         return root;
+    }
+
+    /// <summary>
+    /// 课堂统计卡 (竞赛叙事: 量化应用价值)。单节看今值, 括号附累计;
+    /// 「打包带走今日成果」= 批注图 + 课堂笔记 + 统计摘要 → 单个 zip。
+    /// </summary>
+    private Control BuildLessonStatsCard()
+    {
+        var snap = Services.Stats.Snapshot();
+        double Of(IReadOnlyDictionary<string, double> d, string k) => d.TryGetValue(k, out var v) ? v : 0;
+        string Cell(string label, string key)
+        {
+            var today = Of(snap.Today, key);
+            var total = Of(snap.Totals, key);
+            return $"{label} {today:0} (累计 {total:0})";
+        }
+        var text = new TextBlock
+        {
+            Text = string.Join('\n',
+                Cell("批注笔迹", "annotate.stroke"),
+                Cell("转文字", "annotate.ocr"),
+                Cell("截图", "capture"),
+                Cell("提醒", "reminder")),
+            FontSize = 12.5,
+            LineHeight = 19,
+            Foreground = new SolidColorBrush(Palette.Dark ? Color.Parse("#DCE3EE") : Color.Parse("#2A3240")),
+        };
+        var pack = PanelKit.Flat("打包带走今日成果", Palette, () =>
+        {
+            try
+            {
+                var dir = Services.Config.Current.Capture.Dir;
+                var path = Services.Stats.ExportLessonPack(dir, dir);
+                ToastService.Instance.Show($"成果包: {path}", "success");
+            }
+            catch (Exception ex)
+            {
+                ToastService.Instance.Show($"打包失败: {ex.Message}", "error");
+            }
+        });
+        return new StackPanel { Spacing = 8, Children = { text, pack } };
     }
 
     /// <summary>KoBar Surface 卡片容器（与设置窗同语法）。</summary>

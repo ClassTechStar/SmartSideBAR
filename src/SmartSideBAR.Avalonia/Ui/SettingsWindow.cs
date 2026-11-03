@@ -7,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Core.Design;
 using SmartSideBAR.Windows.Devices;
 using SmartSideBAR.Windows.Input;
@@ -46,6 +47,7 @@ public sealed class SettingsWindow : Window
         Content = "减弱动效（跳过面板滑入等过渡动画）",
     };
     private readonly ComboBox _side = new() { ItemsSource = new[] { "left", "right" }, SelectedIndex = 1 };
+    private readonly TextBox _lessonText = new() { Watermark = "8:00-8:45 语文; 8:55-9:40 数学" };
     private readonly ComboBox _trigger = new()
     {
         ItemsSource = new[] { "常驻胶囊（触屏教学推荐）", "极细触发条·点击展开（防误触）", "极细触发条·悬停滑出" },
@@ -106,6 +108,7 @@ public sealed class SettingsWindow : Window
         _accent.SelectedIndex = accentIdx < 0 ? 1 : accentIdx; // 未知值回退品牌蓝（index 1）
         _autoCollapse.IsChecked = c.Display.AutoCollapseOnFullscreen;
         _side.SelectedIndex = c.Display.SidebarSide == SidebarSide.Left ? 0 : 1;
+        _lessonText.Text = global::SmartSideBAR.Core.Scheduling.LessonPeriodText.Format(c.Lesson.Periods);
         _trigger.SelectedIndex = c.Display.RailTrigger switch
         {
             "edge" => 1,
@@ -369,6 +372,8 @@ public sealed class SettingsWindow : Window
     private Control BuildGeneralPage()
     {
         return Page("常规",
+            Section("智能课堂",
+                Row("课表", "分号分隔; 上课中自动切「上课」工作区并静默 info 提醒。示例: 8:00-8:45 语文; 8:55-9:40 数学", _lessonText)),
             Section("侧栏",
                 Row("侧栏位置", "停靠在屏幕左缘或右缘", _side),
                 Row("触发方式", "触发条模式重启后生效; 常驻胶囊即时生效", _trigger),
@@ -544,6 +549,15 @@ public sealed class SettingsWindow : Window
             AccentHex[Math.Clamp(_accent.SelectedIndex, 0, AccentHex.Length - 1)]);
         _ = _config.Set("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
         _ = _config.Set("display.sidebarSide", _side.SelectedIndex == 0 ? "left" : "right");
+        var periods = LessonPeriodText.Parse(_lessonText.Text);
+        if (string.IsNullOrWhiteSpace(_lessonText.Text) || periods.Count > 0)
+        {
+            _ = _config.Set("lesson.periods", periods);
+        }
+        else
+        {
+            ToastService.Instance.Show("课表格式无法解析 (示例: 8:00-8:45 语文; 8:55-9:40 数学), 本次未保存课表", "warn");
+        }
         _ = _config.Set("display.railTrigger", _trigger.SelectedIndex switch
         {
             1 => "edge",

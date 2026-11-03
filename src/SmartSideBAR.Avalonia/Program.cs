@@ -3,12 +3,16 @@ using Avalonia;
 using Avalonia.Win32;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SmartSideBAR.Avalonia.Diagnostics;
 using SmartSideBAR.Avalonia.Logging;
+using SmartSideBAR.Avalonia.Ui;
 using SmartSideBAR.Core.Configuration;
+using SmartSideBAR.Core.Diagnostics;
 using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
 using SmartSideBAR.Core.Policy;
 using SmartSideBAR.Core.Scheduling;
+using SmartSideBAR.Core.Telemetry;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Audio;
 using SmartSideBAR.Windows.Capture;
@@ -85,6 +89,15 @@ internal static class Program
             "SmartSideBAR (Avalonia Wave B) 启动 — config v{Version}, 侧栏 {Side} 侧, 链接 {Links} 条, 提醒 {Reminders} 条",
             config.Current.Version, config.Current.Display.SidebarSide,
             config.Current.Links.Count, config.Current.Reminders.Count);
+
+        // 智能课堂宿主: 状态机时钟在此启动 (须在配置加载后)
+        LessonModeHost.Init(config);
+
+        if (DemoMode.Enabled)
+        {
+            log.LogInformation("演示模式 (SSB_DEMO=1): 自动重启类守护已豁免");
+            ToastService.Instance.Show("演示模式已启用 —— 自动重启守护已豁免", "success");
+        }
 
         // 第二次启动时唤醒已有实例：提示 + 展开侧栏
         var manager = sp.GetRequiredService<WindowManager>();

@@ -5,7 +5,10 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using SmartSideBAR.Core.Messaging;
+using SmartSideBAR.Core.Telemetry;
 using SmartSideBAR.Windows.AppBar;
+using SmartSideBAR.Windows.Ink;
 using SmartSideBAR.Windows.Native;
 using AloLayout = global::Avalonia.Layout;
 
@@ -18,10 +21,13 @@ public sealed class AnnotateWindow : Window
     private readonly string _dir;
     private readonly string _format;
     private readonly byte[]? _backgroundPng; // 打开时的全屏底图 (WithBackground 用)
+    private readonly IEventBus? _bus;
+    private readonly InkTextCard _textCard = new();
 
-    public AnnotateWindow(byte[]? backgroundPng, string dir, string format, bool inkToShape = true)
+    public AnnotateWindow(byte[]? backgroundPng, string dir, string format, bool inkToShape = true, IEventBus? bus = null)
     {
         _backgroundPng = backgroundPng;
+        _bus = bus;
         OverlayGate.Enter();
         _dir = dir;
         _format = format;
@@ -105,6 +111,43 @@ public sealed class AnnotateWindow : Window
         Grid.SetRowSpan(inkHost, 2);
         grid.Children.Add(inkHost);
 
+        // 「文」工具: 收笔 → 本组笔画白底渲染 → 离线 OCR → 浮层卡片 (一键复制)
+        _ink.TextInkSubmitted += async (_, stroke) =>
+        {
+            try
+            {
+                var scale = Win32Display.GetScaling(TryGetPlatformHandle()?.Handle ?? 0);
+                if (scale <= 0) scale = 1.0;
+                _textCard.Show("识别中…");
+                using var bmp = _ink.ExportStrokeGroup([stroke], scale);
+                using var ms = new MemoryStream();
+                bmp.Save(ms);
+                var result = await InkTextService.RecognizeAsync(ms.ToArray());
+                if (result is null)
+                {
+                    _textCard.Show("本机未安装可用的 OCR 语言包（设置 → 时间和语言 → 语言 → 可选功能）");
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(result.Text))
+                {
+                    _textCard.Show("未识别出文字 —— 请写大一点、笔画分开一点");
+                    return;
+                }
+                _textCard.Show(result.Text);
+                _bus?.Publish(new SmartSideBAR.Core.Telemetry.StatsRecorded("annotate.ocr", 1, result.Text));
+            }
+            catch (Exception ex)
+            {
+                _textCard.Show($"识别失败: {ex.Message}");
+            }
+        };
+        _textCard.HorizontalAlignment = AloLayout.HorizontalAlignment.Center;
+        _textCard.VerticalAlignment = AloLayout.VerticalAlignment.Top;
+        _textCard.Margin = new Thickness(0, 64, 0, 0);
+        Grid.SetRow(_textCard, 0);
+        Grid.SetRowSpan(_textCard, 2);
+        grid.Children.Add(_textCard);
+
         var toolbar = new AnnotateToolbar(_ink,
             save: () => Save(withBackground: true),
             close: Close,
@@ -180,6 +223,7 @@ public sealed class AnnotateWindow : Window
                 strokes.Save(path);
             }
             ToastService.Instance.Show($"批注已保存: {path}", "success");
+            _bus?.Publish(new SmartSideBAR.Core.Telemetry.StatsRecorded("annotate.save", 1, $"{_ink.Count} 笔"));
             Close();
         }
         catch (Exception ex)

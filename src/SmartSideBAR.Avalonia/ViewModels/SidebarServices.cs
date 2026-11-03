@@ -4,6 +4,7 @@
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Scheduling;
+using SmartSideBAR.Core.Telemetry;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Devices;
 using SmartSideBAR.Windows.Audio;
@@ -24,4 +25,5 @@ public sealed record SidebarServices(
     IRecorderApi Recorder,
     ISoundService Sound,
     LinksService Links,
+    LessonStatsService Stats,
     Action<string> Dispatch);

@@ -6,6 +6,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using SmartSideBAR.Core.Messaging;
+using SmartSideBAR.Core.Telemetry;
+using SmartSideBAR.Windows.Ink;
 using SmartSideBAR.Windows.Native;
 using AloLayout = global::Avalonia.Layout;
 
@@ -18,14 +21,17 @@ public sealed class MiniBoardWindow : Window
 
     private readonly InkCanvas _ink = new();
     private readonly AnnotateToolbar _toolbar;
+    private readonly InkTextCard _textCard = new();
     private readonly Border _boardSurface;
     private readonly string _dir;
+    private readonly IEventBus? _bus;
     private bool _darkBoard;
     private TextBlock _boardLabel = null!;
 
-    public MiniBoardWindow(string dir, bool inkToShape = true)
+    public MiniBoardWindow(string dir, bool inkToShape = true, IEventBus? bus = null)
     {
         _dir = dir;
+        _bus = bus;
 
         Topmost = true;
         SystemDecorations = SystemDecorations.None;
@@ -118,10 +124,35 @@ public sealed class MiniBoardWindow : Window
         };
         // 系统抢走捕获 (无 Released) 时收尾, 否则活动笔画悬挂
         inkHost.PointerCaptureLost += (_, _) => _ink.EndStroke();
+        // 「文」工具: 同全屏批注的离线 OCR 流水线
+        _ink.TextInkSubmitted += async (_, stroke) =>
+        {
+            try
+            {
+                var scale = Win32Display.GetScaling(TryGetPlatformHandle()?.Handle ?? 0);
+                if (scale <= 0) scale = 1.0;
+                _textCard.Show("识别中…");
+                using var bmp = _ink.ExportStrokeGroup([stroke], scale);
+                using var ms = new MemoryStream();
+                bmp.Save(ms);
+                var result = await InkTextService.RecognizeAsync(ms.ToArray());
+                if (result is null) { _textCard.Show("本机未安装可用的 OCR 语言包"); return; }
+                if (string.IsNullOrWhiteSpace(result.Text)) { _textCard.Show("未识别出文字"); return; }
+                _textCard.Show(result.Text);
+                _bus?.Publish(new SmartSideBAR.Core.Telemetry.StatsRecorded("annotate.ocr", 1, result.Text));
+            }
+            catch (Exception ex)
+            {
+                _textCard.Show($"识别失败: {ex.Message}");
+            }
+        };
+        _textCard.HorizontalAlignment = AloLayout.HorizontalAlignment.Center;
+        _textCard.VerticalAlignment = AloLayout.VerticalAlignment.Top;
+        _textCard.Margin = new Thickness(0, 12, 0, 0);
         _boardSurface = new Border
         {
             Background = new SolidColorBrush(WhiteBoard),
-            Child = new Panel { Children = { _ink, inkHost } },
+            Child = new Panel { Children = { _ink, inkHost, _textCard } },
             ClipToBounds = true,
         };
         Grid.SetRow(_boardSurface, 1);
@@ -188,6 +219,7 @@ public sealed class MiniBoardWindow : Window
             }
             composite.Save(path);
             ToastService.Instance.Show($"板书已保存: {path}", "success");
+            _bus?.Publish(new SmartSideBAR.Core.Telemetry.StatsRecorded("miniboard.save", 1, $"{_ink.Count} 笔"));
         }
         catch (Exception ex)
         {

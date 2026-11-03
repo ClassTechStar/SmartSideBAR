@@ -12,6 +12,7 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using SmartSideBAR.Avalonia.Diagnostics;
 using SmartSideBAR.Core.Messaging;
 
 namespace SmartSideBAR.Avalonia.Ui;
@@ -52,6 +53,10 @@ public sealed class ToastService
 
             // 通知中心留档（提醒历史/USB/录屏等事件统一可回看）
             NotificationCenter.Instance.Push(message, ToTone(level));
+
+            // 智能课堂: 上课中静默 info 级 Toast (warn/error/success 照常), 通知中心已留档
+            if (level == NotificationLevel.Info && LessonModeHost.QuietOnClass && LessonModeHost.IsInClass)
+                return;
 
             // 清理过期去重记录
             if (_recentShown.Count > 50)

@@ -20,6 +20,8 @@ public sealed record SidekickConfig
     public FloatBallConfig FloatBall { get; init; } = new();
     public WorkspaceConfig Workspace { get; init; } = new();
     public RailConfig Rail { get; init; } = new();
+    public LessonConfig Lesson { get; init; } = new();
+    public AutomationConfig Automation { get; init; } = new();
     public List<LinkItem> Links { get; init; } = [];
     public List<Reminder> Reminders { get; init; } = [];
     public ReminderSoundConfig ReminderSound { get; init; } = new();
@@ -138,6 +140,24 @@ public sealed record WorkspacePreset
 public sealed record RailConfig
 {
     public List<string> Order { get; init; } = [];
+}
+
+/// <summary>课表（分钟自当日 0 点起）—— TimeStateMachine 的配置来源。</summary>
+public sealed record LessonConfig
+{
+    public List<Scheduling.LessonPeriod> Periods { get; init; } = [];
+    public int PrepareSeconds { get; init; } = 60;
+}
+
+/// <summary>智能课堂自动化 —— TimeStateMachine 的消费策略（竞赛核心叙事之一）。</summary>
+public sealed record AutomationConfig
+{
+    /// <summary>状态机驱动自动切换: 上课 → 自动切到 ClassWorkspace 工作区。</summary>
+    public bool LessonMode { get; init; } = true;
+    /// <summary>进入上课状态时自动切换到的工作区（对应 workspace.presets 里的名字）。</summary>
+    public string ClassWorkspace { get; init; } = "上课";
+    /// <summary>上课中抑制 info 级 Toast（USB 插拔等不打断讲课, 通知中心仍留档）。</summary>
+    public bool QuietOnClass { get; init; } = true;
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SidebarSide>))]

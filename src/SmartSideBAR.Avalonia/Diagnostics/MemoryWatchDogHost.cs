@@ -58,6 +58,12 @@ public sealed class MemoryWatchDogHost
             if (!dog.Push(new MemorySample(bytes, DateTimeOffset.Now))) return;
 
             _log?.LogWarning("[MemoryWatchDog] 内存连续超限 ({Bytes} > {Limit}), 准备重启", bytes, _limitAtCreate);
+            // 演示模式 (比赛/公开课现场): 一切"自动重启"类守护豁免 —— 现场绝不允许应用自己重启自己
+            if (SmartSideBAR.Core.Diagnostics.DemoMode.Enabled)
+            {
+                _log?.LogWarning("[MemoryWatchDog] 演示模式 (SSB_DEMO=1): 豁免自动重启");
+                return;
+            }
             CrashLog.Write("MemoryWatchDog", null, fatal: false);
             Restart();
         }

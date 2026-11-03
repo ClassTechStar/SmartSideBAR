@@ -15,6 +15,8 @@ using SmartSideBAR.Windows.Audio;
 using SmartSideBAR.Windows.Capture;
 using SmartSideBAR.Windows.Devices;
 using SmartSideBAR.Windows.Input;
+using SmartSideBAR.Avalonia.Diagnostics;
+using SmartSideBAR.Core.Telemetry;
 using SmartSideBAR.Windows.Recording;
 using SmartSideBAR.Windows.Shell;
 
@@ -35,6 +37,7 @@ public sealed class WindowManager(
     ISoundService sound,
     IDiagnosticsService diagnostics,
     SchedulerService scheduler,
+    LessonStatsService stats,
     IEventBus bus,
     ILogger<WindowManager> log)
 {
@@ -72,7 +75,7 @@ public sealed class WindowManager(
         _side = side;
 
         // 面板体系需要设备/调度等服务（v1.2 各 Panel 经 IPC 取数，此处同进程直调）
-        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, recorder, sound, links, Dispatch);
+        var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, recorder, sound, links, stats, Dispatch);
         // 把 AppBar 的窗口几何操作挪出 WndProc 调用栈（重入 shell 调用是本项目原生崩溃的来源之一）
         appBar.Defer = action =>
             global::Avalonia.Threading.Dispatcher.UIThread.Post(action, global::Avalonia.Threading.DispatcherPriority.Background);
@@ -160,8 +163,36 @@ public sealed class WindowManager(
         // 热键 → 动作
         bus.Subscribe<HotkeyPressed>(e => Dispatch(e.Slot));
 
+        // 智能课堂 (竞赛核心叙事): TimeStateMachine 首个消费方 ——
+        // 上课 → 自动切「上课」工作区 + 静默 info 提醒; 放学 → 温和提示
+        LessonModeHost.Init(config);
+        LessonModeHost.StateChanged += snap =>
+        {
+            if (!config.Current.Automation.LessonMode) return;
+            var msg = snap.State switch
+            {
+                LessonState.OnClass => "已进入上课模式",
+                LessonState.AfterSchool => "已放学，辛苦了",
+                _ => null,
+            };
+            if (msg is null) return;
+            var target = config.Current.Automation.ClassWorkspace;
+            if (snap.State == LessonState.OnClass &&
+                !string.IsNullOrWhiteSpace(target) &&
+                config.Current.Workspace.Current != target)
+            {
+                Dispatch($"workspace:{target}");
+                return; // 工作区切换自身带 Toast
+            }
+            ToastService.Instance.Show(msg, "success");
+        };
+
         // 设备事件 → Toast
-        bus.Subscribe<UsbArrived>(e => ToastService.Instance.Show($"U 盘已接入: {e.Info.Drive} {e.Info.Label ?? ""} {e.Info.SizeGb}GB", "info"));
+        bus.Subscribe<UsbArrived>(e =>
+        {
+            stats.Record("usb");
+            ToastService.Instance.Show($"U 盘已接入: {e.Info.Drive} {e.Info.Label ?? ""} {e.Info.SizeGb}GB", "info");
+        });
         bus.Subscribe<UsbRemoved>(e => ToastService.Instance.Show($"U 盘已移除: {e.Info.Drive}", "warn"));
         bus.Subscribe<PrinterChanged>(e =>
         {
@@ -172,13 +203,22 @@ public sealed class WindowManager(
             }
         });
         bus.Subscribe<RecorderStatusChanged>(e =>
-            ToastService.Instance.Show(e.Recording ? $"开始录屏: {e.FilePath}" : $"录屏完成: {e.FilePath}", e.Recording ? "info" : "success"));
+        {
+            if (e.Recording) stats.Record("record");
+            ToastService.Instance.Show(e.Recording ? $"开始录屏: {e.FilePath}" : $"录屏完成: {e.FilePath}", e.Recording ? "info" : "success");
+        });
         bus.Subscribe<LongshotCompleted>(e =>
-            ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error"));
+        {
+            if (e.Error is null) stats.Record("longshot");
+            ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error");
+        });
 
         // B7: 到点必须有可见反馈, 只播声音不够 (教师戴耳麦时听不见)
         bus.Subscribe<ReminderDue>(e =>
-            ToastService.Instance.Show($"提醒: {e.Note ?? "时间到了"}", "warn"));
+        {
+            stats.Record("reminder");
+            ToastService.Instance.Show($"提醒: {e.Note ?? "时间到了"}", "warn");
+        });
 
         // 几何事件: 面板宽度以系统授予为准 + 同步 Avalonia 窗口几何
         bus.Subscribe<AppBarGeometryChanged>(g =>
@@ -290,6 +330,7 @@ public sealed class WindowManager(
             {
                 case "capture" or "capture-hotkey":
                     EnsureCaptureDirs();
+                    stats.Record("capture");
                     new OverlayWindow(capture, config.Current.Capture.Dir, config.Current.Capture.Format).Show();
                     break;
 
@@ -382,7 +423,7 @@ public sealed class WindowManager(
             log?.LogWarning(ex, "[Window] 批注底图抓取失败");
         }
         new AnnotateWindow(background, config.Current.Capture.Dir, config.Current.Capture.Format,
-            config.Current.Capture.InkToShape).Show();
+            config.Current.Capture.InkToShape, bus).Show();
     }
 
     private void StartLongshotPicker()
@@ -426,6 +467,7 @@ public sealed class WindowManager(
         var fps = Math.Clamp(config.Current.Recorder.Fps, 5, 60);
         var mic = config.Current.Recorder.Mic;
         var path = Path.Combine(dir, $"record_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
+        stats.Record("record"); // 发起点 (时长由完成事件补记)
         // B5: 传递麦克风配置 (读 config.recorder.mic)
         await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
     }
@@ -478,7 +520,7 @@ public sealed class WindowManager(
             return;
         }
         if (_miniBoard is not null) { _miniBoard.Show(); return; } // 旧实例仅隐藏 → 复用
-        _miniBoard = new MiniBoardWindow(config.Current.Capture.Dir, config.Current.Capture.InkToShape);
+        _miniBoard = new MiniBoardWindow(config.Current.Capture.Dir, config.Current.Capture.InkToShape, bus);
         // 定位到侧栏所在屏的工作区居中 (多屏时不出现在教师不看的屏上)
         var wa = GetSidebarWorkArea();
         var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
