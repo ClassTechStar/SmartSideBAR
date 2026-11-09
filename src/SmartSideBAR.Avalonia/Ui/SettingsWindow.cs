@@ -311,7 +311,7 @@ public sealed class SettingsWindow : Window
             Padding = new Thickness(14),
             BorderThickness = new Thickness(1),
             BorderBrush = _p.DividerBrush,
-                        Child = stack,
+            Child = stack,
         };
     }
 

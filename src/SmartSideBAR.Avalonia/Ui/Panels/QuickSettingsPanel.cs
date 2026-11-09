@@ -94,7 +94,7 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
             Padding = new Thickness(12),
             BorderThickness = new Thickness(1),
             BorderBrush = Palette.DividerBrush,
-                        Child = stack,
+            Child = stack,
         };
     }
 
