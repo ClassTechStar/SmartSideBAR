@@ -44,7 +44,7 @@ internal sealed class LinksPanel(SidebarServices s, Palette p, Action<LinkItem> 
         if (links.Count == 0 && !_adding)
         {
             root.Children.Add(PanelKit.EmptyState("link", "还没有快捷入口",
-                "点击下方「＋ 添加」放入教学网站或网页版 AI（DeepSeek、GLM…），一键直达。", Palette));
+                "点「＋ 添加」放教学网站或网页版 AI（DeepSeek、GLM…），点卡片就能打开。", Palette));
         }
         else
         {
@@ -155,7 +155,7 @@ internal sealed class LinksPanel(SidebarServices s, Palette p, Action<LinkItem> 
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
             MaxHeight = 30,
-            Foreground = new SolidColorBrush(Palette.Dark ? Color.Parse("#DCE3EE") : Color.Parse("#2A3240")),
+            Foreground = Palette.CardTextBrush,
         });
         var btn = new Button
         {

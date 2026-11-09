@@ -13,6 +13,7 @@ using Avalonia.Animation.Easings;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using SmartSideBAR.Avalonia.Diagnostics;
+using SmartSideBAR.Core.Design;
 using SmartSideBAR.Core.Messaging;
 
 namespace SmartSideBAR.Avalonia.Ui;
@@ -105,12 +106,13 @@ public sealed class ToastService
         try
         {
             _visibleCount++;
+            var toastColors = DesignTokens.Current.Color;
             var color = req.Level switch
             {
-                NotificationLevel.Success => "#2E7D32",
-                NotificationLevel.Warn => "#B26A00",
-                NotificationLevel.Error => "#C62828",
-                _ => "#243041",
+                NotificationLevel.Success => toastColors.ToastOk,
+                NotificationLevel.Warn => toastColors.ToastWarn,
+                NotificationLevel.Error => toastColors.ToastError,
+                _ => toastColors.ToastInfo,
             };
             var text = new TextBlock
             {

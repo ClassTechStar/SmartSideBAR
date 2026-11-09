@@ -45,7 +45,7 @@ internal static class PanelKit
         Text = text,
         FontSize = size,
         FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal,
-        Foreground = new SolidColorBrush(p.Dark ? Color.Parse("#E6EBF3") : Color.Parse("#1B2230")),
+        Foreground = p.BodyBrush,
         TextWrapping = TextWrapping.Wrap,
     };
 

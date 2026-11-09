@@ -311,8 +311,7 @@ public sealed class SettingsWindow : Window
             Padding = new Thickness(14),
             BorderThickness = new Thickness(1),
             BorderBrush = _p.DividerBrush,
-            BoxShadow = BoxShadows.Parse(DesignTokens.Current.Shadow.E1),
-            Child = stack,
+                        Child = stack,
         };
     }
 
@@ -530,7 +529,7 @@ public sealed class SettingsWindow : Window
             });
     }
 
-    private IBrush BodyFg() => new SolidColorBrush(_p.Dark ? Color.Parse("#E6EBF3") : Color.Parse("#1B2230"));
+    private IBrush BodyFg() => _p.BodyBrush;
 
     // ---------------------------------------------------------------- 保存
 

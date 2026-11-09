@@ -26,11 +26,11 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
         if (classroom is not null) root.Children.Add(Card("课堂常用", classroom));
         root.Children.Add(Card("快捷开关", BuildToggleTiles(cfg)));
 
-        var more = PanelKit.Flat("全部设置…", Palette, () => Services.Dispatch("settings"), primary: true);
+        var more = PanelKit.Flat("更多设置", Palette, () => Services.Dispatch("settings"), primary: true);
         more.HorizontalAlignment = HorizontalAlignment.Stretch;
         more.HorizontalContentAlignment = HorizontalAlignment.Center;
         root.Children.Add(more);
-        root.Children.Add(PanelKit.Hint("热键、保存目录、打印机轮询等高级选项在完整设置中。", Palette));
+        root.Children.Add(PanelKit.Hint("热键、保存目录、打印机轮询在完整设置里。", Palette));
         return root;
     }
 
@@ -57,7 +57,7 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
                 Cell("提醒", "reminder")),
             FontSize = 12.5,
             LineHeight = 19,
-            Foreground = new SolidColorBrush(Palette.Dark ? Color.Parse("#DCE3EE") : Color.Parse("#2A3240")),
+            Foreground = Palette.CardTextBrush,
         };
         var pack = PanelKit.Flat("打包带走今日成果", Palette, () =>
         {
@@ -94,8 +94,7 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
             Padding = new Thickness(12),
             BorderThickness = new Thickness(1),
             BorderBrush = Palette.DividerBrush,
-            BoxShadow = BoxShadows.Parse(DesignTokens.Current.Shadow.E1),
-            Child = stack,
+                        Child = stack,
         };
     }
 
@@ -255,13 +254,14 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
                 BorderBrush = on ? Palette.AccentBrush : Palette.DividerBrush,
             };
             var stack = new StackPanel { Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-            // 状态图标: 开 = 对勾, 关 = 空心圈 (触控远距离可辨)
-            stack.Children.Add(new TextBlock
+            // 状态点: 开 = 白色实心, 关 = 描边空心 (触屏远距离可辨, 不拿字符拼图标)
+            stack.Children.Add(new global::Avalonia.Controls.Shapes.Ellipse
             {
-                Text = on ? "✓" : "○",
-                FontSize = 20,
-                FontWeight = FontWeight.Bold,
-                Foreground = on ? Brushes.White : Palette.MutedBrush,
+                Width = 10,
+                Height = 10,
+                Fill = on ? Brushes.White : Brushes.Transparent,
+                Stroke = on ? Brushes.White : Palette.MutedBrush,
+                StrokeThickness = 1.5,
                 HorizontalAlignment = HorizontalAlignment.Center,
             });
             stack.Children.Add(new TextBlock
@@ -271,7 +271,7 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
                 FontWeight = FontWeight.Medium,
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Center,
-                Foreground = on ? Brushes.White : new SolidColorBrush(Palette.Dark ? Color.Parse("#DCE3EE") : Color.Parse("#2A3240")),
+                Foreground = on ? Brushes.White : Palette.CardTextBrush,
                 HorizontalAlignment = HorizontalAlignment.Center,
             });
             tile.Content = stack;

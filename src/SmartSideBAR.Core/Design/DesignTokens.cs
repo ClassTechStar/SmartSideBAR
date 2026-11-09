@@ -122,6 +122,11 @@ public sealed class ColorTokens
     public string StateWarn { get; set; } = "#D98324";
     public string StateError { get; set; } = "#D64545";
     public string StateRecording { get; set; } = "#E74C3C";
+    /// <summary>Toast 底色 (白字对比度已校)。此前硬编码在 ToastService。</summary>
+    public string ToastOk { get; set; } = "#2E7D32";
+    public string ToastWarn { get; set; } = "#B26A00";
+    public string ToastError { get; set; } = "#C62828";
+    public string ToastInfo { get; set; } = "#243041";
 }
 
 /// <summary>

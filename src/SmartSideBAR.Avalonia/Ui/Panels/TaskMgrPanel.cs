@@ -19,7 +19,7 @@ internal sealed class TaskMgrPanel(SidebarServices s, Palette p) : SidebarPanel(
     protected override Control Build()
     {
         var root = Stack(12);
-        root.Children.Add(PanelKit.Hint("课堂投屏卡顿或应用无响应时，可在这里一键打开系统任务管理器结束占用。", Palette));
+        root.Children.Add(PanelKit.Hint("投屏卡顿或程序无响应时，从这里打开系统任务管理器。", Palette));
         root.Children.Add(PanelKit.Flat("打开任务管理器", Palette, () => Services.Dispatch("taskmgr"), primary: true));
         return root;
     }

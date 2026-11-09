@@ -19,6 +19,10 @@ public sealed record Palette
     /// <summary>卡片面色 (设置分组卡等, 坐在 Inset 之上)。</summary>
     public required Color Card { get; init; }
     public required Color Text { get; init; }
+    /// <summary>卡片内正文文字 (各面板此前散落 4 种十六进制手写, 收拢于此)。</summary>
+    public required Color Body { get; init; }
+    /// <summary>磁贴/次级文字 (比 Body 浅半档)。</summary>
+    public required Color CardText { get; init; }
     public required Color Muted { get; init; }
     public required Color Divider { get; init; }
     public required Color Hover { get; init; }
@@ -34,6 +38,8 @@ public sealed record Palette
     public required Color RimTo { get; init; }
 
     public IBrush TextBrush => new SolidColorBrush(Text);
+    public IBrush BodyBrush => new SolidColorBrush(Body);
+    public IBrush CardTextBrush => new SolidColorBrush(CardText);
     public IBrush MutedBrush => new SolidColorBrush(Muted);
     public IBrush AccentBrush => new SolidColorBrush(Accent);
     public IBrush AccentSoftBrush => new SolidColorBrush(AccentSoft);
@@ -104,6 +110,8 @@ public static class AppTheme
         PanelBg = Parse(Tokens.PanelBg, "#FFFFFF"),
         Inset = Parse(Tokens.PanelBg, "#FFFFFF"),
         Card = Color.FromArgb(0x08, 0x10, 0x20, 0x40),
+        Body = Color.Parse("#1B2230"),
+        CardText = Color.Parse("#2A3240"),
         Text = Parse(Tokens.Text, "#2B6EE0"),
         Muted = Parse(Tokens.TextMuted, "#5A6478"),
         Divider = Color.FromArgb(0x12, 0, 0, 0),
@@ -124,6 +132,8 @@ public static class AppTheme
         PanelBg = Parse(Tokens.BgDark, "#171B22"),
         Inset = Color.FromArgb(0xFF, 0x10, 0x14, 0x1B),
         Card = Color.FromArgb(0x0F, 0xFF, 0xFF, 0xFF),
+        Body = Parse(Tokens.TextDark, "#E6EBF3"),
+        CardText = Color.Parse("#DCE3EE"),
         Text = Lighten(accent, 0.35),
         Muted = Parse(Tokens.TextDark, "#E6EBF3"),
         Divider = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
@@ -150,6 +160,8 @@ public static class AppTheme
             PanelBg = bg,
             Inset = Parse(c.BgHover, "#F5F7FA"),
             Card = bg,
+            Body = Parse(c.Text, "#1A1A1A"),
+            CardText = Color.Parse("#2A3240"),
             Text = Parse(c.Text, "#1A1A1A"),
             Muted = Parse(c.TextSecondary, "#666666"),
             Divider = border,
