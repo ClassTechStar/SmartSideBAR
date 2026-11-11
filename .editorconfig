@@ -1,0 +1,84 @@
+root = true
+
+# 全局默认：对齐 Directory.Build.props 的硬约定（file-scoped 命名空间 / sealed / nullable 全开）。
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,targets,slnx,xml,yml,yaml,json}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# ---- C# 代码风格（EnforceCodeStyleInBuild 会把这些当门禁）----
+[*.cs]
+# 命名空间：file-scoped（与 Core/Windows/Avalonia 三层既有写法一致）
+csharp_style_namespace_declarations = file_scoped:warning
+
+# 修饰符：类型默认 sealed（项目约定：不写继承点的类一律 sealed）
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+
+# var：显而易见时用 var
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# 表达式体：方法与属性倾向表达式体
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+
+# 限定符：this. 不强制
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+
+# 表达式级偏好
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_prefer_auto_properties = true:suggestion
+csharp_prefer_simple_default_expression = true:suggestion
+
+# 无障碍/安全：避免可空引用不一致（真正强制项在 Directory.Build.props 的 WarningsAsErrors）
+dotnet_diagnostic.CS8600.severity = warning
+dotnet_diagnostic.CS8601.severity = warning
+dotnet_diagnostic.CS8602.severity = warning
+dotnet_diagnostic.CS8603.severity = warning
+dotnet_diagnostic.CS8604.severity = warning
+
+# 历史遗留快照目录：仅用于对照旧 Electron 版界面，不参与构建。
+# 单独放宽，避免编辑器按新项目规范误报（借鉴 VeriRandom 对 vendors/ 的分段抑制做法）。
+[SmartSideBAR-1.0.0/**]
+dotnet_diagnostic.CS8600.severity = none
+dotnet_diagnostic.CS8603.severity = none
+dotnet_diagnostic.CS8618.severity = none
+
+[SmartSideBAR-1.1/**]
+dotnet_diagnostic.CS8600.severity = none
+dotnet_diagnostic.CS8603.severity = none
+dotnet_diagnostic.CS8618.severity = none
+
+[SmartSideBAR-1.2.0/**]
+dotnet_diagnostic.CS8600.severity = none
+dotnet_diagnostic.CS8603.severity = none
+dotnet_diagnostic.CS8618.severity = none
+
+# 第三方/生成物：不接受风格整改（node_modules、打包产物、安装器脚本）
+[node_modules/**]
+indent_style = unset
+trim_trailing_whitespace = unset
+
+[dist/**]
+trim_trailing_whitespace = unset
+
+[artifacts/**]
+trim_trailing_whitespace = unset
+
+[**/obj/**]
+generated_code = true
+
+[**/bin/**]
+generated_code = true

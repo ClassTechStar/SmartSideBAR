@@ -71,7 +71,7 @@ public sealed class VolumeService
             var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
             var hr = enumerator.GetDefaultAudioEndpoint(eRender, eConsole, out var endpoint);
             if (hr != 0 || endpoint == 0) return false;
-            _ = Marshal.QueryInterface(endpoint, ref _iid, out var volumePtr);
+            _ = Marshal.QueryInterface(endpoint, in _iid, out var volumePtr);
             if (volumePtr == 0) return false;
             _ = Marshal.Release(volumePtr);
             _ = Marshal.Release(endpoint);
@@ -87,7 +87,7 @@ public sealed class VolumeService
         }
     }
 
-    private static Guid _iid = new("5CDF2C82-841E-4546-9722-0CF74078229A");
+    private static readonly Guid _iid = new("5CDF2C82-841E-4546-9722-0CF74078229A");
 
     /// <summary>读取主音量百分比（0–100）；不可用返回 null。</summary>
     public int? Get()
@@ -175,7 +175,7 @@ public sealed class VolumeService
             var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
             if (enumerator.GetDefaultAudioEndpoint(eRender, eConsole, out var endpoint) != 0 || endpoint == 0)
                 return null;
-            var hr = Marshal.QueryInterface(endpoint, ref _iid, out var volumePtr);
+            var hr = Marshal.QueryInterface(endpoint, in _iid, out var volumePtr);
             _ = Marshal.Release(endpoint);
             if (hr != 0 || volumePtr == 0) return null;
             return (IAudioEndpointVolume)Marshal.GetObjectForIUnknown(volumePtr);

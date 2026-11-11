@@ -1,5 +1,5 @@
 <Project>
-  <!-- Wave A 骨架: 方案 §4.1 / 代码风格约定见方案 §0 (file-scoped ns / sealed / nullable 全开) -->
+  <!-- Wave A 骨架: 代码风格约定见 docs/project_rules.md (file-scoped ns / sealed / nullable 全开) -->
   <PropertyGroup>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -7,5 +7,29 @@
     <WarningsAsErrors>nullable</WarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Version>1.6.0</Version>
+  </PropertyGroup>
+
+  <!-- 生成物/非源码目录不进 Compile/None 项，避免打包产物与历史快照被误收进工程
+       （借鉴 VeriRandom 的 DefaultItemExcludes 做法） -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;dist/**;publish/**;node_modules/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);SmartSideBAR-1.0.0/**;SmartSideBAR-1.1/**;SmartSideBAR-1.2.0/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);installer/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- 构建可复现性：符号带源码映射，崩溃 dump 可回溯到具体提交
+       （借鉴 VeriRandom 的 Global.props：SourceLink + CI 构建标记 + 调试符号） -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 </Project>

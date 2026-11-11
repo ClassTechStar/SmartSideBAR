@@ -1,0 +1,60 @@
+# CodeQL 扫描
+#
+# 借鉴 VeriRandom 的 CodeQL 工作流：对 C# 做静态安全分析，并把 GitHub Actions
+# 工作流本身也纳入扫描（防流水线被注入）。扫描只报警不阻塞合并，结论看 Security 页签。
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'   # 每周一 03:00 UTC
+
+jobs:
+  analyze:
+    name: CodeQL 分析
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            build-mode: manual
+          - language: actions
+            build-mode: none
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装 .NET SDK
+        if: ${{ matrix.language == 'csharp' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 初始化 CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
+
+      - name: 手动构建
+        if: ${{ matrix.language == 'csharp' && matrix.build-mode == 'manual' }}
+        run: |
+          dotnet restore SmartSideBAR.slnx
+          dotnet build SmartSideBAR.slnx -c Release --no-restore
+
+      - name: 执行 CodeQL 分析
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
