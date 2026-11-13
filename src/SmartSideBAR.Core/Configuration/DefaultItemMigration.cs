@@ -17,6 +17,20 @@ public sealed record LegacyDefaultRule(
 public static class DefaultItemMigration
 {
     /// <summary>
+    /// 用默认条目按 Id 修补列表（借鉴 SidebarDiagnostics 的 MonitorConfig.CheckConfig）。
+    /// 与 <see cref="ApplyLinks"/> 不同，这个方法是**显式调用**的：只在需要"补齐新增默认项"
+    /// 的场景使用，不会自动接到配置加载路径上 —— 本项目允许用户删掉默认链接，
+    /// 机械合并会把用户删掉的条目又加回来。
+    /// </summary>
+    public static (IReadOnlyList<LinkItem> Items, int Added) MergeMissingDefaults(
+        IReadOnlyList<LinkItem>? items, IReadOnlyList<LinkItem> defaults)
+    {
+        var before = items?.Count ?? 0;
+        var merged = CollectionDefaults.MergeByKey(items, defaults, l => l.Id, StringComparer.OrdinalIgnoreCase);
+        return (merged, Math.Max(0, merged.Count - before));
+    }
+
+    /// <summary>
     /// 对链接条目应用迁移规则。返回新列表与命中条数（原列表不变）。
     /// </summary>
     public static (IReadOnlyList<LinkItem> Items, int Changed) ApplyLinks(

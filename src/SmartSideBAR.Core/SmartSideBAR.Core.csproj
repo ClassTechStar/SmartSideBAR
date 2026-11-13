@@ -13,5 +13,7 @@
   <ItemGroup>
     <!-- P0-2: 视觉规格单一真源随 Core 程序集嵌入（运行时/单测同源） -->
     <EmbeddedResource Include="..\..\design-tokens.json" LogicalName="design-tokens.json" />
+    <!-- 变更说明同源：运行时直接解析人工维护的 CHANGELOG.md，不另维护一份 JSON -->
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="CHANGELOG.md" />
   </ItemGroup>
 </Project>

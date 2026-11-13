@@ -540,6 +540,10 @@ public sealed class WindowManager(
     {
         if (docked == _docked) return;
         _docked = docked;
+        // 借鉴 SidebarDiagnostics 的 Pause/Resume：收起态没有周期任务需要跑，
+        // 停表省 CPU；展开时恢复。放在最前面，保证下面的 early return 不漏。
+        if (docked) Ui.ClockHost.Pause();
+        else Ui.ClockHost.Resume();
         if (_sidebar is not { } sidebar) return;
         if (sidebar.DataContext is ViewModels.SidebarViewModel vm) vm.IsDocked = docked;
 

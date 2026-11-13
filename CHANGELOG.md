@@ -3,6 +3,23 @@
 本项目版本号写在 `Directory.Build.props` 的 `<Version>`。
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)，版本号遵循语义化版本。
 
+## [未发布]
+
+### 新增
+- 阈值告警统一的边沿检测组件（`ThresholdMonitor`）：连续命中、迟滞带、只在状态跃迁时触发
+- 有界时间窗口历史（`TimeWindowHistory`）：通知中心除 50 条上限外按 7 天回收
+- 防抖闸门（`DebounceGate`）与集合按 Key 自愈合并（`CollectionDefaults`）
+- 数据驱动变更说明：关于页展示当前版本更新内容，数据源为随程序集嵌入的 `CHANGELOG.md`
+- 统一时钟支持暂停/恢复，侧栏收起态停表省 CPU
+
+### 优化
+- 设置保存改为 `SetIfChanged`，未变化的键不落盘、不广播
+- 内存看门狗复用通用阈值/历史组件，消除重复判定逻辑
+- `.gitattributes` 统一换行规范化
+
+### 修复
+- 配置键写入 null（配置导入脱敏路径）时 `ExpandPath` 空引用崩溃
+
 ## [1.6.0] - 2026-10
 
 竞赛版。

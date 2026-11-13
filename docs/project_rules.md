@@ -52,6 +52,19 @@ Register(PanelKind.MyFeature,
 ### 新增通知
 `ToastService.Instance.Show(source, NotificationLevel.Warn, message)` —— 队列会按来源/级别排序，无需自行排队。
 
+### 阈值告警与历史容器（借鉴 SidebarDiagnostics）
+- 需要"超过阈值才告警、回落才解除"的逻辑，统一用 `Core/Diagnostics/ThresholdMonitor`
+  （连续 N 次命中 + 迟滞带 + 只在状态跃迁那一拍返回 `Raised`/`Cleared`），不要各写一份 `if (x > limit)`。
+- 常驻进程的历史数据一律用 `Core/Diagnostics/TimeWindowHistory<T>`（时间窗口 + 容量双约束），
+  不要只靠"最多 50 条"——通知中心除容量外还按 7 天回收。
+- 拖动/连续输入触发的落盘或设备调用，用 `Core/Diagnostics/DebounceGate` 做静默判定，
+  UI 层只负责定期 `TryFire`；亮度 WMI / 音量逐 tick 调用会卡住拖动。
+- 设置保存用 `ConfigService.SetIfChanged`，未变化的键不落盘、不广播（一次保存约 20 个键）。
+- 侧栏收起态由 `WindowManager.SetDocked` 调 `ClockHost.Pause()`，展开调 `Resume()`；
+  `EnsureStarted` 在暂停态下不得启动计时器。
+- 运行时变更说明直接解析随程序集嵌入的 `CHANGELOG.md`（`ReleaseNotes`），
+  **不另维护一份 JSON**；只在设置窗关于页展示，不自动弹窗打断课堂。
+
 ## 门禁速查
 
 ```bash

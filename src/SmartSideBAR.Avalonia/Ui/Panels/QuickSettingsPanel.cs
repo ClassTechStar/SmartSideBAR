@@ -9,6 +9,7 @@ using Avalonia.Media;
 using SmartSideBAR.Avalonia.ViewModels;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Design;
+using SmartSideBAR.Core.Diagnostics;
 
 namespace SmartSideBAR.Avalonia.Ui.Panels;
 
@@ -196,24 +197,22 @@ internal sealed class QuickSettingsPanel(SidebarServices s, Palette p) : Sidebar
             // P0-2: 滑杆也要满足触屏最小高度
             MinHeight = Math.Max(28, PanelKit.MinHitDip * 0.8),
         };
-        DispatcherTimer? pending = null;
+        // 借鉴 SidebarDiagnostics 首次向导的防抖重定位（Setup.xaml.cs:66-88）：
+        // 拖动中只刷新标签，停手 450ms 才真正下发。判定逻辑抽到 Core 的 DebounceGate 便于单测。
+        var gate = new global::SmartSideBAR.Core.Diagnostics.DebounceGate(450);
+        var poll = new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        poll.Tick += (_, _) =>
+        {
+            if (!gate.TryFire(Environment.TickCount64)) return;
+            poll.Stop();
+            apply((int)Math.Round(slider.Value));
+        };
         slider.ValueChanged += (_, _) =>
         {
             var v = (int)Math.Round(slider.Value);
             text.Text = $"{label}  {v}%";
-            // 拖动中只刷新标签; 停止 450ms 后才落盘/下发 —— 亮度 WMI 与音量逐 tick
-            // 调用会卡死拖动 (WMI 一次调用可到几十 ms)
-            if (pending is null)
-            {
-                pending = new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
-                pending.Tick += (_, _) =>
-                {
-                    pending!.Stop();
-                    apply((int)Math.Round(slider.Value));
-                };
-            }
-            pending.Stop();
-            pending.Start();
+            gate.Trigger(Environment.TickCount64);
+            if (!poll.IsEnabled) poll.Start();
         };
         return new StackPanel { Spacing = 4, Children = { text, slider } };
     }

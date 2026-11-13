@@ -11,36 +11,45 @@ public sealed record MemorySample(long Bytes, DateTimeOffset At);
 public sealed class MemoryWatchDog
 {
     private readonly object _gate = new();
-    private readonly List<MemorySample> _samples = new();
     private readonly int _requiredBreaches;
+    // 借鉴 SidebarDiagnostics：判定走通用阈值监视器（边沿检测 + 连续命中），
+    // 采样留存走有界历史容器（容量即 requiredBreaches），两处逻辑不再各写一份。
+    private readonly ThresholdMonitor _monitor;
+    private readonly TimeWindowHistory<MemorySample> _history;
 
     public MemoryWatchDog(long limitBytes, int requiredBreaches = 3)
     {
         LimitBytes = limitBytes;
         _requiredBreaches = Math.Max(1, requiredBreaches);
+        _monitor = new ThresholdMonitor(limitBytes, requiredHits: _requiredBreaches);
+        _history = new TimeWindowHistory<MemorySample>(_requiredBreaches);
     }
 
     public long LimitBytes { get; }
 
     public int RequiredBreaches => _requiredBreaches;
 
-    /// <summary>喂入一次采样, 返回是否应当重启。</summary>
+    /// <summary>喂入一次采样, 返回是否应当重启（只在"首次连续超限"那一拍为 true）。</summary>
     public bool Push(MemorySample sample)
     {
         lock (_gate)
         {
-            _samples.Add(sample);
-            // 只保留最近 requiredBreaches 次
-            while (_samples.Count > _requiredBreaches) _samples.RemoveAt(0);
-            if (_samples.Count < _requiredBreaches) return false;
-            return _samples.All(s => s.Bytes >= LimitBytes);
+            _history.Add(sample, sample.At);
+            return _monitor.Push(sample.Bytes, sample.At) == ThresholdTransition.Raised;
         }
     }
 
     /// <summary>重置(重启后或手动清理后调用)。</summary>
-    public void Reset() { lock (_gate) _samples.Clear(); }
+    public void Reset()
+    {
+        lock (_gate)
+        {
+            _history.Clear();
+            _monitor.Reset();
+        }
+    }
 
-    public IReadOnlyList<MemorySample> Samples { get { lock (_gate) return _samples.ToArray(); } }
+    public IReadOnlyList<MemorySample> Samples => _history.Snapshot();
 
     public static long FromMegabytes(int mb) => (long)mb * 1024 * 1024;
 }

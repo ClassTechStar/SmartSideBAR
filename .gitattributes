@@ -1,0 +1,41 @@
+# 参考 SidebarDiagnostics 的 .gitattributes：统一换行规范化，
+# 避免每次提交刷 "LF will be replaced by CRLF" 警告，也让 Windows/其他平台 diff 稳定。
+* text=auto
+
+# 源码与配置统一入库为 LF（工作区由 core.autocrlf 自行转换）
+*.cs        text eol=lf
+*.csproj    text eol=lf
+*.slnx      text eol=lf
+*.props     text eol=lf
+*.targets   text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.axaml     text eol=lf
+*.xaml      text eol=lf
+*.config    text eol=lf
+*.editorconfig text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+
+# 二进制资产不做任何转换
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.svg  -text
+*.exe  binary
+*.dll  binary
+*.pdb  binary
+*.zip  binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+
+# 安装脚本与历史快照保持原样，避免自动转换把旧文件搞乱
+Setup.iss            text eol=crlf
+SmartSideBAR-1.0.0/** -text
+SmartSideBAR-1.1/**    -text
+SmartSideBAR-1.2.0/**  -text

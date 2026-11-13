@@ -29,7 +29,8 @@ public static class ClockHost
             if (!Clock.ShouldTick(DateTimeOffset.Now)) return;
             Consumers.Pump(Environment.TickCount64);
         };
-        _timer.Start();
+        // 暂停态下即便首次启动也先不跑（首次收起可能发生在 App 初始化之前）
+        if (!IsPaused) _timer.Start();
     }
 
     /// <summary>登记一个周期消费者; 同名重复登记会覆盖。</summary>
@@ -40,6 +41,28 @@ public static class ClockHost
     }
 
     public static bool Unregister(string name) => Consumers.Unregister(name);
+
+    /// <summary>
+    /// 暂停统一时钟（借鉴 SidebarDiagnostics 的 SidebarModel.Pause/Resume）。
+    /// 侧栏收起为触发条/演示态时周期任务没有意义，停表省 CPU；展开时再恢复。
+    /// </summary>
+    public static void Pause()
+    {
+        if (_timer is not null && _timer.IsEnabled) _timer.Stop();
+        IsPaused = true;
+    }
+
+    /// <summary>恢复统一时钟（幂等）。</summary>
+    public static void Resume()
+    {
+        if (!IsPaused) return;
+        IsPaused = false;
+        Clock.Reset();
+        if (_timer is not null && !_timer.IsEnabled) _timer.Start();
+        else EnsureStarted();
+    }
+
+    public static bool IsPaused { get; private set; }
 
     /// <summary>仅供测试: 手动推进一拍。</summary>
     public static int PumpForTests(long nowMs) => Consumers.Pump(nowMs);

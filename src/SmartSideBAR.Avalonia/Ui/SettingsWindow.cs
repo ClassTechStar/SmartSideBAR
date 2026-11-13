@@ -507,6 +507,33 @@ public sealed class SettingsWindow : Window
             Opacity = 0.8,
         });
 
+        // 数据驱动变更说明（借鉴 SidebarDiagnostics 的 ChangeLog.json + 版本比对）。
+        // 适配：不自动弹窗打断课堂，只在关于页展示当前版本条目；数据源就是 CHANGELOG.md。
+        var notes = global::SmartSideBAR.Core.Diagnostics.ReleaseNotes.ForVersion(version)
+            ?? global::SmartSideBAR.Core.Diagnostics.ReleaseNotes.ForVersion(
+                global::SmartSideBAR.Core.Diagnostics.ReleaseNotes.CurrentVersion);
+        if (notes is { Changes.Count: > 0 })
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = $"v{notes.Version} 更新内容",
+                FontSize = 12.5,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = BodyFg(),
+                Margin = new Thickness(0, 10, 0, 2),
+            });
+            foreach (var change in notes.Changes.Take(6))
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = "• " + change,
+                    FontSize = 11.5,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = _p.MutedBrush,
+                });
+            }
+        }
+
         // P2-4: 应用内更新检查（借鉴 CyreneCompass）。只下载并提示，不静默替换运行中的程序。
         var updateBtn = new Button
         {
@@ -536,46 +563,46 @@ public sealed class SettingsWindow : Window
     private void Save()
     {
         var c = _config.Current;
-        _ = _config.Set("appearance.theme", _theme.SelectedIndex switch
+        _ = _config.SetIfChanged("appearance.theme", _theme.SelectedIndex switch
         {
             1 => "dark",
             2 => "auto", // auto 当前按浅色渲染 (AppTheme.IsDark 仅显式 dark 走深色)
             _ => "light",
         });
-        _ = _config.Set("appearance.liquidGlass", _glass.IsChecked == true);
-        _ = _config.Set("appearance.reduceMotion", _reduceMotion.IsChecked == true);
-        _ = _config.Set("appearance.accent",
+        _ = _config.SetIfChanged("appearance.liquidGlass", _glass.IsChecked == true);
+        _ = _config.SetIfChanged("appearance.reduceMotion", _reduceMotion.IsChecked == true);
+        _ = _config.SetIfChanged("appearance.accent",
             AccentHex[Math.Clamp(_accent.SelectedIndex, 0, AccentHex.Length - 1)]);
-        _ = _config.Set("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
-        _ = _config.Set("display.sidebarSide", _side.SelectedIndex == 0 ? "left" : "right");
+        _ = _config.SetIfChanged("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
+        _ = _config.SetIfChanged("display.sidebarSide", _side.SelectedIndex == 0 ? "left" : "right");
         var periods = LessonPeriodText.Parse(_lessonText.Text);
         if (string.IsNullOrWhiteSpace(_lessonText.Text) || periods.Count > 0)
         {
-            _ = _config.Set("lesson.periods", periods);
+            _ = _config.SetIfChanged("lesson.periods", periods);
         }
         else
         {
             ToastService.Instance.Show("课表格式无法解析 (示例: 8:00-8:45 语文; 8:55-9:40 数学), 本次未保存课表", "warn");
         }
-        _ = _config.Set("display.railTrigger", _trigger.SelectedIndex switch
+        _ = _config.SetIfChanged("display.railTrigger", _trigger.SelectedIndex switch
         {
             1 => "edge",
             2 => "edge-hover",
             _ => "always",
         });
-        _ = _config.Set("capture.format", (string?)_format.SelectedItem ?? "PNG");
-        _ = _config.Set("capture.dir", string.IsNullOrWhiteSpace(_captureDir.Text) ? c.Capture.Dir : _captureDir.Text.Trim());
-        _ = _config.Set("recorder.dir", string.IsNullOrWhiteSpace(_recorderDir.Text) ? c.Recorder.Dir : _recorderDir.Text.Trim());
-        _ = _config.Set("recorder.fps", (int)(_fps.Value ?? 15));
-        _ = _config.Set("recorder.mic", _mic.IsChecked == true);
-        _ = _config.Set("recorder.enabled", _recEnabled.IsChecked == true); // B8: 之前漏写, 勾选后重开即丢
-        _ = _config.Set("usb.enabled", _usbEnabled.IsChecked == true);
-        _ = _config.Set("printer.pollIntervalSec", (int)(_printerSec.Value ?? 10));
-        _ = _config.Set("capture.hotkey", _hkCapture.Text?.Trim());
-        _ = _config.Set("capture.annotateHotkey", _hkAnnotate.Text?.Trim());
-        _ = _config.Set("capture.longshotHotkey", _hkLongshot.Text?.Trim());
-        _ = _config.Set("floatBall.hotkey", _hkFloatBall.Text?.Trim());
-        _ = _config.Set("ime.hotkey", string.IsNullOrWhiteSpace(_hkIme.Text) ? "Ctrl+Shift+I" : _hkIme.Text?.Trim());
+        _ = _config.SetIfChanged("capture.format", (string?)_format.SelectedItem ?? "PNG");
+        _ = _config.SetIfChanged("capture.dir", string.IsNullOrWhiteSpace(_captureDir.Text) ? c.Capture.Dir : _captureDir.Text.Trim());
+        _ = _config.SetIfChanged("recorder.dir", string.IsNullOrWhiteSpace(_recorderDir.Text) ? c.Recorder.Dir : _recorderDir.Text.Trim());
+        _ = _config.SetIfChanged("recorder.fps", (int)(_fps.Value ?? 15));
+        _ = _config.SetIfChanged("recorder.mic", _mic.IsChecked == true);
+        _ = _config.SetIfChanged("recorder.enabled", _recEnabled.IsChecked == true); // B8: 之前漏写, 勾选后重开即丢
+        _ = _config.SetIfChanged("usb.enabled", _usbEnabled.IsChecked == true);
+        _ = _config.SetIfChanged("printer.pollIntervalSec", (int)(_printerSec.Value ?? 10));
+        _ = _config.SetIfChanged("capture.hotkey", _hkCapture.Text?.Trim());
+        _ = _config.SetIfChanged("capture.annotateHotkey", _hkAnnotate.Text?.Trim());
+        _ = _config.SetIfChanged("capture.longshotHotkey", _hkLongshot.Text?.Trim());
+        _ = _config.SetIfChanged("floatBall.hotkey", _hkFloatBall.Text?.Trim());
+        _ = _config.SetIfChanged("ime.hotkey", string.IsNullOrWhiteSpace(_hkIme.Text) ? "Ctrl+Shift+I" : _hkIme.Text?.Trim());
         _shell.SetAutoLaunch(_autoLaunch.IsChecked == true);
         ToastService.Instance.Show("设置已保存", "success");
         Close();

@@ -177,6 +177,40 @@ public sealed class ConfigService(
         return Set(dotPath, node);
     }
 
+    /// <summary>
+    /// 仅在值确实变化时写入（借鉴 SidebarDiagnostics 的 SettingsModel.IsChanged 脏标记）。
+    /// 每次 Set 都会落盘并广播，设置窗一次保存有二十来个键；未变化的键跳过可省掉
+    /// 大量重复磁盘写与无意义的 ConfigChanged 广播。语义与 Set 完全一致。
+    /// </summary>
+    public bool SetIfChanged<T>(string dotPath, T value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(dotPath);
+        JsonNode? node = value is null
+            ? null
+            : value is JsonNode n ? n
+            : JsonSerializer.SerializeToNode(value, typeof(T), ConfigJsonContext.Default.Options);
+
+        bool changed;
+        lock (_gate)
+        {
+            changed = !JsonNode.DeepEquals(FindNodeNoLock(dotPath), node);
+        }
+        return changed && Set(dotPath, node);
+    }
+
+    /// <summary>按键路径取当前根节点里的值；路径不存在或非对象容器时返回 null。</summary>
+    private JsonNode? FindNodeNoLock(string dotPath)
+    {
+        var segments = dotPath.Split('.');
+        JsonNode? node = _root;
+        foreach (var segment in segments)
+        {
+            if (node is not JsonObject obj) return null;
+            if (!obj.TryGetPropertyValue(segment, out node)) return null;
+        }
+        return node;
+    }
+
     /// <summary>C1 语义: 变更检测落盘, 仅 reminders 内容实际变化时写盘。返回是否落盘。</summary>
     public bool SetRemindersIfChanged(IReadOnlyList<Reminder> reminders)
     {
@@ -214,8 +248,10 @@ public sealed class ConfigService(
         // 路径变量展开与钳制 (与 config.ts 加载尾段一致)
         typed = typed with
         {
-            Capture = typed.Capture with { Dir = ExpandPath(typed.Capture.Dir) },
-            Recorder = typed.Recorder with { Dir = ExpandPath(typed.Recorder.Dir) },
+            // 键被移除/显式 null 时反序列化可能得到 null，回落到 schema 默认值，
+            // 否则 ExpandPath(null) 会 NRE（配置导出→导入闭环必踩）。
+            Capture = typed.Capture with { Dir = ExpandPath(typed.Capture.Dir ?? "{Pictures}/Sidekick") },
+            Recorder = typed.Recorder with { Dir = ExpandPath(typed.Recorder.Dir ?? "{Videos}/Sidekick") },
             Appearance = AppearanceNormalize.Clamp(typed.Appearance),
             FloatBall = FloatBallNormalize.Clamp(typed.FloatBall),
         };
@@ -287,7 +323,7 @@ public sealed class ConfigService(
         ],
     };
 
-    private static string ExpandPath(string p) => p
+    private static string ExpandPath(string? p) => (p ?? string.Empty)
         .Replace("{Pictures}", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures))
         .Replace("{Videos}", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos))
         .Replace("{Home}", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
