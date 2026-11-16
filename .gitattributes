@@ -34,8 +34,5 @@
 *.woff binary
 *.woff2 binary
 
-# 安装脚本与历史快照保持原样，避免自动转换把旧文件搞乱
+# 安装脚本保持原样，避免自动转换把文件搞乱
 Setup.iss            text eol=crlf
-SmartSideBAR-1.0.0/** -text
-SmartSideBAR-1.1/**    -text
-SmartSideBAR-1.2.0/**  -text

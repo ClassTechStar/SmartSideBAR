@@ -49,23 +49,6 @@ dotnet_diagnostic.CS8602.severity = warning
 dotnet_diagnostic.CS8603.severity = warning
 dotnet_diagnostic.CS8604.severity = warning
 
-# 历史遗留快照目录：仅用于对照旧 Electron 版界面，不参与构建。
-# 单独放宽，避免编辑器按新项目规范误报（借鉴 VeriRandom 对 vendors/ 的分段抑制做法）。
-[SmartSideBAR-1.0.0/**]
-dotnet_diagnostic.CS8600.severity = none
-dotnet_diagnostic.CS8603.severity = none
-dotnet_diagnostic.CS8618.severity = none
-
-[SmartSideBAR-1.1/**]
-dotnet_diagnostic.CS8600.severity = none
-dotnet_diagnostic.CS8603.severity = none
-dotnet_diagnostic.CS8618.severity = none
-
-[SmartSideBAR-1.2.0/**]
-dotnet_diagnostic.CS8600.severity = none
-dotnet_diagnostic.CS8603.severity = none
-dotnet_diagnostic.CS8618.severity = none
-
 # 第三方/生成物：不接受风格整改（node_modules、打包产物、安装器脚本）
 [node_modules/**]
 indent_style = unset
