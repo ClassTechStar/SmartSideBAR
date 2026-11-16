@@ -22,30 +22,12 @@ public sealed class SettingsWindow : Window
     private readonly IDiagnosticsService _diag;
     private readonly Palette _p;
 
-    private static readonly string[] NavItems = ["外观", "常规", "截图", "录屏", "设备", "快捷键", "诊断", "关于"];
+    private static readonly string[] NavItems = ["外观", "常规", "自动化", "截图", "录屏", "设备", "快捷键", "诊断", "关于"];
 
-    private readonly ComboBox _theme = new()
-    {
-        ItemsSource = new[] { "浅色（默认）", "深色", "自动（跟随系统）" },
-        SelectedIndex = 0,
-        MinWidth = 140,
-    };
-    private readonly ComboBox _accent = new()
-    {
-        ItemsSource = new[] { "跟随系统（推荐）", "品牌蓝 #2B6EE0", "青 #12A594", "紫 #7C5CFF", "橙 #D98324", "石墨 #4A5568" },
-        SelectedIndex = 0,
-        MinWidth = 180,
-    };
-    private static readonly string[] AccentHex = ["auto", "#2B6EE0", "#12A594", "#7C5CFF", "#D98324", "#4A5568"];
+    // P2-b「改哪迁哪」: 外观页迁 axaml (AppearancePage); 「自动化」为新面板, 全走 axaml (AutomationPage)
+    private readonly AppearancePage _appearancePage = new();
+    private readonly AutomationPage _automationPage = new();
 
-    private readonly CheckBox _glass = new()
-    {
-        Content = "液态玻璃质感（关闭 = 经典纯白快速面，低配设备推荐）",
-    };
-    private readonly CheckBox _reduceMotion = new()
-    {
-        Content = "减弱动效（跳过面板滑入等过渡动画）",
-    };
     private readonly ComboBox _side = new() { ItemsSource = new[] { "left", "right" }, SelectedIndex = 1 };
     private readonly TextBox _lessonText = new() { Watermark = "8:00-8:45 语文; 8:55-9:40 数学" };
     private readonly ComboBox _trigger = new()
@@ -61,7 +43,7 @@ public sealed class SettingsWindow : Window
     private readonly TextBox _captureDir = new() { Watermark = "{Pictures}/Sidekick" };
     private readonly TextBox _recorderDir = new() { Watermark = "{Videos}/Sidekick" };
     private readonly NumericUpDown _fps = new() { Value = 15, Minimum = 5, Maximum = 60 };
-    private readonly CheckBox _mic = new() { Content = "录制麦克风 (当前版本仅录画面)" };
+    private readonly CheckBox _mic = new() { Content = "录制麦克风（暂未支持，敬请期待）", IsEnabled = false };
     private readonly CheckBox _usbEnabled = new() { Content = "启用 U 盘监控" };
     private readonly NumericUpDown _printerSec = new() { Value = 10, Minimum = 3, Maximum = 300 };
     private readonly TextBox _hkCapture = new();
@@ -70,6 +52,7 @@ public sealed class SettingsWindow : Window
     private readonly TextBox _hkFloatBall = new();
     private readonly TextBox _hkIme = new();
     private readonly TextBlock _diagResult = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private TextBlock _updateStatus = new();
 
     private readonly ContentControl _pageHost = new();
     private readonly List<(string Title, Control Page)> _pages = new();
@@ -90,22 +73,15 @@ public sealed class SettingsWindow : Window
         Background = new SolidColorBrush(_p.Inset);
         LoadFrom(config.Current);
         Content = BuildUi();
+        _appearancePage.ApplyPalette(_p);
+        _automationPage.ApplyPalette(_p);
         SelectNav(0);
     }
 
     private void LoadFrom(SidekickConfig c)
     {
-        _theme.SelectedIndex = c.Appearance.Theme.ToLowerInvariant() switch
-        {
-            "dark" => 1,
-            "auto" => 2,
-            _ => 0,
-        };
-        _glass.IsChecked = c.Appearance.LiquidGlass;
-        _reduceMotion.IsChecked = c.Appearance.ReduceMotion;
-        var accentIdx = Array.FindIndex(AccentHex,
-            h => string.Equals(h, c.Appearance.Accent, StringComparison.OrdinalIgnoreCase));
-        _accent.SelectedIndex = accentIdx < 0 ? 1 : accentIdx; // 未知值回退品牌蓝（index 1）
+        _appearancePage.LoadFrom(c);
+        _automationPage.LoadRules(c.Automation.Rules);
         _autoCollapse.IsChecked = c.Display.AutoCollapseOnFullscreen;
         _side.SelectedIndex = c.Display.SidebarSide == SidebarSide.Left ? 0 : 1;
         _lessonText.Text = global::SmartSideBAR.Core.Scheduling.LessonPeriodText.Format(c.Lesson.Periods);
@@ -136,6 +112,8 @@ public sealed class SettingsWindow : Window
     private Control BuildUi()
     {
         var nav = new StackPanel { Spacing = 2, Margin = new Thickness(0, 12) };
+        // P2-a: 键盘焦点沿导航项逐站停靠 + 屏幕阅读器可读项名
+        global::Avalonia.Input.KeyboardNavigation.SetTabNavigation(nav, global::Avalonia.Input.KeyboardNavigationMode.Continue);
         for (var i = 0; i < NavItems.Length; i++)
         {
             var index = i;
@@ -150,12 +128,14 @@ public sealed class SettingsWindow : Window
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
             };
+            global::Avalonia.Automation.AutomationProperties.SetName(item, $"设置导航：{NavItems[i]}");
             item.Click += (_, _) => SelectNav(index);
             nav.Children.Add(item);
         }
 
-        _pages.Add(("外观", BuildAppearancePage()));
+        _pages.Add(("外观", _appearancePage));
         _pages.Add(("常规", BuildGeneralPage()));
+        _pages.Add(("自动化", _automationPage));
         _pages.Add(("截图", BuildCapturePage()));
         _pages.Add(("录屏", BuildRecorderPage()));
         _pages.Add(("设备", BuildDevicesPage()));
@@ -168,12 +148,13 @@ public sealed class SettingsWindow : Window
             Content = "保存",
             Padding = new Thickness(24, 8),
             HorizontalAlignment = HorizontalAlignment.Right,
-            // 主操作: 品牌色实心 (KoBar「唯一主操作用色」纪律)
+            // 主操作: 品牌色实心 (KoBar「唯一主操作用色」纪律); 高对比深色主题下前景反色
             Background = _p.AccentBrush,
-            Foreground = Brushes.White,
+            Foreground = _p.OnAccentBrush,
             BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(DesignTokens.Current.Shape.RadiusS),
         };
+        global::Avalonia.Automation.AutomationProperties.SetName(save, "保存设置");
         save.Click += (_, _) => Save();
 
         var footer = new Border
@@ -357,17 +338,6 @@ public sealed class SettingsWindow : Window
         return grid;
     }
 
-    private Control BuildAppearancePage()
-    {
-        return Page("外观",
-            Section("主题与强调色",
-                Row("主题", "浅色 / 深色 / 自动（自动当前按浅色渲染）", _theme),
-                Row("强调色", "rail 高亮、选中指示条、主按钮使用", _accent)),
-            Section("质感与动效",
-                Row("", "液态玻璃为 v1.2 观感; 经典纯白为 1.0 观感, 低配设备推荐", _glass),
-                Row("", "跳过面板滑入等过渡动画", _reduceMotion)));
-    }
-
     private Control BuildGeneralPage()
     {
         return Page("常规",
@@ -542,8 +512,17 @@ public sealed class SettingsWindow : Window
             Margin = new Thickness(0, 8, 0, 0),
             Padding = new Thickness(14, 8),
         };
+        _updateStatus = new TextBlock
+        {
+            Text = "",
+            FontSize = 11.5,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = _p.MutedBrush,
+            Margin = new Thickness(0, 6, 0, 0),
+        };
         updateBtn.Click += async (_, _) => await CheckUpdateAsync(version);
         stack.Children.Add(updateBtn);
+        stack.Children.Add(_updateStatus);
         return Page("关于",
             new Border
             {
@@ -563,16 +542,12 @@ public sealed class SettingsWindow : Window
     private void Save()
     {
         var c = _config.Current;
-        _ = _config.SetIfChanged("appearance.theme", _theme.SelectedIndex switch
-        {
-            1 => "dark",
-            2 => "auto", // auto 当前按浅色渲染 (AppTheme.IsDark 仅显式 dark 走深色)
-            _ => "light",
-        });
-        _ = _config.SetIfChanged("appearance.liquidGlass", _glass.IsChecked == true);
-        _ = _config.SetIfChanged("appearance.reduceMotion", _reduceMotion.IsChecked == true);
-        _ = _config.SetIfChanged("appearance.accent",
-            AccentHex[Math.Clamp(_accent.SelectedIndex, 0, AccentHex.Length - 1)]);
+        _ = _config.SetIfChanged("appearance.theme", _appearancePage.ThemeValue);
+        _ = _config.SetIfChanged("appearance.liquidGlass", _appearancePage.LiquidGlass);
+        _ = _config.SetIfChanged("appearance.reduceMotion", _appearancePage.ReduceMotion);
+        _ = _config.SetIfChanged("appearance.highContrast", _appearancePage.HighContrast);
+        _ = _config.SetIfChanged("appearance.accent", _appearancePage.AccentValue);
+        _ = _config.SetIfChanged("automation.rules", _automationPage.CollectRules()); // P2-6: Ruleset 消费
         _ = _config.SetIfChanged("display.autoCollapseOnFullscreen", _autoCollapse.IsChecked == true);
         _ = _config.SetIfChanged("display.sidebarSide", _side.SelectedIndex == 0 ? "left" : "right");
         var periods = LessonPeriodText.Parse(_lessonText.Text);
@@ -608,28 +583,43 @@ public sealed class SettingsWindow : Window
         Close();
     }
 
-    /// <summary>P2-4: 检查更新；发现新版本则下载并提示用户自行安装。</summary>
+    /// <summary>P2-4: 检查更新；发现新版本则下载（带进度与 SHA256 校验）并提示用户自行安装。</summary>
     private async Task CheckUpdateAsync(string currentVersion)
     {
         try
         {
+            _updateStatus.Text = "正在检查更新…";
             ToastService.Instance.Show("正在检查更新…", "info");
             var service = new global::SmartSideBAR.Avalonia.Updater.UpdateService();
-            var info = await service.CheckAsync(currentVersion);
-            if (info is null)
+            var check = await service.CheckAsync(currentVersion);
+            if (check.Error is { } checkError)
             {
+                _updateStatus.Text = $"检查更新失败: {checkError}";
+                ToastService.Instance.Show($"检查更新失败: {checkError}", "error");
+                return;
+            }
+            if (check.Info is not { } info)
+            {
+                _updateStatus.Text = "";
                 ToastService.Instance.Show("已经是最新版本", "success");
                 return;
             }
-            var path = await service.DownloadAsync(info);
-            ToastService.Instance.Show(
-                path is null
-                    ? $"发现 {info.Version}，但下载失败，请到 Release 页面手动获取"
-                    : $"已下载 {info.Version}: {path}",
-                path is null ? "error" : "success");
+
+            _updateStatus.Text = $"发现 {info.Version}（{info.Channel}），正在下载…";
+            var progress = new Progress<double>(p => _updateStatus.Text = $"发现 {info.Version}，正在下载… {p:0}%");
+            var result = await service.DownloadAsync(info, progress);
+            if (result.Error is { } downloadError)
+            {
+                _updateStatus.Text = $"下载失败: {downloadError}";
+                ToastService.Instance.Show($"{info.Version} 下载失败: {downloadError}，可到 Release 页面手动获取", "error");
+                return;
+            }
+            _updateStatus.Text = $"已下载并校验 {info.Version}: {result.Path}";
+            ToastService.Instance.Show($"已下载 {info.Version}（SHA256 校验通过）: {result.Path}", "success");
         }
         catch (Exception ex)
         {
+            _updateStatus.Text = $"检查更新失败: {ex.Message}";
             ToastService.Instance.Show($"检查更新失败: {ex.Message}", "error");
         }
     }

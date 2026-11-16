@@ -7,8 +7,10 @@ using SmartSideBAR.Avalonia.Ui;
 using SmartSideBAR.Avalonia.Views;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Diagnostics;
+using SmartSideBAR.Core.Extensions;
 using SmartSideBAR.Core.Links;
 using SmartSideBAR.Core.Messaging;
+using SmartSideBAR.Core.Rules;
 using SmartSideBAR.Core.Scheduling;
 using SmartSideBAR.Windows.AppBar;
 using SmartSideBAR.Windows.Audio;
@@ -57,6 +59,17 @@ public sealed class WindowManager(
     private bool _topmostKeeperActive;
     private EdgeTriggerWindow? _edgeTrigger;
     private MiniBoardWindow? _miniBoard;
+    // P1-9 拆分: 动作路由见 WindowRouter, 设备事件桥见 DeviceEventBridge
+    private WindowRouter? _router;
+    private DeviceEventBridge? _bridge;
+    /// <summary>P2-6: 自动化规则边沿触发引擎 (仅动作新成立时执行一次)。</summary>
+    private readonly AutomationEngine _automation = new();
+
+    /// <summary>P1-9: 动作总路由 (懒构造, 依赖 CreateSidebar 前后的全部服务)。</summary>
+    private WindowRouter Router =>
+        _router ??= new WindowRouter(this, config, stats, capture, longshot, recorder, ime, shell, bus, log);
+
+    internal bool IsDocked => _docked;
 
     /// <summary>希沃式触发条模式（建议 #1）: edge=点击展开, edge-hover=悬停滑出。</summary>
     private bool IsEdgeTriggerMode
@@ -73,6 +86,11 @@ public sealed class WindowManager(
         var cfg = config.Current;
         var side = cfg.Display.SidebarSide == SidebarSide.Left ? AppBarEdge.Left : AppBarEdge.Right;
         _side = side;
+
+        // P2-6: 内置模块作为源码级扩展登记, 设置页「自动化」的扩展状态区消费
+        ExtensionHost.Registry.TryRegister(new ExtensionManifest(
+            "builtin.panels", "内置面板集", ExtensionRegistry.CurrentApiVersion,
+            AppVersion, "截图/批注/录屏/设备等内置模块"));
 
         // 面板体系需要设备/调度等服务（v1.2 各 Panel 经 IPC 取数，此处同进程直调）
         var services = new ViewModels.SidebarServices(config, appBar, ime, shell, usb, printer, scheduler, recorder, sound, links, stats, Dispatch);
@@ -168,6 +186,7 @@ public sealed class WindowManager(
         LessonModeHost.Init(config);
         LessonModeHost.StateChanged += snap =>
         {
+            EvaluateAutomation(); // P2-6: 课堂状态是规则上下文的一部分
             if (!config.Current.Automation.LessonMode) return;
             var msg = snap.State switch
             {
@@ -187,38 +206,12 @@ public sealed class WindowManager(
             ToastService.Instance.Show(msg, "success");
         };
 
-        // 设备事件 → Toast
-        bus.Subscribe<UsbArrived>(e =>
-        {
-            stats.Record("usb");
-            ToastService.Instance.Show($"U 盘已接入: {e.Info.Drive} {e.Info.Label ?? ""} {e.Info.SizeGb}GB", "info");
-        });
-        bus.Subscribe<UsbRemoved>(e => ToastService.Instance.Show($"U 盘已移除: {e.Info.Drive}", "warn"));
-        bus.Subscribe<PrinterChanged>(e =>
-        {
-            var abnormal = e.Printers.Where(p => p.WireState is not "ok");
-            foreach (var p in abnormal)
-            {
-                ToastService.Instance.Show($"打印机「{p.Name}」状态: {p.WireState}", "warn");
-            }
-        });
-        bus.Subscribe<RecorderStatusChanged>(e =>
-        {
-            if (e.Recording) stats.Record("record");
-            ToastService.Instance.Show(e.Recording ? $"开始录屏: {e.FilePath}" : $"录屏完成: {e.FilePath}", e.Recording ? "info" : "success");
-        });
-        bus.Subscribe<LongshotCompleted>(e =>
-        {
-            if (e.Error is null) stats.Record("longshot");
-            ToastService.Instance.Show(e.Error is null ? $"长截图完成: {e.FilePath}" : $"长截图失败: {e.Error}", e.Error is null ? "success" : "error");
-        });
+        // 设备事件 → Toast (P1-9: 拆到 DeviceEventBridge, 事件→轻反馈集中一处)
+        _bridge = new DeviceEventBridge(bus, stats);
+        _bridge.Attach();
 
-        // B7: 到点必须有可见反馈, 只播声音不够 (教师戴耳麦时听不见)
-        bus.Subscribe<ReminderDue>(e =>
-        {
-            stats.Record("reminder");
-            ToastService.Instance.Show($"提醒: {e.Note ?? "时间到了"}", "warn");
-        });
+        // P2-6: 自动化规则周期求值 —— 时段/星期类条件依赖时间推进才能触发
+        Ui.ClockHost.Register("automation-rules", 60_000, EvaluateAutomation);
 
         // 几何事件: 面板宽度以系统授予为准 + 同步 Avalonia 窗口几何
         bus.Subscribe<AppBarGeometryChanged>(g =>
@@ -240,6 +233,8 @@ public sealed class WindowManager(
         // 立即采信会让侧栏莫名其妙收缩（命令行、无边框工具窗口铺满屏幕时尤其明显）。
         bus.Subscribe<FullscreenAppChanged>(_ =>
         {
+            // P2-6: 全屏类规则与收缩确认同节拍 (1.2s 去抖), 避免窗口切换抖动误触发
+            global::Avalonia.Threading.DispatcherTimer.RunOnce(EvaluateAutomation, TimeSpan.FromMilliseconds(1200));
             if (!config.Current.Display.AutoCollapseOnFullscreen) return;
             global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>
             {
@@ -262,6 +257,27 @@ public sealed class WindowManager(
 
         log.LogInformation("[Window] 侧栏窗口已创建 ({Side} 侧, rail={Rail} DIP, 胶囊高度=工作区 84%)", side, RailWidthDip);
         return win;
+    }
+
+    /// <summary>
+    /// P2-6: 自动化规则求值 (Ruleset 消费)。上下文 = 课堂状态 + 全屏 + 时段 + 星期;
+    /// AutomationEngine 边沿触发, 仅动作「新成立」时 Dispatch 一次。
+    /// </summary>
+    private void EvaluateAutomation()
+    {
+        var rules = config.Current.Automation.Rules;
+        if (rules.Count == 0) return;
+        var now = DateTime.Now;
+        var ctx = new RuleContext(
+            LessonState: (int)(LessonModeHost.Current?.State ?? LessonState.Idle),
+            Fullscreen: appBar.FullscreenActive,
+            HourOfDay: now.Hour,
+            WeekDay: (int)now.DayOfWeek);
+        foreach (var action in _automation.Update(rules, ctx))
+        {
+            log.LogInformation("[Window] 自动化规则触发: {Action}", action);
+            Dispatch(action);
+        }
     }
 
     /// <summary>
@@ -321,159 +337,11 @@ public sealed class WindowManager(
             string.IsNullOrWhiteSpace(cfg.Ime.Hotkey) ? "Ctrl+Shift+I" : cfg.Ime.Hotkey);
     }
 
-    /// <summary>动作总路由: rail 按钮 / 悬浮球 / 热键 / 托盘共用。</summary>
-    public void Dispatch(string action)
-    {
-        try
-        {
-            switch (action)
-            {
-                case "capture" or "capture-hotkey":
-                    EnsureCaptureDirs();
-                    stats.Record("capture");
-                    new OverlayWindow(capture, config.Current.Capture.Dir, config.Current.Capture.Format).Show();
-                    break;
-
-                case "annotate" or "annotate-hotkey":
-                    EnsureCaptureDirs();
-                    StartAnnotate();
-                    break;
-
-                case "miniboard":
-                    ShowMiniBoard();
-                    break;
-
-                case "longshot" or "longshot-hotkey":
-                    StartLongshotPicker();
-                    break;
-
-                case "record" or "record-hotkey":
-                    _ = ToggleRecorderAsync();
-                    break;
-
-                case "ime":
-                    _ = ime.Toggle();
-                    break;
-
-                case "taskmgr":
-                    shell.OpenTaskManager();
-                    break;
-
-                case "sidebar" or "floatball":
-                    ToggleFloatBall();
-                    break;
-
-                case "sidebar-toggle":
-                    ToggleSidebar();
-                    break;
-
-                case "dock":
-                    SetDocked(!_docked);
-                    break;
-
-                case "settings":
-                    OpenSettings();
-                    break;
-
-                case { } ws when ws.StartsWith("workspace:", StringComparison.OrdinalIgnoreCase):
-                    SwitchWorkspace(ws["workspace:".Length..]);
-                    break;
-
-                case "reminder":
-                    OpenReminder();
-                    break;
-
-                case "usb" or "printer":
-                    ShowDiagnostics(action);
-                    break;
-
-                default:
-                    log.LogWarning("[Window] 未知动作: {Action}", action);
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "[Window] 动作执行失败: {Action}", action);
-            ToastService.Instance.Show($"{action} 失败: {ex.Message}", "error");
-        }
-    }
-
-    private void EnsureCaptureDirs()
-    {
-        Directory.CreateDirectory(config.Current.Capture.Dir);
-    }
-
-    private void StartAnnotate()
-    {
-        byte[]? background = null;
-        try
-        {
-            // 打开瞬间抓全屏底图 (WithBackground 导出用); 失败允许仅笔迹
-            using var bmp = capture.CaptureMonitor(0);
-            if (bmp is not null)
-            {
-                using var ms = new MemoryStream();
-                bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                background = ms.ToArray();
-            }
-        }
-        catch (Exception ex)
-        {
-            log?.LogWarning(ex, "[Window] 批注底图抓取失败");
-        }
-        new AnnotateWindow(background, config.Current.Capture.Dir, config.Current.Capture.Format,
-            config.Current.Capture.InkToShape, bus).Show();
-    }
-
-    private void StartLongshotPicker()
-    {
-        var targets = longshot.EnumTargets();
-        if (targets.Count == 0)
-        {
-            ToastService.Instance.Show("未找到可截图的窗口", "warn");
-            return;
-        }
-        var picker = new WindowPickerWindow(targets);
-        picker.Closed += (_, _) =>
-        {
-            if (picker.Selected is { } target)
-            {
-                _ = Task.Run(() => longshot.CaptureAsync(target, config.Current.Capture.Dir, config.Current.Capture.Format));
-            }
-        };
-        picker.Show();
-    }
-
-    private async Task ToggleRecorderAsync()
-    {
-        if (!config.Current.Recorder.Enabled)
-        {
-            ToastService.Instance.Show("录屏已在设置中关闭（本机媒体管道不可用）", "warn");
-            return;
-        }
-        if (recorder.IsRecording)
-        {
-            await recorder.StopAsync();
-            return;
-        }
-        if (!recorder.IsSupported())
-        {
-            ToastService.Instance.Show("此系统不支持录屏 (需 Win10 1803+)", "error");
-            return;
-        }
-        var dir = config.Current.Recorder.Dir;
-        Directory.CreateDirectory(dir);
-        var fps = Math.Clamp(config.Current.Recorder.Fps, 5, 60);
-        var mic = config.Current.Recorder.Mic;
-        var path = Path.Combine(dir, $"record_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
-        stats.Record("record"); // 发起点 (时长由完成事件补记)
-        // B5: 传递麦克风配置 (读 config.recorder.mic)
-        await recorder.StartAsync(new RecorderOptions(path, fps, 2000, Microphone: mic));
-    }
+    /// <summary>动作总路由: rail 按钮 / 悬浮球 / 热键 / 托盘共用 (P1-9: 实现在 WindowRouter)。</summary>
+    public void Dispatch(string action) => Router.Dispatch(action);
 
     /// <summary>KoBar 工作区切换: 落盘 + 重建 rail（模块组合立即生效）。</summary>
-    private void SwitchWorkspace(string name)
+    internal void SwitchWorkspace(string name)
     {
         _ = config.Set("workspace.current", name);
         if (_sidebar?.DataContext is ViewModels.SidebarViewModel vm) vm.RebuildRail();
@@ -668,7 +536,7 @@ public sealed class WindowManager(
     }
 
     /// <summary>设备按钮 → 轻量状态弹窗 (usb/printer 即时查询)。</summary>
-    private void ShowDiagnostics(string kind)
+    internal void ShowDiagnostics(string kind)
     {
         var info = kind == "usb"
             ? string.Join('\n', usb.ListRemovable().Select(d => $"{d.Drive}  {d.Label ?? "(无卷标)"}  {d.SizeGb}GB")) is { Length: > 0 } s ? s : "未检测到可移动盘"

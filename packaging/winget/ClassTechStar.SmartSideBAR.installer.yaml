@@ -1,8 +1,10 @@
-# winget 安装器清单 —— PackageVersion 1.5.0
-# InstallerUrl 指向 GitHub Release 资产 (发版即有, 无需自建 CDN)。
-# 每个新版本: 复制本目录三份 yaml → 改 PackageVersion/InstallerUrl/Sha256 (sha256sum dist/*-Setup.exe)。
+# winget 安装器清单 —— 模板/人工兜底。
+# 日常发版不再手改本文件: Release 转正式发布时 .github/workflows/winget.yml
+# 自动生成含真实 SHA256 的 winget-pkgs 提交 PR (P0-2)。仅在机器人不可用时按下述手工更新:
+#   复制本目录三份 yaml → 改 PackageVersion/InstallerUrl/InstallerSha256
+#   (sha256sum dist/*-Setup.exe, 值以 Release 附带的 SHA256SUMS.txt 为准)。
 PackageIdentifier: ClassTechStar.SmartSideBAR
-PackageVersion: 1.5.0
+PackageVersion: 1.6.0
 PackageName: SmartSideBAR
 Publisher: ClassTechStar
 License: Apache-2.0
@@ -19,8 +21,21 @@ Tags:
 Installers:
   - Architecture: x64
     InstallerType: inno
-    InstallerUrl: https://github.com/ClassTechStar/SmartSideBAR/releases/download/v1.5/SmartSideBAR-v1.5.0-Setup.exe
-    InstallerSha256: 94296FBB1D053726A9F1119493F48A9C0B4156EA753EE234CB3B0C4DE64EA429
+    InstallerUrl: https://github.com/ClassTechStar/SmartSideBAR/releases/download/v1.6.0/SmartSideBAR-v1.6.0-x64-Setup.exe
+    # 占位值: 手工提交前必须替换为 Release SHA256SUMS.txt 中的真实哈希
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    InstallerSwitches:
+      Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+      SilentWithProgress: /SILENT /NORESTART
+      Interactive: ""
+    Scope: user
+    InstallerLocale: zh-CN
+    UpgradeBehavior: install
+  - Architecture: arm64
+    InstallerType: inno
+    InstallerUrl: https://github.com/ClassTechStar/SmartSideBAR/releases/download/v1.6.0/SmartSideBAR-v1.6.0-arm64-Setup.exe
+    # 占位值: 手工提交前必须替换为 Release SHA256SUMS.txt 中的真实哈希
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
     InstallerSwitches:
       Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
       SilentWithProgress: /SILENT /NORESTART

@@ -1,4 +1,6 @@
 // 替代 Electron IPC 事件推送 (附录 A): 同进程类型安全发布/订阅。
+using Microsoft.Extensions.Logging;
+
 namespace SmartSideBAR.Core.Messaging;
 
 public interface IEventBus
@@ -10,7 +12,7 @@ public interface IEventBus
     void Publish<T>(T evt);
 }
 
-public sealed class EventBus : IEventBus
+public sealed class EventBus(ILogger<EventBus>? log = null) : IEventBus
 {
     private readonly object _gate = new();
     private Dictionary<Type, List<Delegate>> _handlers = [];
@@ -41,9 +43,11 @@ public sealed class EventBus : IEventBus
         foreach (var d in snapshot)
         {
             try { ((Action<T>)d)(evt); }
-            catch
+            catch (Exception ex)
             {
-                // 单个处理器异常不得阻断事件链 (侧栏常驻场景); 具体日志由宿主注入的处理器自理
+                // 单个处理器异常不得阻断事件链 (侧栏常驻场景);
+                // P1-9: 记一条日志, 教学机上 handler 异常不再完全不可诊断
+                log?.LogWarning(ex, "[EventBus] {Type} 的事件处理器抛出异常", typeof(T).Name);
             }
         }
     }

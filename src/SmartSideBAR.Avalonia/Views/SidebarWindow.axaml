@@ -126,7 +126,8 @@
             <!-- dock 切换 -->
             <Button x:Name="DockBtn" Classes="railBtn" DockPanel.Dock="Bottom"
                     HorizontalAlignment="Center" Margin="0,0,0,6"
-                    Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}">
+                    Command="{Binding DockCommand}" ToolTip.Tip="{Binding DockTooltip}"
+                    AutomationProperties.Name="{Binding DockTooltip}">
               <!-- 尺寸由 DesignTokens.Dock.ArrowSizePx 在构造时写入（单一真源） -->
               <Image x:Name="DockArrowIcon" Width="30" Height="30" Source="{Binding DockIcon}"/>
             </Button>
@@ -141,7 +142,8 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:RailItem">
                     <Button Classes="railBtn" Classes.active="{Binding IsActive}"
-                            Command="{Binding Command}" ToolTip.Tip="{Binding Title}">
+                            Command="{Binding Command}" ToolTip.Tip="{Binding Title}"
+                            AutomationProperties.Name="{Binding Title}">
                       <Panel>
                         <!-- 投影由 Border.glassRail ItemsControl Image 样式控制 (玻璃/经典模式切换) -->
                         <Image Width="28" Height="28" Source="{Binding Icon}"/>
@@ -182,7 +184,7 @@
             <TextBlock x:Name="PanelTitleText" Grid.Column="0" Text="{Binding PanelTitle}"
                        FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
             <Button Grid.Column="1" Classes="panelClose" Command="{Binding ClosePanelCommand}"
-                    ToolTip.Tip="关闭面板">
+                    ToolTip.Tip="关闭面板" AutomationProperties.Name="关闭面板">
               <TextBlock x:Name="PanelCloseGlyph" Text="×" FontSize="20"/>
             </Button>
           </Grid>

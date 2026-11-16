@@ -49,4 +49,31 @@ public class ExtensionRegistryTests
         Assert.True(reg.Unregister("a"));
         Assert.Empty(reg.Loaded);
     }
+
+    [Fact]
+    public void 共享注册中心可登记与注销()
+    {
+        var reg = ExtensionHost.Registry;
+        var id = "test.ext." + Guid.NewGuid().ToString("N")[..6];
+        try
+        {
+            Assert.True(reg.TryRegister(new ExtensionManifest(id, "测试扩展", ExtensionRegistry.CurrentApiVersion, "0.1")));
+            Assert.Contains(reg.Loaded, e => e.Id == id);
+        }
+        finally
+        {
+            reg.Unregister(id); // 共享单例, 测后清理避免跨测试污染
+        }
+    }
+
+    [Fact]
+    public void 失败记录显示名与挂件端点()
+    {
+        Assert.Equal("(未命名)", new ExtensionLoadFailure("", "原因").DisplayName);
+        Assert.Equal("demo", new ExtensionLoadFailure("demo", "原因").DisplayName);
+        var ep = new ExtensionEntryPoint("demo", "panel", () => new object());
+        Assert.Equal("demo", ep.ExtensionId);
+        Assert.Equal("panel", ep.Kind);
+        Assert.NotNull(ep.Factory());
+    }
 }

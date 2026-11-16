@@ -33,4 +33,9 @@ namespace SmartSideBAR.Core.Configuration;
 // 智能课堂: 课表 (设置页文本解析 → List<LessonPeriod> 走 Set<T>)
 [JsonSerializable(typeof(List<Scheduling.LessonPeriod>))]
 [JsonSerializable(typeof(Scheduling.LessonPeriod))]
+// 智能课堂: 自动化规则 (设置页「自动化」编辑器整组读写 automation.rules)
+[JsonSerializable(typeof(List<AutomationRuleConfig>))]
+[JsonSerializable(typeof(AutomationRuleConfig))]
+[JsonSerializable(typeof(AutomationRuleConfig[]))]
+[JsonSerializable(typeof(List<AutomationConditionConfig>))]
 public sealed partial class ConfigJsonContext : JsonSerializerContext;

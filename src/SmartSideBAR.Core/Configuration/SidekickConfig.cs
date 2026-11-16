@@ -158,6 +158,30 @@ public sealed record AutomationConfig
     public string ClassWorkspace { get; init; } = "上课";
     /// <summary>上课中抑制 info 级 Toast（USB 插拔等不打断讲课, 通知中心仍留档）。</summary>
     public bool QuietOnClass { get; init; } = true;
+    /// <summary>
+    /// 条件 → 动作自动化规则（P2-6: 设置页「自动化」编辑, Ruleset 消费）。
+    /// 示例: 上课时自动切「上课」工作区 / 全屏时收起侧栏。
+    /// </summary>
+    public List<AutomationRuleConfig> Rules { get; init; } = [];
+}
+
+/// <summary>自动化规则的持久化形态（对应 Rules.RuleGroup）。</summary>
+public sealed record AutomationRuleConfig
+{
+    public bool Enabled { get; init; } = true;
+    /// <summary>动作 id（Dispatch 词表, 如 "workspace:上课" / "ime" / "dock"）。</summary>
+    public string ActionId { get; init; } = "";
+    /// <summary>true = 全部条件满足才触发; false = 任一满足即触发。</summary>
+    public bool AllMustMatch { get; init; } = true;
+    public List<AutomationConditionConfig> Conditions { get; init; } = [];
+}
+
+/// <summary>自动化规则条件的持久化形态（对应 Rules.RuleCondition）。</summary>
+public sealed record AutomationConditionConfig
+{
+    public Rules.RuleConditionKind Kind { get; init; } = Rules.RuleConditionKind.LessonState;
+    public Rules.RuleMatchMode Mode { get; init; } = Rules.RuleMatchMode.Equals;
+    public string Value { get; init; } = "";
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SidebarSide>))]

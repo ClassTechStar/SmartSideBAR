@@ -63,11 +63,11 @@
 
 ## 装上就能用的版本
 
-去 [Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下 `SmartSideBAR-v{version}-Setup.exe`，双击装。装在当前用户目录下，不需要管理员权限。
+去 [Releases](https://github.com/ClassTechStar/SmartSideBAR/releases) 下安装包，双击装：普通教学机/PC 选 `SmartSideBAR-v{version}-x64-Setup.exe`，ARM 一体机（如骁龙 X 系列）选 `SmartSideBAR-v{version}-arm64-Setup.exe`。装在当前用户目录下，不需要管理员权限。
 
 安装包是源码构建的（`dotnet publish` + Inno Setup），**目前没有做代码签名**（之前试过自签根证书，往用户机器里装根 CA 这事风险太大，已经去掉了。等真有分发量再买正规证书）。SmartScreen 要弹「仍要运行」就点一下。
 
-学校电教批量部署可以用 winget：清单在 `packaging/winget/`，等合进 winget-pkgs 之后就是 `winget install ClassTechStar.SmartSideBAR`。
+学校电教批量部署可以用 winget：`winget install ClassTechStar.SmartSideBAR`。清单源在 `packaging/winget/`，发版后由 CI 自动向 winget-pkgs 提交（流程见该目录 README）。
 
 ## 自己构建
 
@@ -87,8 +87,9 @@ dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
   -p:TrimMode=partial -p:EnableCompressionInSingleFile=true \
   -o artifacts/app
 
-# 打安装包（要装 Inno Setup；发版时改 iss 里的 AppVersion，一共三处）
-iscc installer/SmartSideBAR.iss
+# 打安装包（要装 Inno Setup；版本号只看 Directory.Build.props <Version>，
+# 发版时 CI 用 /DAppVersion=x.y.z 注入，本地手工编译可省略该参数走脚本内兜底值）
+iscc /DAppVersion=1.6.0 installer/SmartSideBAR.iss
 ```
 
 平时开发直接跑就行：
@@ -97,7 +98,7 @@ iscc installer/SmartSideBAR.iss
 dotnet run --project src/SmartSideBAR.Avalonia
 ```
 
-> 早期 Electron 版本的源码在 `archive/electron-final` 分支。仓库根下的 `SmartSideBAR-1.0.0/1.1/1.2.0` 三个目录是当时留的版本快照，只是方便对着看界面，不参与构建。
+> 早期 Electron 版本的源码在 `archive/electron-final` 分支，当时的版本快照目录已从主干移除（仓库瘦身），需要对照界面可到该分支查看。
 
 ## 怎么用
 

@@ -13,6 +13,8 @@ public sealed record Palette
     public required bool Dark { get; init; }
     /// <summary>false = 1.0「经典快」面（纯白不透明 + 发丝线, 零持久模糊）; true = v1.2 液态玻璃。</summary>
     public required bool Glass { get; init; }
+    /// <summary>高对比度面 (纯黑白 + 全不透明描边, P2-a 可访问性)。</summary>
+    public bool HighContrast { get; init; }
     public required Color PanelBg { get; init; }
     /// <summary>页面/窗口内衬底色 (设置页背景等, KoBar inset 层)。</summary>
     public required Color Inset { get; init; }
@@ -46,6 +48,8 @@ public sealed record Palette
     public IBrush DividerBrush => new SolidColorBrush(Divider);
     public IBrush HoverBrush => new SolidColorBrush(Hover);
     public IBrush PanelBrush => new SolidColorBrush(PanelBg);
+    /// <summary>强调色实心块上的前景色 (高对比深色主题的强调色为亮黄, 需反色文字)。</summary>
+    public IBrush OnAccentBrush => HighContrast && Dark ? Brushes.Black : Brushes.White;
 }
 
 public static class AppTheme
@@ -76,6 +80,8 @@ public static class AppTheme
         // P1-3: 主题生成失败时回退经典白面, 而不是白屏/崩溃 (借鉴 CW2 的 ThemeRecoveryController)。
         try
         {
+            // P2-a: 高对比度优先于玻璃/经典面 (纯黑白强对比, 不受质感参数影响)
+            if (a.HighContrast) return HighContrast(dark);
             // liquidGlass=false → 1.0「经典快」: 纯白不透明表面（低配设备零模糊合成开销）。
             // 深色主题无经典变体时保持玻璃深色, 避免另起一套深色平面规格。
             if (!a.LiquidGlass && !dark) return ClassicLight(accent);
@@ -146,6 +152,39 @@ public static class AppTheme
         RimFrom = Color.FromArgb(0x3D, 0xFF, 0xFF, 0xFF),
         RimTo = Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF),
     };
+
+    /// <summary>
+    /// 高对比度面 (P2-a 可访问性): 纯黑白 + 全不透明描边, 无玻璃/渐变。
+    /// 深色强调色用亮黄 (高对比主题惯例), 实心块上文字反色由 OnAccentBrush 处理。
+    /// </summary>
+    private static Palette HighContrast(bool dark)
+    {
+        var bg = Color.Parse(dark ? "#000000" : "#FFFFFF");
+        var fg = Color.Parse(dark ? "#FFFFFF" : "#000000");
+        var accent = Color.Parse(dark ? "#FFFF00" : "#0000CC");
+        return new Palette
+        {
+            Dark = dark,
+            Glass = false,
+            HighContrast = true,
+            PanelBg = bg,
+            Inset = bg,
+            Card = bg,
+            Body = fg,
+            CardText = fg,
+            Text = fg,
+            Muted = fg,
+            Divider = fg,
+            Hover = Color.Parse(dark ? "#333333" : "#E0E0E0"),
+            Accent = accent,
+            AccentSoft = Color.Parse(dark ? "#333333" : "#D0D0D0"),
+            RailFrom = bg,
+            RailTo = bg,
+            RailGlow = Color.FromArgb(0, 0xFF, 0xFF, 0xFF),
+            RimFrom = fg,
+            RimTo = fg,
+        };
+    }
 
     /// <summary>1.0「经典快」浅色面：设计令牌 classic 段（纯白 / 发丝线 / 品牌浅蓝态色）。</summary>
     private static Palette ClassicLight(Color accent)

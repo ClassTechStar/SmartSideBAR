@@ -45,9 +45,8 @@ internal sealed class CapturePanel : SidebarPanel
 
     private string ElapsedText()
     {
-        var started = Services.Recorder.StartedAt ?? DateTimeOffset.Now;
-        var span = DateTimeOffset.Now - started;
-        if (span < TimeSpan.Zero) span = TimeSpan.Zero;
+        // P1-6: 计时用净时长 (扣除暂停段), 与成片时间线一致
+        var span = Services.Recorder.Elapsed;
         return $"{(int)span.TotalMinutes:00}:{span.Seconds:00}";
     }
 
@@ -141,10 +140,17 @@ internal sealed class CapturePanel : SidebarPanel
             Services.Dispatch("record");
             global::Avalonia.Threading.DispatcherTimer.RunOnce(Refresh, TimeSpan.FromMilliseconds(900));
         }, primary: true);
+        // P1-6: 暂停/继续 (暂停期间不落帧, 成片自动跳过暂停段)
+        var pause = PanelKit.Flat(Services.Recorder.IsPaused ? "继续" : "暂停", Palette, () =>
+        {
+            if (Services.Recorder.IsPaused) Services.Recorder.Resume();
+            else Services.Recorder.Pause();
+            Refresh();
+        });
 
         var body = Stack(10);
         body.Children.Add(head);
-        body.Children.Add(stop);
+        body.Children.Add(PanelKit.Row(8, pause, stop));
 
         return new Border
         {

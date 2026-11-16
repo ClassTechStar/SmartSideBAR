@@ -19,6 +19,8 @@ public sealed record AppearanceConfig
     public string Accent { get; init; } = "#2B6EE0";
     public double Radius { get; init; } = 16;
     public bool ReduceMotion { get; init; }
+    /// <summary>高对比度主题 (纯黑白 + 全不透明描边, 低视力/投影教室可用)。</summary>
+    public bool HighContrast { get; init; }
 }
 
 public static class AppearanceNormalize
@@ -66,6 +68,7 @@ public static class AppearanceNormalize
             Accent = NormalizeAccent(input.Accent, b.Accent),
             Radius = ClampNum(input.Radius, 0, 28, b.Radius),
             ReduceMotion = input.ReduceMotion,
+            HighContrast = input.HighContrast,
         };
     }
 }

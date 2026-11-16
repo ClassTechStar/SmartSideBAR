@@ -69,11 +69,12 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
             var rect = GetExtendedFrameBounds(target.Hwnd);
             if (rect.W <= 0 || rect.H <= 0) throw new InvalidOperationException("目标窗口矩形不可用");
 
-            Bitmap canvas;
-            using (var scope = new AppBarApi.PhysicalDpiScope())
+            Bitmap canvas = CaptureFrame(rect) ?? throw new InvalidOperationException("首帧捕获失败");
+            // P1-7 黑块检测 (首帧): 整帧近黑说明 BitBlt 对该窗口失效 (典型: GPU 加速的 Chromium 类窗口)
+            if (IsMostlyBlack(canvas))
             {
-                var first = CaptureRect(rect);
-                canvas = first ?? throw new InvalidOperationException("首帧捕获失败");
+                canvas.Dispose();
+                throw new InvalidOperationException("窗口内容无法捕获（GPU 加速渲染的窗口不支持 BitBlt 截取），请改用区域截图");
             }
 
             var frames = 1;
@@ -85,25 +86,53 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
                 _ = PostMessage(target.Hwnd, WmKeyUp, VkNext, 0);
                 await Task.Delay(ScrollWaitMs, ct).ConfigureAwait(false);
 
-                Bitmap frame;
-                using (var scope = new AppBarApi.PhysicalDpiScope())
+                var frame = CaptureFrame(rect);
+                if (frame is null) break;
+                // P1-7 黑块检测: 中途拿到黑帧 (GPU 窗口滚动重绘失效) 就此收尾, 不把黑色拼进长图
+                if (IsMostlyBlack(frame))
                 {
-                    var captured = CaptureRect(rect);
-                    if (captured is null) break;
-                    frame = captured;
+                    frame.Dispose();
+                    log?.LogWarning("[Longshot] 第 {N} 帧近乎全黑 (BitBlt 失效), 提前收尾保留已拼内容", frames + 1);
+                    break;
                 }
 
                 // B6: 参与比对的必须是「已拼图的尾部若干行」, 不能传 RowHashes(canvas, n)
                 // 那是画布顶部 n 行, 与「尾部重叠」语义相反。
-                var overlapWindow = Math.Min(canvas.Height, frame.Height);
-                var tailHashes = RowHashes(canvas, canvas.Height - overlapWindow, overlapWindow);
-                var frameHashes = RowHashes(frame, 0, frame.Height);
-                var overlap = LongshotStitcher.FindOverlap(tailHashes, frameHashes, overlapWindow);
+                var overlap = FindOverlapFor(canvas, frame);
                 if (overlap >= frame.Height)
                 {
                     frame.Dispose();
                     break; // 已到底
                 }
+
+                // P1-7 拼接校验: 重叠为 0 说明滚动没推进或窗口内容变化过大, 直接拼会重影。
+                // 重试一拍; 仍为 0 则显式失败, 不产出错误长图。
+                if (overlap == 0)
+                {
+                    frame.Dispose();
+                    await Task.Delay(ScrollWaitMs, ct).ConfigureAwait(false);
+                    frame = CaptureFrame(rect);
+                    if (frame is null) break;
+                    if (IsMostlyBlack(frame))
+                    {
+                        frame.Dispose();
+                        log?.LogWarning("[Longshot] 重试帧近乎全黑, 提前收尾保留已拼内容");
+                        break;
+                    }
+                    overlap = FindOverlapFor(canvas, frame);
+                    if (overlap == 0)
+                    {
+                        frame.Dispose();
+                        canvas.Dispose();
+                        throw new InvalidOperationException("滚动拼接校验失败（滚动未推进或窗口内容持续变化），已中止以免输出重影长图");
+                    }
+                    if (overlap >= frame.Height)
+                    {
+                        frame.Dispose();
+                        break; // 已到底
+                    }
+                }
+
                 canvas = Stitch(canvas, frame, overlap);
                 committed = canvas.Height;
                 frames++;
@@ -142,6 +171,43 @@ public sealed partial class LongshotService(IEventBus bus, ILogger<LongshotServi
         g.ReleaseHdc(hdcDest);
         _ = ReleaseDC(0, hdcSrc);
         return bmp;
+    }
+
+    /// <summary>在物理 DPI 作用域内抓一帧 (BitBlt 坐标是物理像素)。</summary>
+    private static Bitmap? CaptureFrame(AppBarRect r)
+    {
+        using var scope = new AppBarApi.PhysicalDpiScope();
+        return CaptureRect(r);
+    }
+
+    /// <summary>新帧与已拼图尾部的最大行重叠 (B6 语义: 新帧顶部 == 尾部末行)。</summary>
+    private static int FindOverlapFor(Bitmap canvas, Bitmap frame)
+    {
+        var overlapWindow = Math.Min(canvas.Height, frame.Height);
+        var tailHashes = RowHashes(canvas, canvas.Height - overlapWindow, overlapWindow);
+        var frameHashes = RowHashes(frame, 0, frame.Height);
+        return LongshotStitcher.FindOverlap(tailHashes, frameHashes, overlapWindow);
+    }
+
+    /// <summary>
+    /// P1-7 黑块检测: BitBlt 对 GPU 加速窗口 (Chromium 类) 会得到整块黑色。
+    /// 32×32 网格采样, 非黑采样点不足 0.5% 判定为黑帧。
+    /// </summary>
+    internal static bool IsMostlyBlack(Bitmap bmp)
+    {
+        const int grid = 32;
+        var nonBlack = 0;
+        for (var gy = 0; gy < grid; gy++)
+        {
+            for (var gx = 0; gx < grid; gx++)
+            {
+                var x = (int)((long)bmp.Width * gx / grid);
+                var y = (int)((long)bmp.Height * gy / grid);
+                var c = bmp.GetPixel(Math.Min(x, bmp.Width - 1), Math.Min(y, bmp.Height - 1));
+                if (c.R > 8 || c.G > 8 || c.B > 8) nonBlack++;
+            }
+        }
+        return nonBlack < grid * grid / 200;
     }
 
     private static Bitmap Stitch(Bitmap tail, Bitmap frame, int overlap)

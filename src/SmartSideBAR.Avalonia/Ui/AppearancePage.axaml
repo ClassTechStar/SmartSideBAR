@@ -1,0 +1,62 @@
+<!-- 外观设置页 (P2-b「改哪迁哪」样板: 原 C# 手搓 BuildAppearancePage 迁 axaml)。
+     视觉沿用 KoBar「标签+描述在左 / 控件在右」Option 行; 调色由代码后置注入。 -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SmartSideBAR.Avalonia.Ui.AppearancePage"
+             AutomationProperties.Name="外观设置">
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock x:Name="TitleText" Text="外观" FontSize="17" FontWeight="Bold" Margin="0,0,0,2" />
+
+      <Border x:Name="ThemeCard" CornerRadius="10" Padding="14" BorderThickness="1">
+        <StackPanel Spacing="4">
+          <TextBlock x:Name="ThemeTitle" Text="主题与强调色"
+                     FontSize="12.5" FontWeight="SemiBold" Margin="0,2,0,6" />
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock x:Name="ThemeLabel" Text="主题" FontSize="13" FontWeight="SemiBold" />
+              <TextBlock x:Name="ThemeDesc" Text="浅色 / 深色 / 自动（自动当前按浅色渲染）"
+                         FontSize="11.5" TextWrapping="Wrap" MaxWidth="320" />
+            </StackPanel>
+            <ComboBox x:Name="ThemeCombo" Grid.Column="1" MinWidth="140"
+                      VerticalAlignment="Center" AutomationProperties.Name="主题" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock x:Name="AccentLabel" Text="强调色" FontSize="13" FontWeight="SemiBold" />
+              <TextBlock x:Name="AccentDesc" Text="rail 高亮、选中指示条、主按钮使用"
+                         FontSize="11.5" TextWrapping="Wrap" MaxWidth="320" />
+            </StackPanel>
+            <ComboBox x:Name="AccentCombo" Grid.Column="1" MinWidth="180"
+                      VerticalAlignment="Center" AutomationProperties.Name="强调色" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border x:Name="FeelCard" CornerRadius="10" Padding="14" BorderThickness="1">
+        <StackPanel Spacing="4">
+          <TextBlock x:Name="FeelTitle" Text="质感与动效"
+                     FontSize="12.5" FontWeight="SemiBold" Margin="0,2,0,6" />
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock x:Name="GlassDesc" Text="液态玻璃为 v1.2 观感; 经典纯白为 1.0 观感, 低配设备推荐"
+                       FontSize="11.5" TextWrapping="Wrap" MaxWidth="320" VerticalAlignment="Center" />
+            <CheckBox x:Name="GlassCheck" Grid.Column="1" VerticalAlignment="Center"
+                      Content="液态玻璃质感（关闭 = 经典纯白快速面，低配设备推荐）" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock x:Name="MotionDesc" Text="跳过面板滑入等过渡动画"
+                       FontSize="11.5" TextWrapping="Wrap" MaxWidth="320" VerticalAlignment="Center" />
+            <CheckBox x:Name="ReduceMotionCheck" Grid.Column="1" VerticalAlignment="Center"
+                      Content="减弱动效（跳过面板滑入等过渡动画）" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock x:Name="ContrastDesc" Text="纯黑白强对比 + 全不透明描边, 低视力/投影教室可用"
+                       FontSize="11.5" TextWrapping="Wrap" MaxWidth="320" VerticalAlignment="Center" />
+            <CheckBox x:Name="HighContrastCheck" Grid.Column="1" VerticalAlignment="Center"
+                      Content="高对比度主题" AutomationProperties.Name="高对比度主题" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

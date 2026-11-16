@@ -75,6 +75,15 @@ public sealed class ExtensionRegistry
     }
 }
 
+/// <summary>
+/// 宿主级共享注册中心 (P2-6 消费方: 设置页「自动化」的扩展状态区)。
+/// 内置扩展在启动时登记, 外部扩展经同一入口注册, 状态统一展示。
+/// </summary>
+public static class ExtensionHost
+{
+    public static ExtensionRegistry Registry { get; } = new();
+}
+
 /// <summary>扩展可注册的挂件/面板描述(借鉴 CW2 的 WidgetDefinition)。</summary>
 public sealed record ExtensionEntryPoint(
     string ExtensionId,

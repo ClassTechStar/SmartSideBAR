@@ -30,6 +30,14 @@ public interface IRecorderApi
 
     /// <summary>本次录屏的开始时刻 (本地时间); 未录制时为 null。面板据此显示计时。</summary>
     DateTimeOffset? StartedAt { get; }
+
+    /// <summary>已录制净时长 (扣除暂停段, 与成片时间线一致); 未录制时为零。</summary>
+    TimeSpan Elapsed { get; }
+
+    /// <summary>暂停/继续 (P1-6): 暂停期间不落帧, 成片时间线自动跳过暂停段, 不留空洞。</summary>
+    bool IsPaused { get; }
+    void Pause();
+    void Resume();
 }
 
 public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptureRecorder>? log = null)
@@ -54,10 +62,55 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
     private int _samplesDelivered;   // 真正交给转码器的采样数
     private int _waitTimeouts;       // 取帧等待超时次数
     private int _nullSamples;        // 交付 null（结束信号）次数
+    private volatile bool _paused;
+    private readonly ManualResetEventSlim _pauseGate = new(true);
+    private readonly object _pauseLock = new();
+    private TimeSpan _pausedTotal;   // 已结束的暂停段累计时长 (样本时间戳补偿用)
+    private DateTimeOffset? _pausedSince;
 
     public DateTimeOffset? StartedAt => _startedAt;
 
     public bool IsRecording => _recording;
+
+    public bool IsPaused => _paused;
+
+    public TimeSpan Elapsed
+    {
+        get
+        {
+            if (_startedAt is not { } start) return TimeSpan.Zero;
+            TimeSpan paused;
+            lock (_pauseLock)
+            {
+                paused = _pausedTotal;
+                if (_pausedSince is { } since) paused += DateTimeOffset.Now - since;
+            }
+            var span = DateTimeOffset.Now - start - paused;
+            return span < TimeSpan.Zero ? TimeSpan.Zero : span;
+        }
+    }
+
+    public void Pause()
+    {
+        if (!_recording || _paused) return;
+        lock (_pauseLock) _pausedSince = DateTimeOffset.Now;
+        _paused = true;
+        _pauseGate.Reset();
+        log?.LogInformation("[Recorder] 已暂停");
+    }
+
+    public void Resume()
+    {
+        if (!_paused) return;
+        lock (_pauseLock)
+        {
+            if (_pausedSince is { } since) _pausedTotal += DateTimeOffset.Now - since;
+            _pausedSince = null;
+        }
+        _paused = false;
+        _pauseGate.Set();
+        log?.LogInformation("[Recorder] 已继续");
+    }
 
     public bool IsSupported()
     {
@@ -80,8 +133,9 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _fps = Math.Clamp(opt.Fps, 5, 60);
 
         var device = D3D11Helper.CreateDevice();
+        // P1-6: 帧池 2 → 3, 高负载下留一个缓冲的余量, 少丢帧
         _framePool = WinCapture.Direct3D11CaptureFramePool.CreateFreeThreaded(
-            device, WinDirectX.DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, size);
+            device, WinDirectX.DirectXPixelFormat.B8G8R8A8UIntNormalized, 3, size);
 
         // MP4 容器 + H.264 视频轨 + 可选音频轨 (B5: 麦克风混流)
         var profile = WinProps.MediaEncodingProfile.CreateMp4(
@@ -106,21 +160,26 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         // B8G8R8A8UIntNormalized (BGRA)。若声明成 Rgb32, 与真实采样格式不符,
         // 转码器不认这个流 → 从不发起 SampleRequested → 只收到首帧后彻底停滞，
         // 最终产出 0 字节（并在收尾阶段把进程带崩）。
-        var videoProps = WinProps.VideoEncodingProperties.CreateUncompressed(
-            WinProps.MediaEncodingSubtypes.Bgra8, (uint)size.Width, (uint)size.Height);
-        _mss = new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps))
+        // 准备重试会重建流, 失败过的流描述符不能复用。
+        WinMediaCore.MediaStreamSource CreateStreamSource()
         {
-            BufferTime = TimeSpan.Zero,
-        };
-        _mss.Starting += OnStarting;
-        _mss.SampleRequested += OnSampleRequested;
+            var videoProps = WinProps.VideoEncodingProperties.CreateUncompressed(
+                WinProps.MediaEncodingSubtypes.Bgra8, (uint)size.Width, (uint)size.Height);
+            var mss = new WinMediaCore.MediaStreamSource(new WinMediaCore.VideoStreamDescriptor(videoProps))
+            {
+                BufferTime = TimeSpan.Zero,
+            };
+            mss.Starting += OnStarting;
+            mss.SampleRequested += OnSampleRequested;
+            return mss;
+        }
 
-        // 注意: 不能在 StartAsync 作用域内 using 释放, PrepareTranscodeResult 仍在使用该转码器
-        // GPU 硬编码在部分机型（如骁龙 ARM 上的 x64 仿真）会让 MediaTranscoder 直接把进程带崩，
-        // 且没有任何托管异常, 表现为录屏文件 0 字节。默认走软件编码器求稳。
-        var transcoder = new WinTranscoding.MediaTranscoder { HardwareAccelerationEnabled = false };
         _pending = null;
         _stopRequested = false;
+        _paused = false;
+        _pausedTotal = TimeSpan.Zero;
+        _pausedSince = null;
+        _pauseGate.Set();
         _recording = true;
         _startedAt = DateTimeOffset.Now;
         _session = _framePool.CreateCaptureSession(item);
@@ -132,8 +191,11 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         // 关键保底：本机的 MediaFoundation 管道（骁龙 ARM 上的 x64 仿真）可能让
         // PrepareMediaStreamSourceTranscodeAsync 永不返回，甚至直接把进程带崩。
         // 这里给它一个硬超时：超时就干净收尾并上报错误，绝不留下"一直在录"的假状态。
-        async Task<WinTranscoding.PrepareTranscodeResult> PrepareAsync()
+        // 注意: 不能在作用域内 using 释放转码器, PrepareTranscodeResult 仍在使用它。
+        async Task<WinTranscoding.PrepareTranscodeResult> PrepareAsync(bool hardware)
         {
+            _mss = CreateStreamSource();
+            var transcoder = new WinTranscoding.MediaTranscoder { HardwareAccelerationEnabled = hardware };
             File.Create(opt.FilePath).Dispose(); // 先建文件供 WinRT StorageFile 打开
             var storageFile = await global::Windows.Storage.StorageFile.GetFileFromPathAsync(opt.FilePath).AsTask().ConfigureAwait(false);
             var stream = await storageFile.OpenAsync(global::Windows.Storage.FileAccessMode.ReadWrite).AsTask().ConfigureAwait(false);
@@ -141,20 +203,44 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
             return await transcoder.PrepareMediaStreamSourceTranscodeAsync(_mss, stream, profile).AsTask().ConfigureAwait(false);
         }
 
-        var prepareTask = PrepareAsync();
-        var timeout = Task.Delay(TimeSpan.FromSeconds(10));
-        var winner = await Task.WhenAny(prepareTask, timeout).ConfigureAwait(false);
-        if (winner != prepareTask)
+        async Task<WinTranscoding.PrepareTranscodeResult?> TryPrepareAsync(bool hardware)
         {
-            log?.LogError("[Recorder] 转码器准备超时 10s —— 本机媒体管道不可用, 已放弃本次录制");
+            try
+            {
+                var prepareTask = PrepareAsync(hardware);
+                var timeout = Task.Delay(TimeSpan.FromSeconds(10));
+                var winner = await Task.WhenAny(prepareTask, timeout).ConfigureAwait(false);
+                if (winner != prepareTask)
+                {
+                    log?.LogWarning("[Recorder] 转码器准备超时 10s ({Mode})", hardware ? "硬编" : "软编");
+                    CleanupPartial();
+                    return null;
+                }
+                return await prepareTask.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                log?.LogWarning(ex, "[Recorder] 转码器准备失败 ({Mode})", hardware ? "硬编" : "软编");
+                CleanupPartial();
+                return null;
+            }
+        }
+
+        // P1-6: 硬编策略 = 能力探测 + 默认硬编 + 失败自动回退软编。
+        // 仅 x64 真机默认硬编; ARM OS (含骁龙 ARM 上的 x64 仿真, 该组合硬编曾直接把进程带崩)
+        // 一律软编求稳。
+        var prepared = HardwareEncodePreferred()
+            ? await TryPrepareAsync(true).ConfigureAwait(false) ?? await TryPrepareAsync(false).ConfigureAwait(false)
+            : await TryPrepareAsync(false).ConfigureAwait(false);
+        if (prepared is null)
+        {
+            log?.LogError("[Recorder] 转码器准备失败 —— 本机媒体管道不可用, 已放弃本次录制");
             _recording = false;
             _startedAt = null;
             Cleanup();
-            bus.Publish(new RecorderStatusChanged(false, null, "转码器准备超时（本机媒体管道不可用）"));
-            throw new TimeoutException("MediaTranscoder 准备超时（本机媒体管道不可用）");
+            bus.Publish(new RecorderStatusChanged(false, null, "转码器准备失败（本机媒体管道不可用）"));
+            throw new InvalidOperationException("MediaTranscoder 准备失败（本机媒体管道不可用）");
         }
-
-        var prepared = await prepareTask.ConfigureAwait(false);
         _prepared = prepared;
         _pump = Task.Run(async () =>
         {
@@ -202,10 +288,15 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
             opt.FilePath, _fps, opt.BitrateKbps, size.Width, size.Height);
     }
 
+    /// <summary>P1-6 能力探测: 仅 x64 真机默认硬编; ARM OS (含骁龙 ARM 上的 x64 仿真) 一律软编求稳。</summary>
+    private static bool HardwareEncodePreferred() =>
+        RuntimeInformation.OSArchitecture == Architecture.X64;
+
     public async Task<string?> StopAsync()
     {
         if (!_recording) return null;
         _stopRequested = true;
+        _pauseGate.Set();     // 暂停中也要能被停止唤醒
         _frameAvailable.Release(); // 唤醒阻塞的取帧点 → 交付 null → 转码收尾
 
         // 等转码泵真正跑完 (含输出流 flush)。只等 _recording 变 false 的话,
@@ -260,6 +351,19 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         }
         try
         {
+            // P1-6 暂停: 暂停期间阻塞在取帧点之前, 不给转码器送帧;
+            // 停止信号 (含暂停中停止) 一律走 null 收尾。
+            while (_paused && !_stopRequested)
+            {
+                _pauseGate.Wait(TimeSpan.FromMilliseconds(200));
+            }
+            if (_stopRequested)
+            {
+                Interlocked.Increment(ref _nullSamples);
+                args.Request.Sample = null;
+                return;
+            }
+
             // 首次取帧给足耐心：冷启动（D3D 设备/采集会话初始化）可能超过 1 个等待周期。
             // 单次 3s 超时就交付 null 相当于刚开始就 EOF, 文件必然是空的。
             const int maxAttempts = 3;
@@ -284,8 +388,10 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
                     return;
                 }
 
-                var sample = WinMediaCore.MediaStreamSample.CreateFromDirect3D11Surface(
-                    frame.Surface, frame.SystemRelativeTime);
+                // P1-6 暂停补偿: 时间戳减掉已结束的暂停段, 成片时间线连续不留空洞
+                TimeSpan ts;
+                lock (_pauseLock) ts = frame.SystemRelativeTime - _pausedTotal;
+                var sample = WinMediaCore.MediaStreamSample.CreateFromDirect3D11Surface(frame.Surface, ts);
                 sample.Duration = TimeSpan.FromMilliseconds(1000.0 / _fps);
                 args.Request.Sample = sample;
                 Interlocked.Increment(ref _samplesDelivered);
@@ -303,6 +409,26 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
             log?.LogWarning(ex, "[Recorder] 取帧失败, 提前收尾");
             args.Request.Sample = null;
         }
+    }
+
+    /// <summary>准备失败后的半程清理: 只回收流与转码输出, 保留采集会话供软编重试。</summary>
+    private void CleanupPartial()
+    {
+        try
+        {
+            if (_mss is { } mss)
+            {
+                mss.Starting -= OnStarting;
+                mss.SampleRequested -= OnSampleRequested;
+            }
+            _output?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "[Recorder] 半程清理异常");
+        }
+        _output = null;
+        _mss = null;
     }
 
     private void Cleanup()

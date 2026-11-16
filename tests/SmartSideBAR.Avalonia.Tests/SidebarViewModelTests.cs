@@ -90,9 +90,13 @@ internal sealed class FakeRecorder : IRecorderApi
 {
     public bool IsRecording { get; set; }
     public DateTimeOffset? StartedAt { get; set; }
+    public bool IsPaused { get; private set; }
+    public TimeSpan Elapsed { get; set; }
     public bool IsSupported() => true;
     public Task StartAsync(RecorderOptions opt, CancellationToken ct = default) => Task.CompletedTask;
     public Task<string?> StopAsync() => Task.FromResult<string?>(null);
+    public void Pause() => IsPaused = true;
+    public void Resume() => IsPaused = false;
 }
 
 internal sealed class FakeSound : ISoundService

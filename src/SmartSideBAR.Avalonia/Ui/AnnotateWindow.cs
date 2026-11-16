@@ -122,10 +122,12 @@ public sealed class AnnotateWindow : Window
                 using var bmp = _ink.ExportStrokeGroup([stroke], scale);
                 using var ms = new MemoryStream();
                 bmp.Save(ms);
-                var result = await InkTextService.RecognizeAsync(ms.ToArray());
+                // P1-8: InkAnalyzer 手写识别优先, 位图 OCR 兜底
+                var result = await InkTextService.RecognizeInkAsync(
+                    [stroke.Points.Select(p => (p.X, p.Y)).ToList()], ms.ToArray());
                 if (result is null)
                 {
-                    _textCard.Show("本机未安装可用的 OCR 语言包（设置 → 时间和语言 → 语言 → 可选功能）");
+                    _textCard.Show("未识别出文字 —— 请写大一点、笔画分开一点（仍不行请检查手写/OCR 语言包，设置 → 时间和语言）");
                     return;
                 }
                 if (string.IsNullOrWhiteSpace(result.Text))

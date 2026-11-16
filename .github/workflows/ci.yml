@@ -1,6 +1,6 @@
 # SmartSideBAR CI —— ADR-001 后 Avalonia 单栈:
 #   1) secrets-scan : gitleaks 前置门禁 (全历史)
-#   2) dotnet       : 三层构建 + 格式 + 测试 + 覆盖率门禁(≥40%) + publish artifact
+#   2) dotnet       : 三层构建 + 格式 + 测试 + 覆盖率门禁(≥55%) + publish artifact
 #   3) perf-bench   : 每周一性能基准 (schedule 触发)
 #   4) release      : v* tag → Inno 安装包 → Release 草稿
 # Electron 栈已于 v1.5 后归档至 archive/electron-final 分支 (相关 job 一并移除)。
@@ -43,7 +43,7 @@ jobs:
         run: dotnet format SmartSideBAR.slnx --verify-no-changes --no-restore
       - name: Test (含 headless 冒烟与像素基线)
         run: dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx" --results-directory TestResults
-      - name: Coverage gate (≥40%)
+      - name: Coverage gate (≥55%)
         shell: pwsh
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
@@ -62,7 +62,7 @@ jobs:
           if (-not $m.Success) { throw "Summary.txt 中未找到行覆盖率" }
           $line = $m.Groups[1].Value
           Write-Host "Line coverage: $line%"
-          $min = 40
+          $min = 55
           if ([double]$line -lt $min) { throw "coverage $line% < $min%" }
       - name: Publish (自包含单文件, ReadyToRun+裁剪+压缩)
         run: >
@@ -71,10 +71,22 @@ jobs:
           -p:TrimMode=partial -p:EnableCompressionInSingleFile=true
           -p:PublishReadyToRun=true
           -o artifacts/app
+      # P1-6: win-arm64 原生自包含构建 (根因消除骁龙 ARM 机型 x64 仿真下的硬编崩溃/软编性能损失)
+      - name: Publish arm64 (自包含单文件)
+        run: >
+          dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-arm64
+          --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true
+          -p:TrimMode=partial -p:EnableCompressionInSingleFile=true
+          -p:PublishReadyToRun=true
+          -o artifacts/app-arm64
       - uses: actions/upload-artifact@v4
         with:
           name: app-win-x64
           path: artifacts/app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-win-arm64
+          path: artifacts/app-arm64
 
   perf-bench:
     name: Perf Bench (每周)
@@ -108,6 +120,10 @@ jobs:
         with:
           name: app-win-x64
           path: artifacts/app
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-win-arm64
+          path: artifacts/app-arm64
       # 可选签名: secrets 未配置则跳过 (默认不签名发布, 见 docs/ARCHITECTURE.md 安全边界)
       - name: Sign exe (可选, secrets 注入)
         env:
@@ -117,14 +133,24 @@ jobs:
         shell: pwsh
         run: |
           [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:PFX_B64))
-          signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
-            artifacts/app/SmartSideBAR.Avalonia.exe
+          Get-ChildItem artifacts\app*\SmartSideBAR.Avalonia.exe | ForEach-Object {
+            signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $_.FullName
+          }
           Remove-Item cert.pfx
-      - name: Inno Setup installer
+      - name: Inno Setup installer (x64 + arm64)
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
-          & "C:\Program Files (x86)\Inno Setup 7\ISCC.exe" installer\SmartSideBAR.iss
+          # 版本号单一事实源: 从 Directory.Build.props 提取后注入, 杜绝 iss 手改失守 (P0-1)
+          $ver = [regex]::Match((Get-Content Directory.Build.props -Raw), '<Version>([^<]+)</Version>').Groups[1].Value.Trim()
+          if (-not $ver) { throw "Directory.Build.props 中未找到 <Version>" }
+          $iscc = "C:\Program Files (x86)\Inno Setup 7\ISCC.exe"
+          Write-Host "Building x64 installer for version $ver"
+          & $iscc /DAppVersion=$ver installer\SmartSideBAR.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC x64 失败: $LASTEXITCODE" }
+          Write-Host "Building arm64 installer for version $ver"
+          & $iscc /DAppVersion=$ver /DAppArch=arm64 /DArchAllowed=arm64 "/DAppSrcDir=..\artifacts\app-arm64" installer\SmartSideBAR.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC arm64 失败: $LASTEXITCODE" }
       - name: Sign installer (可选)
         env:
           PFX_B64: ${{ secrets.CODESIGN_PFX_B64 }}
@@ -133,11 +159,22 @@ jobs:
         shell: pwsh
         run: |
           [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:PFX_B64))
-          $setup = Get-ChildItem dist\*-Setup.exe | Select-Object -First 1
-          signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $setup.FullName
+          Get-ChildItem dist\*-Setup.exe | ForEach-Object {
+            signtool sign /f cert.pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $_.FullName
+          }
           Remove-Item cert.pfx
+      # 应用内更新与 winget 提交都要校验完整性 (P0-4): 签名后再算哈希, 随 Release 附 SHA256SUMS
+      - name: SHA256SUMS (供应用内更新与 winget 校验)
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*-Setup.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          } | Out-File -Encoding ascii dist\SHA256SUMS.txt
+          Get-Content dist\SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: |
             dist/*-Setup.exe
+            dist/SHA256SUMS.txt

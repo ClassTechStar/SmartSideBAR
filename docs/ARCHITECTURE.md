@@ -1,6 +1,6 @@
 # SmartSideBAR 架构速览
 
-给后来接手的人（包括过几个月忘了细节的自己）看的。当前版本 v1.5.0，只跑 Avalonia 单栈。
+给后来接手的人（包括过几个月忘了细节的自己）看的。当前版本 v1.6.0，只跑 Avalonia 单栈。
 技术选型的历史决策在 [adr-001-single-stack.md](adr-001-single-stack.md)（当时从 Electron 收敛到 Avalonia）。
 
 ## 三层结构

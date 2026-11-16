@@ -44,10 +44,10 @@ public static class VersionComparer
     }
 
     /// <summary>
-    /// 判断文件名是否为 Windows x64 安装包。
-    /// 默认规则：以 SmartSideBAR 开头、含 x64、以 -Setup.exe / .exe 结尾。
+    /// 判断文件名是否为 Windows 安装包 (架构段可选: x64 / arm64 / 省略)。
+    /// 默认规则：以 SmartSideBAR 开头、以 -Setup.exe 结尾。
     /// </summary>
-    public static bool IsInstaller(string? name, string pattern = @"^SmartSideBAR[-_].*x64.*-Setup\.exe$")
+    public static bool IsInstaller(string? name, string pattern = @"^SmartSideBAR[-_].*(?:-x64|-arm64)?-Setup\.exe$")
     {
         if (string.IsNullOrWhiteSpace(name)) return false;
         try

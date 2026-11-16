@@ -1,8 +1,13 @@
 // 规则引擎(条件 → 动作)。
 // 借鉴 ClassIsland 的 RulesetService + ActionService: 把"上课时自动静音 USB 提醒"这类
 // 自动化从硬编码里解放出来。求值部分为纯逻辑, 便于单测; UI 只负责编辑。
+using System.Text.Json.Serialization;
+
 namespace SmartSideBAR.Core.Rules;
 
+// 枚举字符串化 (与 ReminderKind 同约定): 配置文件里存 "LessonState" 而非 0,
+// 保证 Electron 版 config.json 互认与人工可读 (AutomationConditionConfig 消费)。
+[JsonConverter(typeof(JsonStringEnumConverter<RuleConditionKind>))]
 public enum RuleConditionKind
 {
     /// <summary>时间状态机状态</summary>
@@ -15,6 +20,7 @@ public enum RuleConditionKind
     WeekDay = 3,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<RuleMatchMode>))]
 public enum RuleMatchMode
 {
     /// <summary>等于</summary>

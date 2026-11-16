@@ -1,0 +1,20 @@
+# winget 渠道自动化 (P0-2): Release 草稿转正式发布时, 自动生成 microsoft/winget-pkgs
+# 提交 PR (manifest 含真实 SHA256)。此前 packaging/winget 手改三份 yaml 的流程已实际失守
+# (1.5.0 从未合入 winget-pkgs), 本工作流取而代之。
+# 前置条件: 仓库配置 WINGET_TOKEN (可创建 microsoft/winget-pkgs PR 的 PAT / 具备该权限的 token)。
+name: winget-publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  winget:
+    name: winget-pkgs manifest PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: ClassTechStar.SmartSideBAR
+          installers-regex: 'SmartSideBAR-v.*-Setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}

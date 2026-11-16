@@ -13,7 +13,6 @@
        （借鉴 VeriRandom 的 DefaultItemExcludes 做法） -->
   <PropertyGroup>
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;dist/**;publish/**;node_modules/**</DefaultItemExcludes>
-    <DefaultItemExcludes>$(DefaultItemExcludes);SmartSideBAR-1.0.0/**;SmartSideBAR-1.1/**;SmartSideBAR-1.2.0/**</DefaultItemExcludes>
     <DefaultItemExcludes>$(DefaultItemExcludes);installer/**</DefaultItemExcludes>
   </PropertyGroup>
 
