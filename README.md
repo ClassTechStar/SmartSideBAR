@@ -140,6 +140,8 @@ dotnet run --project src/SmartSideBAR.Avalonia
 | `capture.inkToShape` | 墨迹转形 | `true` |
 | `lesson.periods` / `automation.lessonMode` | 课表与智能课堂开关 | `[]` / `true` |
 | `floatBall.idleOpacity/idleDelayMs` | 悬浮球闲时变暗 | `0.55` / `4000ms` |
+| `updates.enabled` / `updates.autoCheck` | 应用内检查更新与每日自动检查 | `true` / `true` |
+| `updates.autoDownload` | 发现新版后后台下载缓存（安装仍需点击） | `false` |
 
 界面尺寸、颜色、动效这些规格集中在仓库根的 `design-tokens.json` 里，编译时嵌进程序。想改 UI 规格就先改这个文件，`DesignTokensTests` 会盯着别改坏。
 
