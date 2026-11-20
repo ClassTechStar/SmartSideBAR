@@ -88,3 +88,78 @@ public sealed class UpdateServiceTests
         Assert.Null(UpdateService.FindAssetUrl(doc.RootElement, null, "SHA256SUMS"));
     }
 }
+
+// ---- 更新功能补齐回归 (digest 兜底 / Gitee 通道 / 自动检查门槛 / 静默安装) ----
+public sealed class UpdateFeatureTests
+{
+    private const string Hash64 = "94296fbb1d053726a9f1119493f48a9c0b4156ea753ee234cb3b0c4de64ea429";
+
+    [Fact]
+    public void Gitee通道指向真实镜像仓库()
+    {
+        // 回归钉: 此前指向 ClassTechStar/SmartSideBAR —— Gitee 上不存在该仓库,
+        // 通道永远 404; 真实镜像在 qualcommsnapdragon 名下
+        var gitee = UpdateService.Channels.Single(c => c.Name == "Gitee");
+        Assert.Contains("qualcommsnapdragon/SmartSideBAR", gitee.Api);
+        Assert.DoesNotContain("api.github.com", gitee.Api);
+    }
+
+    [Fact]
+    public void 资产自带Digest可提取为哈希()
+    {
+        var json = """
+    {"tag_name":"v1.7.0","assets":[
+      {"name":"SmartSideBAR-v1.7.0-x64-Setup.exe","size":1024,
+       "browser_download_url":"https://example.com/setup.exe",
+       "digest":"sha256:94296FBB1D053726A9F1119493F48A9C0B4156EA753EE234CB3B0C4DE64EA429"}
+    ]}
+    """;
+        using var doc = JsonDocument.Parse(json);
+        var hash = UpdateService.GetAssetDigest(doc.RootElement, "SmartSideBAR-v1.7.0-x64-Setup.exe");
+        Assert.Equal(Hash64, hash); // 小写归一
+    }
+
+    [Fact]
+    public void 非法Digest返回null()
+    {
+        var json = """
+    {"tag_name":"v1.7.0","assets":[
+      {"name":"SmartSideBAR-v1.7.0-x64-Setup.exe","size":1024,
+       "browser_download_url":"https://example.com/setup.exe","digest":"md5:deadbeef"}
+    ]}
+    """;
+        using var doc = JsonDocument.Parse(json);
+        Assert.Null(UpdateService.GetAssetDigest(doc.RootElement, "SmartSideBAR-v1.7.0-x64-Setup.exe"));
+    }
+
+    [Fact]
+    public void 目标文件不存在时Digest返回null()
+    {
+        var json = """{"tag_name":"v1.7.0","assets":[]}""";
+        using var doc = JsonDocument.Parse(json);
+        Assert.Null(UpdateService.GetAssetDigest(doc.RootElement, "anything.exe"));
+    }
+
+    [Fact]
+    public void 静默安装参数含必要开关()
+    {
+        // /VERYSILENT 静默 /CLOSEAPPLICATIONS 兜底 /NORESTART 不重启系统;
+        // 绝不带 /FORCECLOSEAPPLICATIONS —— 不强杀用户正在用的程序
+        Assert.Contains("/VERYSILENT", UpdateService.SilentInstallArguments);
+        Assert.Contains("/CLOSEAPPLICATIONS", UpdateService.SilentInstallArguments);
+        Assert.DoesNotContain("/FORCECLOSEAPPLICATIONS", UpdateService.SilentInstallArguments);
+    }
+
+    [Theory]
+    [InlineData(true, true, false, false, false, true)]   // 全部满足
+    [InlineData(false, true, false, false, false, false)] // 总开关关
+    [InlineData(true, false, false, false, false, false)] // 自动检查关
+    [InlineData(true, true, true, false, false, false)]   // 演示模式
+    [InlineData(true, true, false, true, false, false)]   // 调试器 (开发机)
+    [InlineData(true, true, false, false, true, false)]   // 上一轮仍在跑
+    public void 自动检查门槛按序判定(
+        bool enabled, bool autoCheck, bool demo, bool debugger, bool busy, bool expected)
+    {
+        Assert.Equal(expected, UpdateAutoChecker.ShouldAutoCheck(enabled, autoCheck, demo, debugger, busy));
+    }
+}

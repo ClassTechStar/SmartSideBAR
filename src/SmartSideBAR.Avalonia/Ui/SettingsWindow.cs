@@ -53,6 +53,9 @@ public sealed class SettingsWindow : Window
     private readonly TextBox _hkIme = new();
     private readonly TextBlock _diagResult = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
     private TextBlock _updateStatus = new();
+    private Button _installBtn = null!;
+    private string? _downloadedInstaller;
+    private CheckBox _autoCheckBox = null!;
 
     private readonly ContentControl _pageHost = new();
     private readonly List<(string Title, Control Page)> _pages = new();
@@ -522,6 +525,40 @@ public sealed class SettingsWindow : Window
         };
         updateBtn.Click += async (_, _) => await CheckUpdateAsync(version);
         stack.Children.Add(updateBtn);
+
+        // 自动检查开关: 单键即时落盘 (updates.autoCheck)
+        _autoCheckBox = new CheckBox
+        {
+            Content = "每天自动检查更新",
+            IsChecked = _config.Current.Updates.AutoCheck,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+        _autoCheckBox.IsCheckedChanged += (_, _) =>
+            _ = _config.Set("updates.autoCheck", _autoCheckBox.IsChecked == true);
+        stack.Children.Add(_autoCheckBox);
+
+        // 安装闭环: 下载校验完成后出现, 点击启动静默安装包并退出 (装完自动重启)
+        _installBtn = new Button
+        {
+            Content = "立即安装并重启",
+            IsVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 6, 0, 0),
+            Padding = new Thickness(14, 8),
+        };
+        _installBtn.Click += async (_, _) =>
+        {
+            if (_downloadedInstaller is null) return;
+            ToastService.Instance.Show("正在启动安装程序，应用将退出以完成更新…", "info");
+            if (!global::SmartSideBAR.Avalonia.Updater.UpdateService.LaunchInstaller(_downloadedInstaller))
+            {
+                ToastService.Instance.Show("安装包丢失，请重新检查更新", "error");
+                return;
+            }
+            await Task.Delay(900); // 给安装器启动时间, 然后退出释放文件锁
+            Environment.Exit(0);
+        };
+        stack.Children.Add(_installBtn);
         stack.Children.Add(_updateStatus);
         return Page("关于",
             new Border
@@ -614,8 +651,11 @@ public sealed class SettingsWindow : Window
                 ToastService.Instance.Show($"{info.Version} 下载失败: {downloadError}，可到 Release 页面手动获取", "error");
                 return;
             }
-            _updateStatus.Text = $"已下载并校验 {info.Version}: {result.Path}";
-            ToastService.Instance.Show($"已下载 {info.Version}（SHA256 校验通过）: {result.Path}", "success");
+            _downloadedInstaller = result.Path;
+            _installBtn.Content = $"立即安装 {info.Version}";
+            _installBtn.IsVisible = true;
+            _updateStatus.Text = $"已下载并校验 {info.Version}，点「立即安装」完成更新";
+            ToastService.Instance.Show($"已下载 {info.Version}（完整性校验通过）", "success");
         }
         catch (Exception ex)
         {

@@ -44,7 +44,7 @@ public sealed class UpdateService
         ("GitHub", $"https://api.github.com/{RepoApiPath}", null),
         ("GitHub镜像", $"https://gh-proxy.com/https://api.github.com/{RepoApiPath}", "https://gh-proxy.com/"),
         ("GitHub镜像2", $"https://ghproxy.net/https://api.github.com/{RepoApiPath}", "https://ghproxy.net/"),
-        ("Gitee", "https://gitee.com/api/v5/repos/ClassTechStar/SmartSideBAR/releases/latest", null),
+        ("Gitee", "https://gitee.com/api/v5/repos/qualcommsnapdragon/SmartSideBAR/releases/latest", null),
     ];
 
     private static readonly HttpClient Http = CreateClient();
@@ -102,7 +102,7 @@ public sealed class UpdateService
                     continue;
                 }
 
-                // SHA256SUMS: 同通道取摘要文件, 解析出本安装包的哈希 (P0-4)
+                // 完整性来源两级: SHA256SUMS 文件 (P0-4) → 资产自带 digest 字段兜底
                 var sumsUrl = FindAssetUrl(root, prefix, "SHA256SUMS.txt", "SHA256SUMS");
                 string? sha256 = null;
                 if (sumsUrl is not null)
@@ -117,6 +117,7 @@ public sealed class UpdateService
                         errors.Add($"{name}: SHA256SUMS 获取失败 ({ex.Message})");
                     }
                 }
+                sha256 ??= GetAssetDigest(root, fileName);
 
                 var releaseUrl = root.TryGetProperty("html_url", out var h) ? h.GetString() : null;
                 var notes = root.TryGetProperty("body", out var b) ? b.GetString() : null;
@@ -147,9 +148,12 @@ public sealed class UpdateService
         UpdateInfo info, IProgress<double>? progress = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(info.Url)) return new(null, "下载地址为空");
-        if (string.IsNullOrWhiteSpace(info.Sha256))
+        // 完整性分级: 有哈希 → SHA256 强校验; 无哈希 (Gitee 附件) → 下载长度与资产声明
+        // 比对 + HTTPS 传输完整性。长度不可知时拒绝 —— 宁可让用户手动下载也不装不明文件。
+        var hashMode = !string.IsNullOrWhiteSpace(info.Sha256);
+        if (!hashMode && info.FileSize is not > 0)
         {
-            return new(null, "发布资产缺少 SHA256SUMS，完整性无法校验，请到 Release 页面手动获取");
+            return new(null, "发布资产未提供哈希且大小未知，完整性无法校验，请到 Release 页面手动获取");
         }
         try
         {
@@ -174,16 +178,24 @@ public sealed class UpdateService
                 }
             }
 
-            // 完整性校验 (P0-4): 防截断/防篡改, 不匹配即删除, 不给用户留可疑文件
-            string hash;
-            await using (var fs = File.OpenRead(path))
+            // 完整性校验: 防截断/防篡改, 不匹配即删除, 不给用户留可疑文件
+            if (hashMode)
             {
-                hash = Convert.ToHexString(await SHA256.HashDataAsync(fs, ct)).ToLowerInvariant();
+                string hash;
+                await using (var fs = File.OpenRead(path))
+                {
+                    hash = Convert.ToHexString(await SHA256.HashDataAsync(fs, ct)).ToLowerInvariant();
+                }
+                if (!string.Equals(hash, info.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(path);
+                    return new(null, "完整性校验失败 (SHA256 不匹配)，已删除下载文件");
+                }
             }
-            if (!string.Equals(hash, info.Sha256, StringComparison.OrdinalIgnoreCase))
+            else if (info.FileSize is { } declared && new FileInfo(path).Length != declared)
             {
                 File.Delete(path);
-                return new(null, "完整性校验失败 (SHA256 不匹配)，已删除下载文件");
+                return new(null, "完整性校验失败 (文件大小与声明不符)，已删除下载文件");
             }
             progress?.Report(100);
             return new(path, null);
@@ -246,6 +258,46 @@ public sealed class UpdateService
     /// 解析 SHA256SUMS 文本 (格式: 「哈希␠␠文件名」, 兼容 GNU sha256sum 与 *binary 标记),
     /// 返回 fileName 对应的哈希; 找不到返回 null。
     /// </summary>
+    /// <summary>
+    /// 资产自带摘要兜底 (GitHub API 2024 起为资产计算 digest, 形如 "sha256:HEX")。
+    /// SUMS 文件缺失时用; 非 sha256 前缀或长度非法返回 null。
+    /// </summary>
+    internal static string? GetAssetDigest(System.Text.Json.JsonElement root, string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return null;
+        if (!root.TryGetProperty("assets", out var assets)) return null;
+        foreach (var asset in assets.EnumerateArray())
+        {
+            var name = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
+            if (!string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase)) continue;
+            var digest = asset.TryGetProperty("digest", out var d) ? d.GetString() : null;
+            if (string.IsNullOrWhiteSpace(digest) || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)) return null;
+            var hex = digest["sha256:".Length..].Trim();
+            if (hex.Length != 64 || !hex.All(c => Uri.IsHexDigit(c))) return null;
+            return hex.ToLowerInvariant();
+        }
+        return null;
+    }
+
+    /// <summary>静默安装参数: 应用自身先退出释放文件锁; /CLOSEAPPLICATIONS 兜底; 不重启系统。</summary>
+    internal const string SilentInstallArguments = "/VERYSILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS /NORESTART";
+
+    /// <summary>
+    /// 启动已校验的安装包 (静默)。调用方在启动后自行退出 —— Inno 的 [Run] 条目
+    /// 会在安装完成后把应用拉起来。返回 false 表示启动失败 (文件丢失等)。
+    /// </summary>
+    public static bool LaunchInstaller(string installerPath)
+    {
+        if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath)) return false;
+        var psi = new System.Diagnostics.ProcessStartInfo(installerPath)
+        {
+            UseShellExecute = true,
+            Arguments = SilentInstallArguments,
+        };
+        System.Diagnostics.Process.Start(psi);
+        return true;
+    }
+
     internal static string? ParseSha256Sums(string content, string? fileName)
     {
         if (string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(fileName)) return null;

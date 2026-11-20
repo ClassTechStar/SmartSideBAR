@@ -22,6 +22,7 @@ public sealed record SidekickConfig
     public RailConfig Rail { get; init; } = new();
     public LessonConfig Lesson { get; init; } = new();
     public AutomationConfig Automation { get; init; } = new();
+    public UpdatesConfig Updates { get; init; } = new();
     public List<LinkItem> Links { get; init; } = [];
     public List<Reminder> Reminders { get; init; } = [];
     public ReminderSoundConfig ReminderSound { get; init; } = new();
@@ -150,6 +151,20 @@ public sealed record LessonConfig
 }
 
 /// <summary>智能课堂自动化 —— TimeStateMachine 的消费策略（竞赛核心叙事之一）。</summary>
+/// <summary>
+/// 应用内更新 (更新源 GitHub Release, 多通道兜底)。
+/// 原则: 自动部分止步于「检查/下载」, 安装必须由用户点击 —— 绝不静默替换运行中的程序。
+/// </summary>
+public sealed record UpdatesConfig
+{
+    /// <summary>总开关; 关闭后自动检查完全不联网 (设置里的手动检查仍可用)。</summary>
+    public bool Enabled { get; init; } = true;
+    /// <summary>每天自动检查一次, 发现新版弹提醒 (上课中照常静默进通知中心)。</summary>
+    public bool AutoCheck { get; init; } = true;
+    /// <summary>发现新版后后台下载缓存, 安装仍需用户点击 (默认关)。</summary>
+    public bool AutoDownload { get; init; }
+}
+
 public sealed record AutomationConfig
 {
     /// <summary>状态机驱动自动切换: 上课 → 自动切到 ClassWorkspace 工作区。</summary>
