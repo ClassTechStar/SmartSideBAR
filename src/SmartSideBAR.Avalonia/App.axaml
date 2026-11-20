@@ -4,5 +4,8 @@
              RequestedThemeVariant="Light">
   <Application.Styles>
     <FluentTheme />
+    <!-- 全局默认字体 (MiSans Normal)，样式定义在 Assets/Fonts/MiSansFont.axaml，
+         生产与 headless 测试共用同一份，避免测试验的是另一套样式。 -->
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Assets/Fonts/MiSansFont.axaml" />
   </Application.Styles>
 </Application>

@@ -31,6 +31,9 @@
     <AvaloniaResource Include="Assets/icons/**/*.svg" />
     <AvaloniaResource Include="Assets/icons-white/**/*.svg" />
     <AvaloniaResource Include="Assets/floatball-icon.png" />
+    <!-- 全局字体: MiSans Normal 随程序集嵌入, 不依赖目标机器装没装字体 -->
+    <AvaloniaResource Include="Assets/Fonts/*.ttf" />
+    <AvaloniaResource Include="Assets/Fonts/*.axaml" />
   </ItemGroup>
 
   <ItemGroup>

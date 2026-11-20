@@ -1,0 +1,10 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 全局默认字体: MiSans Normal (族名取自 TTF name 表 nameID=1, 注意带空格)。
+       FontFamily 可继承, 设在 Window 上覆盖侧栏/面板/设置窗/悬浮球等所有控件;
+       个别控件显式设过 FontFamily 时仍以自身设置为准。
+       生产 App.axaml 与 headless TestApp 都加载本字典, 保证测试验的就是生产样式。 -->
+  <Style Selector="Window">
+    <Setter Property="FontFamily" Value="avares://SmartSideBAR.Avalonia/Assets/Fonts/MiSans-Normal.ttf#MiSans Normal" />
+  </Style>
+</Styles>
