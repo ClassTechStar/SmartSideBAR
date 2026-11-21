@@ -19,7 +19,9 @@
   <!-- 构建可复现性：符号带源码映射，崩溃 dump 可回溯到具体提交
        （借鉴 VeriRandom 的 Global.props：SourceLink + CI 构建标记 + 调试符号） -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.102" PrivateAssets="All" />
+    <!-- 传递包钉修版: GHSA-23fw-v26w-5fgq (NTLM 凭据泄漏), 8.0.x/10.0.102 仍在受影响列表 -->
+    <PackageReference Include="Microsoft.Build.Tasks.Git" Version="10.0.403" PrivateAssets="All" />
   </ItemGroup>
 
   <PropertyGroup>

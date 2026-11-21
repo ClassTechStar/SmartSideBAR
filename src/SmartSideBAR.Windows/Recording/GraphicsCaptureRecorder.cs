@@ -52,6 +52,9 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
     private WinCapture.Direct3D11CaptureFrame? _lastFrame;
     private WinMediaCore.MediaStreamSource? _mss;
     private WinTranscoding.PrepareTranscodeResult? _prepared;
+    private TimeSpan _lastSampleTs;
+    /// <summary>会话代号: 每次 StartAsync 递增, 隔离孤儿 prepare 的迟回续体。</summary>
+    private int _sessionEpoch;
     private string? _filePath;
     private volatile bool _recording;
     private volatile bool _stopRequested;
@@ -180,6 +183,8 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         _pausedTotal = TimeSpan.Zero;
         _pausedSince = null;
         _pauseGate.Set();
+        _lastSampleTs = TimeSpan.Zero;
+        _sessionEpoch++;
         _recording = true;
         _startedAt = DateTimeOffset.Now;
         _session = _framePool.CreateCaptureSession(item);
@@ -194,11 +199,19 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         // 注意: 不能在作用域内 using 释放转码器, PrepareTranscodeResult 仍在使用它。
         async Task<WinTranscoding.PrepareTranscodeResult> PrepareAsync(bool hardware)
         {
+            var session = _sessionEpoch;
             _mss = CreateStreamSource();
             var transcoder = new WinTranscoding.MediaTranscoder { HardwareAccelerationEnabled = hardware };
             File.Create(opt.FilePath).Dispose(); // 先建文件供 WinRT StorageFile 打开
             var storageFile = await global::Windows.Storage.StorageFile.GetFileFromPathAsync(opt.FilePath).AsTask().ConfigureAwait(false);
             var stream = await storageFile.OpenAsync(global::Windows.Storage.FileAccessMode.ReadWrite).AsTask().ConfigureAwait(false);
+            // 会话守卫: 10s 超时放弃后, 迟到的续体若继续跑会打开旧文件句柄、覆盖
+            // _mss/_output, 与新一轮录制交叉污染 —— 发现会话已换代即自弃
+            if (_sessionEpoch != session)
+            {
+                stream.Dispose();
+                throw new OperationCanceledException("prepare 已过时 (会话换代)");
+            }
             _output = stream;
             return await transcoder.PrepareMediaStreamSourceTranscodeAsync(_mss, stream, profile).AsTask().ConfigureAwait(false);
         }
@@ -217,6 +230,12 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
                     return null;
                 }
                 return await prepareTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                log?.LogWarning("[Recorder] 转码器准备已过时 ({Mode}), 会话换代自弃", hardware ? "硬编" : "软编");
+                CleanupPartial();
+                return null;
             }
             catch (Exception ex)
             {
@@ -388,9 +407,14 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
                     return;
                 }
 
-                // P1-6 暂停补偿: 时间戳减掉已结束的暂停段, 成片时间线连续不留空洞
+                // P1-6 暂停补偿: 时间戳减掉已结束的暂停段, 成片时间线连续不留空洞。
+                // 钳制单调: 暂停期间采集会话仍在出帧, _pending 会被换成暂停窗口内的帧,
+                // 恢复后首帧的补偿时间戳会早于上一交付帧 —— MediaFoundation 对时间戳
+                // 回退行为未定义 (可产生损坏 MP4), 钳到上一交付帧之后, 视觉上是暂停点的一帧静止。
                 TimeSpan ts;
                 lock (_pauseLock) ts = frame.SystemRelativeTime - _pausedTotal;
+                if (ts < _lastSampleTs) ts = _lastSampleTs;
+                _lastSampleTs = ts;
                 var sample = WinMediaCore.MediaStreamSample.CreateFromDirect3D11Surface(frame.Surface, ts);
                 sample.Duration = TimeSpan.FromMilliseconds(1000.0 / _fps);
                 args.Request.Sample = sample;

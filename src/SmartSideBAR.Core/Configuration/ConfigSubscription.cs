@@ -57,9 +57,16 @@ public sealed class ConfigSubscription
         lock (_gate)
         {
             if (_lockedKeys.Contains(dotPath)) return true;
-            // 前缀锁定: "policy." 下全部视为锁定
-            return _lockedKeys.Any(k => k.EndsWith(".", StringComparison.Ordinal)
-                && dotPath.StartsWith(k, StringComparison.OrdinalIgnoreCase));
+            var trimmed = dotPath.TrimEnd('.');
+            foreach (var k in _lockedKeys)
+            {
+                if (!k.EndsWith(".", StringComparison.Ordinal)) continue;
+                // 前缀锁定: "policy." 下全部视为锁定 —— 含恰好等于段名本身的键
+                // ("policy"), 否则手工构造的 {"policy": {}} 导入叶会绕过锁抹掉整棵子树
+                if (trimmed.StartsWith(k, StringComparison.OrdinalIgnoreCase)) return true;
+                if (string.Equals(trimmed, k.TrimEnd('.'), StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
         }
     }
 

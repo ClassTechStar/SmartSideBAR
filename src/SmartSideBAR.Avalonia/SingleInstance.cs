@@ -9,6 +9,11 @@ internal static class SingleInstance
 {
     private const string MutexName = @"Local\SmartSideBAR.Instance.v1";
     private const string EventName = @"Local\SmartSideBAR.Activate.v1";
+    // 看门狗重启标记: 旧实例写、新实例读 —— 新进程启动时旧实例可能尚未完全退出,
+    // 有标记则等待重试抢占, 避免新旧双双退出 (应用凭空消失)
+    private static readonly string RestartMarkerPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SmartSideBAR", "restart.lock");
     // P2-6: 回环探测端口（借鉴 CyreneCompass）。命名互斥量在跨完整性级别
     //（普通用户 vs 管理员）时可能各自创建成功，用回环端口再兜一次。
     private const int ProbePort = 51871;
@@ -22,17 +27,66 @@ internal static class SingleInstance
     {
         try
         {
-            _mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
             _event = new EventWaitHandle(false, EventResetMode.AutoReset, EventName);
-            // 互斥量说是"新建"，但不同完整性级别（普通用户 / 管理员）会各自创建成功，
-            // 再用回环端口兜一次：抢不到端口说明已有一个实例在跑。
-            if (createdNew && !TryHoldProbePort()) createdNew = false;
-            return createdNew;
+            if (TryAcquireOnce()) return true;
+
+            // 重启等待: 看门狗刚重启的场景, 旧实例还在退出流程中 ——
+            // 重启标记新鲜 (<10s) 时最多等 8s 重试抢占, 拿到即作为主实例继续
+            if (!IsRestartMarkerFresh()) return false;
+            for (var i = 0; i < 16; i++)
+            {
+                Thread.Sleep(500);
+                if (TryAcquireOnce())
+                {
+                    TryDeleteRestartMarker();
+                    return true;
+                }
+            }
+            return false; // 等待超时仍抢不到 → 按已有实例处理 (Signal 后退出)
         }
         catch
         {
             return true; // 极端情况下不因判重失败而拒绝启动
         }
+    }
+
+    /// <summary>单次抢占: 互斥量 + 回环端口双保险都拿到才算主实例。</summary>
+    private static bool TryAcquireOnce()
+    {
+        _mutex?.Dispose(); // 未持有他人互斥, 释放自己上一轮的句柄 (含放弃所有权)
+        _mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
+        if (!createdNew) return false;
+        // 互斥量说是"新建"，但不同完整性级别（普通用户 / 管理员）会各自创建成功，
+        // 再用回环端口兜一次：抢不到端口说明已有一个实例在跑。
+        if (!TryHoldProbePort()) return false;
+        return true;
+    }
+
+    /// <summary>重启标记是否新鲜 (10 秒内)。</summary>
+    private static bool IsRestartMarkerFresh()
+    {
+        try
+        {
+            if (!File.Exists(RestartMarkerPath)) return false;
+            return DateTimeOffset.Now - File.GetLastWriteTime(RestartMarkerPath) < TimeSpan.FromSeconds(10);
+        }
+        catch { return false; }
+    }
+
+    private static void TryDeleteRestartMarker()
+    {
+        try { File.Delete(RestartMarkerPath); } catch { /* 尽力而为 */ }
+    }
+
+    /// <summary>看门狗重启前调用: 落标记, 让新进程知道要等待旧实例退出。</summary>
+    public static void MarkRestart()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(RestartMarkerPath)!);
+            File.WriteAllText(RestartMarkerPath, DateTimeOffset.Now.ToString("O"));
+        }
+        catch { /* 尽力而为 */ }
     }
 
     /// <summary>尝试占用回环探测端口并保持占用（进程退出即释放）。占用成功返回 true。</summary>

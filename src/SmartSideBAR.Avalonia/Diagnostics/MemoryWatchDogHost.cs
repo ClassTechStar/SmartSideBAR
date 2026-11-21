@@ -79,7 +79,12 @@ public sealed class MemoryWatchDogHost
         {
             var exe = Environment.ProcessPath;
             if (!string.IsNullOrEmpty(exe))
+            {
+                // 先落重启标记再拉新进程: 新实例启动时旧实例可能尚未完全退出,
+                // 凭标记等待重试抢占 (否则新旧双双退出, 应用凭空消失)
+                global::SmartSideBAR.Avalonia.SingleInstance.MarkRestart();
                 Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+            }
         }
         catch (Exception ex)
         {

@@ -189,9 +189,10 @@ public sealed class SchedulerService(
         var step = r.Kind == ReminderKind.Hourly
             ? 3_600_000
             : Math.Max(1, r.RepeatMin ?? 5) * 60_000L;
-        var next = r.At;
-        while (next <= now) next += step;
-        return next;
+        // 算术推进: 手工导入的提醒 At 可能是 0 (1970) 级别的古董值,
+        // 线性 while 自旋会空转千万次卡死启动
+        var missed = (now - r.At) / step + 1;
+        return r.At + missed * step;
     }
 
     /// <summary>下一个本地整点 (v1.2.0: setHours(+1,0,0,0) 本地时间语义)</summary>

@@ -37,6 +37,8 @@ public sealed class LessonStatsService
 
     public static string TodayKey => DateTime.Now.ToString("yyyy-MM-dd");
 
+    private bool _dirty; // 记录有未落盘变更 (Record 在 UI 线程事件里调用, I/O 必须出锁)
+
     public void Record(string key, double value = 1, string? note = null)
     {
         if (string.IsNullOrEmpty(key)) return;
@@ -50,7 +52,30 @@ public sealed class LessonStatsService
                 _notes.Insert(0, note!);
                 if (_notes.Count > MaxNotes) _notes.RemoveAt(_notes.Count - 1);
             }
-            Save();
+            _dirty = true;
+        }
+        SaveIfDirty();
+    }
+
+    /// <summary>合并落盘: 多次 Record 只写一次盘; 全程锁外 I/O, 失败静默不影响功能。</summary>
+    private void SaveIfDirty()
+    {
+        try
+        {
+            PersistedStats snapshot;
+            lock (_gate)
+            {
+                if (!_dirty) return;
+                _dirty = false;
+                snapshot = new PersistedStats(
+                    new Dictionary<string, Dictionary<string, double>>(_byDay), _notes.ToArray());
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(_storagePath)!);
+            File.WriteAllText(_storagePath, JsonSerializer.Serialize(snapshot, StatsJsonContext.Default.PersistedStats));
+        }
+        catch
+        {
+            // 统计落盘失败不影响功能 (下次 Record 会再尝试)
         }
     }
 
@@ -59,40 +84,56 @@ public sealed class LessonStatsService
         lock (_gate)
         {
             EnsureLoaded();
-            var today = _byDay.TryGetValue(TodayKey, out var d)
-                ? new Dictionary<string, double>(d)
-                : new Dictionary<string, double>();
-            return new LessonStatsSnapshot(TodayKey, today, TotalsSnapshot(), _notes.ToArray());
+            return SnapshotNoLock();
         }
     }
 
-    /// <summary>成果包: 今日批注图 + OCR 课堂笔记 + 统计摘要 → 单个 zip (可直接带走/上交)。</summary>
+    private LessonStatsSnapshot SnapshotNoLock()
+    {
+        var today = _byDay.TryGetValue(TodayKey, out var d)
+            ? new Dictionary<string, double>(d)
+            : new Dictionary<string, double>();
+        return new LessonStatsSnapshot(TodayKey, today, TotalsSnapshot(), _notes.ToArray());
+    }
+
+    /// <summary>成果包: 今日批注图 + OCR 课堂笔记 + 统计摘要 → 单个 zip (可直接带走/上交)。
+    /// 锁内只取快照, 打包全程锁外 —— 此前整段 zip 在 _gate 里执行 (UI 点击触发),
+    /// 几百 MB 批注图会让 UI 冻结且阻塞所有统计写入; 失败删除半成品不留损坏 zip。</summary>
     public string ExportLessonPack(string outDir, string captureDir)
     {
+        string[] notes;
+        string statsJson;
         lock (_gate)
         {
             EnsureLoaded();
-            Directory.CreateDirectory(outDir);
-            var path = Path.Combine(outDir, $"LessonPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+            notes = _notes.ToArray();
             var today = TodayKey;
+            var snapshot = new PersistedStats(
+                new Dictionary<string, Dictionary<string, double>>(
+                    _byDay.Where(kv => kv.Key == today).ToDictionary(kv => kv.Key, kv => kv.Value)),
+                notes);
+            statsJson = JsonSerializer.Serialize(snapshot, StatsJsonContext.Default.PersistedStats);
+        }
+
+        Directory.CreateDirectory(outDir);
+        var path = Path.Combine(outDir, $"LessonPack_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+        var today2 = TodayKey;
+        try
+        {
             using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
             var entry = zip.CreateEntry("stats.json");
             using (var w = new StreamWriter(entry.Open()))
             {
-                var snapshot = new PersistedStats(
-                    new Dictionary<string, Dictionary<string, double>>(
-                        _byDay.Where(kv => kv.Key == today).ToDictionary(kv => kv.Key, kv => kv.Value)),
-                    _notes.ToArray());
-                w.Write(JsonSerializer.Serialize(snapshot, StatsJsonContext.Default.PersistedStats));
+                w.Write(statsJson);
             }
-            if (_notes.Count > 0)
+            if (notes.Length > 0)
             {
                 var notesEntry = zip.CreateEntry("课堂笔记.txt");
                 using (var w = new StreamWriter(notesEntry.Open()))
                 {
-                    for (var i = 0; i < _notes.Count; i++)
+                    for (var i = 0; i < notes.Length; i++)
                     {
-                        w.WriteLine($"[{i + 1}] {_notes[i]}");
+                        w.WriteLine($"[{i + 1}] {notes[i]}");
                         w.WriteLine();
                     }
                 }
@@ -101,11 +142,16 @@ public sealed class LessonStatsService
             {
                 foreach (var file in Directory.EnumerateFiles(captureDir, "*.png"))
                 {
-                    if (!File.GetLastWriteTime(file).ToString("yyyy-MM-dd").Equals(today)) continue;
+                    if (!File.GetLastWriteTime(file).ToString("yyyy-MM-dd").Equals(today2)) continue;
                     zip.CreateEntryFromFile(file, "批注图/" + Path.GetFileName(file));
                 }
             }
             return path;
+        }
+        catch
+        {
+            try { File.Delete(path); } catch { }
+            throw;
         }
     }
 

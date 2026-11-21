@@ -73,24 +73,27 @@ public sealed class ConfigService(
                 : paths.LegacyProgramDataConfigPath;
             if (policyPath is not null && File.Exists(policyPath))
             {
-                if (TryParseNode(File.ReadAllText(policyPath), out var policy))
+                // 读取兜底: 同步盘/杀毒软件占用会抛 IOException, 不兜底就是启动即崩
+                var policyText = TryReadFile(policyPath);
+                if (policyText is not null && TryParseNode(policyText, out var policy))
                 {
                     if (policy is JsonObject policyObj) DeepMerge((JsonObject)_root, policyObj);
                     log?.LogInformation("[Config] 已加载策略层 {Path}", policyPath);
                 }
-                else log?.LogWarning("[Config] 策略层解析失败, 忽略: {Path}", policyPath);
+                else log?.LogWarning("[Config] 策略层读取/解析失败, 忽略: {Path}", policyPath);
             }
 
             // 层3 用户层: 首启执行旧 userData 迁移 (旧文件 → 新路径, 旧文件改名 .migrated.bak)
             EnsureUserConfigMigrated();
             if (File.Exists(paths.UserConfigPath))
             {
-                if (TryParseNode(File.ReadAllText(paths.UserConfigPath), out var user))
+                var userText = TryReadFile(paths.UserConfigPath);
+                if (userText is not null && TryParseNode(userText, out var user))
                 {
                     if (user is JsonObject userObj) DeepMerge((JsonObject)_root, userObj);
                     log?.LogInformation("[Config] 已加载用户配置 {Path}", paths.UserConfigPath);
                 }
-                else log?.LogWarning("[Config] 用户配置解析失败, 使用默认值: {Path}", paths.UserConfigPath);
+                else log?.LogWarning("[Config] 用户配置读取/解析失败, 使用默认值: {Path}", paths.UserConfigPath);
             }
             else
             {
@@ -242,9 +245,27 @@ public sealed class ConfigService(
         }
     }
 
+    /// <summary>读文件兜底: IO 异常返回 null (同步盘占用/权限/损坏)。</summary>
+    private static string? TryReadFile(string path)
+    {
+        try { return File.ReadAllText(path); }
+        catch { return null; }
+    }
+
     private void RefreshTypedNoLock()
     {
-        var typed = _root.Deserialize(ConfigJsonContext.Default.SidekickConfig) ?? new SidekickConfig();
+        // schema 反序列化兜底: JSON 合法但类型不符 (手工编辑/互认文件写坏) 不允许
+        // 崩出 Load() —— 那是启动即死; 回退默认值, 下次保存覆盖修复。
+        SidekickConfig typed;
+        try
+        {
+            typed = _root.Deserialize(ConfigJsonContext.Default.SidekickConfig) ?? new SidekickConfig();
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "[Config] 配置 schema 反序列化失败, 回退默认值");
+            typed = new SidekickConfig();
+        }
         // 路径变量展开与钳制 (与 config.ts 加载尾段一致)
         typed = typed with
         {

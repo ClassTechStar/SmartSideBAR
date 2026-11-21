@@ -56,14 +56,17 @@ public static class ConfigTransfer
         foreach (var kv in obj)
         {
             var path = string.IsNullOrEmpty(prefix) ? kv.Key : $"{prefix}.{kv.Key}";
-            if (kv.Value is JsonObject child && child.Count > 0)
+            if (kv.Value is JsonObject child)
             {
-                foreach (var leaf in EnumerateLeaves(child, path)) yield return leaf;
+                // 空对象 = "该子树无变更", 跳过 —— 产叶会让 {"policy": {}} 以
+                // 路径 "policy" 落到 Set, 把整棵策略子树替换成空对象
+                if (child.Count > 0)
+                {
+                    foreach (var leaf in EnumerateLeaves(child, path)) yield return leaf;
+                }
+                continue;
             }
-            else
-            {
-                yield return (path, kv.Value);
-            }
+            yield return (path, kv.Value);
         }
     }
 
@@ -82,10 +85,17 @@ public static class ConfigTransfer
 
     private static void RemovePrefix(JsonNode root, string prefix)
     {
-        if (root is not JsonObject obj) return;
-        var name = prefix.TrimEnd('.');
-        var tail = name.Split('.').Last();
-        obj.Remove(tail);
+        // 走到父容器再删末段 —— 此前直接在 root 上删, 嵌套键 (如 "capture.sub.")
+        // 会删错位置, 敏感子树原样导出
+        var parts = prefix.TrimEnd('.').Split('.');
+        var node = root;
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            if (node is not JsonObject o) return;
+            if (o[parts[i]] is not JsonNode next) return;
+            node = next;
+        }
+        if (node is JsonObject container) container.Remove(parts[^1]);
     }
 
     private static bool SetByPath(JsonNode root, string dotPath, JsonNode? value)
