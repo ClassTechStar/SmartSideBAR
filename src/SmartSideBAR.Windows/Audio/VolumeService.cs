@@ -178,7 +178,16 @@ public sealed class VolumeService
             var hr = Marshal.QueryInterface(endpoint, in _iid, out var volumePtr);
             _ = Marshal.Release(endpoint);
             if (hr != 0 || volumePtr == 0) return null;
-            return (IAudioEndpointVolume)Marshal.GetObjectForIUnknown(volumePtr);
+            // QI 出来的引用归调用方所有: GetObjectForIUnknown 会 AddRef, 必须把
+            // volumePtr 释放掉, 否则每次音量读写永久泄漏一个 COM 引用 (审计 P2)
+            try
+            {
+                return (IAudioEndpointVolume)Marshal.GetObjectForIUnknown(volumePtr);
+            }
+            finally
+            {
+                _ = Marshal.Release(volumePtr);
+            }
         }
         catch
         {

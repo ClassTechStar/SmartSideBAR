@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SmartSideBAR.Avalonia.Diagnostics;
 using SmartSideBAR.Avalonia.Logging;
 using SmartSideBAR.Avalonia.Ui;
+using SmartSideBAR.Avalonia.Updater;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Diagnostics;
 using SmartSideBAR.Core.Links;
@@ -68,6 +69,12 @@ internal static class Program
         services.AddSingleton<ILongshotService>(sp => ActivatorUtilities.CreateInstance<LongshotService>(sp));
         services.AddSingleton<IRecorderApi>(sp => ActivatorUtilities.CreateInstance<GraphicsCaptureRecorder>(sp));
         services.AddSingleton<IDiagnosticsService, DiagnosticsService>();
+        // 竞赛包: 课堂统计 (EventBus 埋点 → stats.json → 成果包)。缺失 = WindowManager
+        // 无法解析, 启动即崩 —— 此前注册被后续迭代覆盖丢失 (第三路审计 P0)
+        services.AddSingleton<LessonStatsService>(sp => new LessonStatsService(
+            sp.GetRequiredService<IEventBus>(),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "SmartSideBAR", "stats")));
 
         // UI 层
         services.AddSingleton<WindowManager>();
@@ -92,6 +99,13 @@ internal static class Program
 
         // 智能课堂宿主: 状态机时钟在此启动 (须在配置加载后)
         LessonModeHost.Init(config);
+
+        // 应用内更新: 每日自动检查 (此前接线被后续迭代覆盖丢失 —— 设置里的开关曾是死键)
+        Updater.UpdateAutoChecker.Init(config,
+            typeof(Program).Assembly
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion ?? "0.0.0");
 
         if (DemoMode.Enabled)
         {

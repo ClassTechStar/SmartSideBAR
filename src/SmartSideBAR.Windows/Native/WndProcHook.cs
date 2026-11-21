@@ -104,9 +104,17 @@ public sealed partial class WndProcHook : IWndProcHook
 
             foreach (var callback in subclass.Snapshot())
             {
-                var handled = false;
-                var result = callback(hwnd, msg, wParam, lParam, ref handled);
-                if (handled) return result;
+                try
+                {
+                    var handled = false;
+                    var result = callback(hwnd, msg, wParam, lParam, ref handled);
+                    if (handled) return result;
+                }
+                catch
+                {
+                    // 原生回调里抛托管异常 = 无堆栈无日志的进程崩溃 (审计结论):
+                    // 单个回调失败降级为"未处理", 消息照常走 DefWindowProc
+                }
             }
             return CallWindowProc(subclass.PrevProc, hwnd, msg, wParam, lParam);
         }

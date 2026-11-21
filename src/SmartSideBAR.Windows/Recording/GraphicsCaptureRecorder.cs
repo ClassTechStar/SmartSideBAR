@@ -126,6 +126,13 @@ public sealed class GraphicsCaptureRecorder(IEventBus bus, ILogger<GraphicsCaptu
         if (_recording) throw new InvalidOperationException("已在录制中");
         if (!IsSupported()) throw new PlatformNotSupportedException("系统不支持 Windows.Graphics.Capture (需 Win10 1803+)");
 
+        // 跨会话清理 (第三路审计 P1): 转码泵自然收尾 (如静屏 EOF) 时只置 _recording=false,
+        // 不走 Cleanup —— 上一轮的采集会话/帧池/FrameArrived 订阅全部存活, 残帧会污染新会话;
+        // 信号量上一次 stop-while-paused 会留下盈余计数, 下轮首个取帧点立即误醒 →
+        // 交付 null → 秒 EOF → 0 字节 MP4。启动前一律兜底清理 + 排空。
+        Cleanup();
+        while (_frameAvailable.CurrentCount > 0) _ = _frameAvailable.Wait(0);
+
         // B5: 多显示器支持, 优先用指定 MonitorHandle, 否则默认主屏
         var hMonitor = opt.MonitorHandle != 0
             ? opt.MonitorHandle

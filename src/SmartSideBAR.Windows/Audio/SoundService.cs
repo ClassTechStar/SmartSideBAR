@@ -48,6 +48,9 @@ public sealed class SoundService(ILogger<SoundService>? log = null) : ISoundServ
     private void PlayMp3(string path, double volume)
     {
         var alias = "ssbReminder";
+        // 重复播放 (repeat 2..5, 间隔 <5s) 时上一个别名还开着 —— 直接 open 会
+        // MCIERR_DUPLICATE_ALIAS, 只有第一遍出声。先 close 再 open。
+        _ = Winmm.mciSendString($"close {alias}", null, 0, 0);
         var open = Winmm.mciSendString($"open \"{path}\" type mpegvideo alias {alias}", null, 0, 0);
         if (open != 0)
         {
