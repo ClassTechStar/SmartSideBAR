@@ -8,7 +8,7 @@
 
 #define AppName "SmartSideBAR"
 #ifndef AppVersion
-  #define AppVersion "1.6.0"
+  #define AppVersion "1.8.0"
 #endif
 ; 架构注入 (P1-6): CI 对 arm64 构建传 /DAppArch=arm64 /DArchAllowed=arm64 /DAppSrcDir=..\artifacts\app-arm64
 ; 默认 x64, 产物名带架构记号 (SmartSideBAR-vX.Y.Z-x64-Setup.exe), winget/应用内更新按记号选包
