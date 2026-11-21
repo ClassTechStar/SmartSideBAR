@@ -93,7 +93,17 @@ public sealed class ConfigService(
                     if (user is JsonObject userObj) DeepMerge((JsonObject)_root, userObj);
                     log?.LogInformation("[Config] 已加载用户配置 {Path}", paths.UserConfigPath);
                 }
-                else log?.LogWarning("[Config] 用户配置读取/解析失败, 使用默认值: {Path}", paths.UserConfigPath);
+                else
+                {
+                    // 借鉴 Flow.Launcher JsonStorage: 主文件损坏时自动回退 .bak,
+                    // 而不是直接丢掉用户全部配置 —— 课堂上配置坏了等于功能全没。
+                    if (TryLoadUserBackupNoLock(out var restored))
+                    {
+                        DeepMerge((JsonObject)_root, restored);
+                        log?.LogWarning("[Config] 用户配置解析失败, 已从备份恢复: {Path}", BackupPath);
+                    }
+                    else log?.LogWarning("[Config] 用户配置读取/解析失败, 使用默认值: {Path}", paths.UserConfigPath);
+                }
             }
             else
             {
@@ -279,6 +289,22 @@ public sealed class ConfigService(
         _current = typed;
     }
 
+    /// <summary>用户配置备份路径（借鉴 Flow.Launcher JsonStorage 的 .bak 机制）。</summary>
+    private string BackupPath => paths.UserConfigPath + ".bak";
+
+    /// <summary>
+    /// 从 .bak 恢复用户配置。备份也损坏/不存在时返回 false，调用方回落到默认值。
+    /// </summary>
+    private bool TryLoadUserBackupNoLock(out JsonObject backup)
+    {
+        backup = new JsonObject();
+        var text = TryReadFile(BackupPath);
+        if (text is null) return false;
+        if (!TryParseNode(text, out var node) || node is not JsonObject obj) return false;
+        backup = obj;
+        return true;
+    }
+
     private bool SaveUserConfigNoLock()
     {
         try
@@ -286,7 +312,17 @@ public sealed class ConfigService(
             var dir = Path.GetDirectoryName(paths.UserConfigPath);
             if (dir is not null) Directory.CreateDirectory(dir);
             var tmp = paths.UserConfigPath + ".tmp";
-            File.WriteAllText(tmp, _root.ToJsonString(ConfigJsonContext.Default.Options));
+            var json = _root.ToJsonString(ConfigJsonContext.Default.Options);
+            File.WriteAllText(tmp, json);
+
+            // 借鉴 Flow.Launcher: 覆盖前留一份 .bak，主文件损坏时可回滚。
+            // 只在主文件已存在且有效时备份，避免把损坏内容固化成"备份"。
+            if (File.Exists(paths.UserConfigPath) &&
+                TryReadFile(paths.UserConfigPath) is { } previous &&
+                TryParseNode(previous, out _))
+            {
+                File.Copy(paths.UserConfigPath, BackupPath, overwrite: true);
+            }
             File.Move(tmp, paths.UserConfigPath, overwrite: true);
             return true;
         }

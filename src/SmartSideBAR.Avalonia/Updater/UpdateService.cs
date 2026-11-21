@@ -55,7 +55,17 @@ public sealed class UpdateService
 
     private static HttpClient CreateClient()
     {
-        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        // 借鉴 Flow.Launcher 的 HttpProxy：教室/校园网常走代理，环境变量是最通用的入口。
+        // 解析逻辑在 Core 纯函数里（可单测）；只有可用地址才覆盖 .NET 默认系统代理。
+        var handler = new HttpClientHandler();
+        var proxyUrl = global::SmartSideBAR.Core.Diagnostics.ProxyEnvironment.Resolve();
+        if (global::SmartSideBAR.Core.Diagnostics.ProxyEnvironment.IsUsable(proxyUrl))
+        {
+            handler.Proxy = new System.Net.WebProxy(new Uri(proxyUrl!));
+            handler.UseProxy = true;
+        }
+
+        var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
         http.DefaultRequestHeaders.Add("User-Agent", "SmartSideBAR");
         http.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
         return http;

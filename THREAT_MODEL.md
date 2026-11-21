@@ -6,7 +6,7 @@
 >
 > 结构与维护规则借鉴 VeriRandom 的 `THREAT_MODEL.md`（承认"本地链条买的是可见性，不是保护"）。
 
-**最后更新**：2026-11-13（SidebarDiagnostics 迁移后）
+**最后更新**：2026-11-22（Flow.Launcher 迁移后）
 
 ---
 
@@ -84,3 +84,4 @@
 |---|---|---|
 | 2026-11-11 | 建立威胁模型（T1–T13） | 借鉴 VeriRandom 的活文档机制 |
 | 2026-11-13 | 配置 null 写入不再 NRE（`ExpandPath` 空值兜底）；通知历史新增 7 天时间窗口回收；设置保存改为 `SetIfChanged` 减少落盘 | 借鉴 SidebarDiagnostics；T1/T7 的行为变化，无新增攻击面 |
+| 2026-11-22 | 配置新增 `.bak` 备份与损坏回滚（T1 缓解）；更新检查支持环境变量代理（T4 相关，仍需签名校验） | 借鉴 Flow.Launcher |

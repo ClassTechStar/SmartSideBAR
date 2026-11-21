@@ -117,6 +117,30 @@ internal static class CrashLog
         if (fatal) MarkPending(source, ex);
     }
 
+    /// <summary>
+    /// 展开异常链：由外到内逐层记录类型/消息/堆栈/来源。
+    /// 借鉴 Flow.Launcher 的 ExceptionFormatter，但不做 Markdown 报告（本项目已有结构化 JSON）。
+    /// 最多 16 层，避免异常自引用导致无限循环。
+    /// </summary>
+    internal static IReadOnlyList<Dictionary<string, object?>> BuildExceptionChain(Exception? ex)
+    {
+        var chain = new List<Dictionary<string, object?>>();
+        var seen = new HashSet<Exception>(ReferenceEqualityComparer.Instance);
+        var current = ex;
+        while (current is not null && chain.Count < 16 && seen.Add(current))
+        {
+            chain.Add(new Dictionary<string, object?>
+            {
+                ["type"] = current.GetType().FullName,
+                ["message"] = current.Message,
+                ["source"] = current.Source,
+                ["stack"] = current.StackTrace,
+            });
+            current = current.InnerException;
+        }
+        return chain;
+    }
+
     /// <summary>结构化副本：crash-{yyyyMMddHHmmss}-{source}.json，便于聚合/上报。</summary>
     private static void WriteStructured(string source, Exception? ex, bool fatal, CrashContext context)
     {
@@ -135,7 +159,9 @@ internal static class CrashLog
                 ["type"] = ex?.GetType().FullName,
                 ["message"] = ex?.Message,
                 ["stack"] = ex?.StackTrace,
-                ["inner"] = ex?.InnerException?.ToString(),
+                // 借鉴 Flow.Launcher ExceptionFormatter：展开完整 InnerException 链，
+                // 旧版只记一层 ToString()，真实根因常被埋在第二层以下。
+                ["exceptions"] = BuildExceptionChain(ex),
             };
 
             var dir = System.IO.Path.GetDirectoryName(Path)!;
