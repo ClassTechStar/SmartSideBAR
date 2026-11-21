@@ -2,7 +2,7 @@
 
 > 审计基线：`f4dd96e`（v1.8.0 文档）→ 修复提交 `e347554`
 > 方法：三路并行代理深审（Core 全部 42 文件 / Avalonia UI 层 / 平台层与基建）+ 人工逐文件复核
-> 修复验证：359 用例全绿 + `dotnet format` 通过 + Release 构建冒烟通过
+> 修复验证：362 用例全绿 + `dotnet format` 通过 + Release 构建冒烟通过
 
 ---
 
@@ -53,6 +53,19 @@
 
 ---
 
+## 一.5 第三轮发现（平台层 + DI 图审计，同批修复）
+
+| # | 级别 | 缺陷 | 修复 |
+|---|------|------|------|
+| 17 | **P0** | `LessonStatsService` 的 DI 注册在后续迭代中丢失 —— WindowManager 构造无法解析，**应用启动即崩**；353 个测试全绿（全部手工构造绕过容器），v1.8.0 安装包即受影响 | 补回注册；新增 `DiGraphTests` 双守卫（源扫描 + 容器级真解析 WindowManager），此类回归从此必有红灯 |
+| 18 | P1 | `UpdateAutoChecker.Init` 接线同样丢失 —— 设置里「每天自动检查更新」是死键 | 补回 Init 调用 + 源扫描守卫 |
+| 19 | P1 | 录屏 StartAsync 不清理上一会话：转码泵自然收尾（静屏 EOF）后采集会话/帧池/订阅全存活；信号量盈余计数使下轮录制秒 EOF → 0 字节 | StartAsync 头部 Cleanup + 排空 |
+| 20 | P2 | SoundService MP3 重复播放（repeat≥2）MCI 重复别名失败，只有第一遍出声 | open 前先 close |
+| 21 | P2 | VolumeService 每次 Get/Set 泄漏一个 COM 引用（QI 归调用方所有未释放） | finally Release |
+| 22 | P2 | WndProcHook 回调抛托管异常 = 无堆栈进程崩（未来隐患） | Dispatch 逐回调 try/catch 降级 |
+
+第三轮确认无缺陷项：热键重注册、app.manifest PerMonitorV2、CI 版本注入/SHA256SUMS 顺序/arm64、nightly、设计令牌 JSON、.gitignore、URL 白名单规范化、ShellService 白名单绕过（userinfo@host）均通过。
+
 ## 二、修复记录
 
 全部修复见提交 `e347554`（+回归测试 6 例）与本报告对应文件：
@@ -81,7 +94,7 @@
 | SmartSideBAR.Core.Tests | 282 | ✅ 全绿 |
 | SmartSideBAR.Windows.Tests | 20 | ✅ 全绿 |
 | SmartSideBAR.Avalonia.Tests | 57 | ✅ 全绿（含 headless 冒烟 7 链路 + 像素结构基线 3 态） |
-| **合计** | **359** | **0 失败** |
+| **合计** | **362** | **0 失败** |
 
 覆盖维度：
 - **正常流程**：六链路 headless 冒烟（rail 点击→面板、画圆→转形、工作区切换、提醒渲染、Toast→通知中心、链接网格）
