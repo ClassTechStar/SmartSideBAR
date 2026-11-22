@@ -196,27 +196,25 @@ public static class AppTheme
         RimTo = Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF),
     };
 
-    private static Palette Dark(Color accent, AppearanceConfig a) => new()
+    /// <summary>
+    /// 侧栏/面板的深色面。内容色统一走 M3 语义色（与设置页 M3Palette 同源），
+    /// 消除"侧栏玻璃面 vs 设置页面"的双轨深色；rail 胶囊的渐变与边光环是侧栏形态语言
+    /// （不是配色语义），保留 v1.2 参数。
+    /// </summary>
+    private static Palette Dark(Color accent, AppearanceConfig a)
     {
-        Dark = true,
-        Glass = true,
-        PanelBg = Parse(Tokens.BgDark, "#171B22"),
-        Inset = Color.FromArgb(0xFF, 0x10, 0x14, 0x1B),
-        Card = Color.FromArgb(0x0F, 0xFF, 0xFF, 0xFF),
-        Body = Parse(Tokens.TextDark, "#E6EBF3"),
-        CardText = Color.Parse("#DCE3EE"),
-        Text = Lighten(accent, 0.35),
-        Muted = Parse(Tokens.TextDark, "#E6EBF3"),
-        Divider = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
-        Hover = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF),
-        Accent = Lighten(accent, 0.2),
-        AccentSoft = Color.FromArgb(0x2A, accent.R, accent.G, accent.B),
-        RailFrom = Color.FromArgb(0x8C, 0x16, 0x1A, 0x21),
-        RailTo = Color.FromArgb(0x70, 0x0C, 0x0F, 0x14),
-        RailGlow = Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF),
-        RimFrom = Color.FromArgb(0x3D, 0xFF, 0xFF, 0xFF),
-        RimTo = Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF),
-    };
+        var m3 = M3Palette(dark: true, accent);
+        return m3 with
+        {
+            // 用户的液态玻璃开关仍控制 rail 胶囊质感
+            Glass = a.LiquidGlass,
+            RailFrom = Color.FromArgb(0x8C, 0x16, 0x1A, 0x21),
+            RailTo = Color.FromArgb(0x70, 0x0C, 0x0F, 0x14),
+            RailGlow = Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF),
+            RimFrom = Color.FromArgb(0x3D, 0xFF, 0xFF, 0xFF),
+            RimTo = Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF),
+        };
+    }
 
     /// <summary>
     /// 高对比度面 (P2-a 可访问性): 纯黑白 + 全不透明描边, 无玻璃/渐变。

@@ -159,4 +159,49 @@ public class SettingsThemeTests
         Assert.NotEmpty(window.GetVisualDescendants());
         window.Close();
     }
+
+    [Fact]
+    public void 侧栏深色与设置页深色同源()
+    {
+        // 侧栏 AppTheme.From(dark) 与设置页 M3Palette(dark) 必须给出同一套内容色，
+        // 否则深色下"侧栏发灰、设置页很清晰"的双轨现象会回来
+        var appearance = new AppearanceConfig { Theme = "dark", Accent = "#2B6EE0" };
+        var sidebar = AppTheme.From(appearance);
+        var settings = AppTheme.M3Palette(dark: true, accent: Color.Parse("#2B6EE0"));
+
+        Assert.Equal(settings.PanelBg, sidebar.PanelBg);
+        Assert.Equal(settings.Inset, sidebar.Inset);
+        Assert.Equal(settings.Card, sidebar.Card);
+        Assert.Equal(settings.Text, sidebar.Text);
+        Assert.Equal(settings.Body, sidebar.Body);
+        Assert.Equal(settings.CardText, sidebar.CardText);
+        Assert.Equal(settings.Muted, sidebar.Muted);
+        Assert.Equal(settings.Divider, sidebar.Divider);
+        Assert.Equal(settings.Hover, sidebar.Hover);
+        Assert.Equal(settings.Accent, sidebar.Accent);
+        Assert.Equal(settings.AccentSoft, sidebar.AccentSoft);
+    }
+
+    [Fact]
+    public void 侧栏保留rail胶囊形态()
+    {
+        // rail 渐变/边光环是侧栏形态语言，不随配色统一而消失
+        var appearance = new AppearanceConfig { Theme = "dark" };
+        var sidebar = AppTheme.From(appearance);
+        var plain = AppTheme.M3Palette(dark: true);
+
+        Assert.NotEqual(plain.RailFrom, sidebar.RailFrom);
+        Assert.NotEqual(plain.RailTo, sidebar.RailTo);
+        Assert.True(sidebar.RailFrom.A > 0);
+    }
+
+    [Fact]
+    public void 深色卡片全部不透明()
+    {
+        // 统一后侧栏/设置页的深色卡片都不再是半透明叠加
+        var p = AppTheme.From(new AppearanceConfig { Theme = "dark" });
+        Assert.Equal(255, p.Card.A);
+        Assert.Equal(255, p.Inset.A);
+        Assert.True(Luma(p.Card) > Luma(p.Inset));
+    }
 }
