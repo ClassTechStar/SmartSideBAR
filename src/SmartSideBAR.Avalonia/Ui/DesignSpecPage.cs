@@ -79,6 +79,15 @@ internal static class DesignSpecPage
     private static Control ColorSection(Palette p)
     {
         var m3 = DesignTokens.Current.M3;
+        var groups = new StackPanel { Spacing = m3.Spacing.L };
+        groups.Children.Add(SwatchGroup("浅色 light", dark: false, p));
+        groups.Children.Add(SwatchGroup("深色 dark", dark: true, p));
+        return Card(p, "语义色彩（明暗两套）", groups);
+    }
+
+    private static Control SwatchGroup(string title, bool dark, Palette p)
+    {
+        var m3 = DesignTokens.Current.M3;
         (string Name, M3ColorRole Role)[] roles =
         [
             ("primary", M3ColorRole.Primary),
@@ -104,8 +113,8 @@ internal static class DesignSpecPage
                     {
                         Height = 36,
                         CornerRadius = M3.CornerSmall,
-                        Background = new SolidColorBrush(M3.Role(role)),
-                        BorderBrush = new SolidColorBrush(M3.Role(M3ColorRole.OutlineVariant)),
+                        Background = new SolidColorBrush(M3.Role(role, dark)),
+                        BorderBrush = new SolidColorBrush(M3.Role(M3ColorRole.OutlineVariant, dark)),
                         BorderThickness = new Thickness(1),
                     },
                     M3.Type(new TextBlock
@@ -117,7 +126,15 @@ internal static class DesignSpecPage
                 },
             });
         }
-        return Card(p, "语义色彩（浅色）", wrap);
+        return new StackPanel
+        {
+            Spacing = m3.Spacing.S,
+            Children =
+            {
+                M3.Type(new TextBlock { Text = title, Foreground = new SolidColorBrush(p.Muted) }, M3TypeScale.LabelLarge),
+                wrap,
+            },
+        };
     }
 
     private static Control TypeSection(Palette p)
@@ -159,29 +176,47 @@ internal static class DesignSpecPage
         var stack = new StackPanel { Spacing = 2 };
         foreach (var (name, spec) in rows)
         {
+            var curve = M3.Curve(spec);
             stack.Children.Add(M3.Type(new TextBlock
             {
-                Text = $"{name} · {spec.Ms:0}ms · {spec.Easing} · response {spec.ResponseSec:0.00}s / damping {spec.Damping:0.00}",
+                Text = $"{name} · ω₀ {curve.Omega:0.0} rad/s · ζ {spec.Damping:0.00}"
+                       + $" · 过冲 {curve.OverShootPercent * 100:0.#}% · 收敛 {curve.SettleSeconds * 1000:0}ms",
                 Foreground = new SolidColorBrush(p.Muted),
             }, M3TypeScale.BodySmall));
         }
-        return Card(p, "动效档位", stack);
+        stack.Children.Add(M3.Type(new TextBlock
+        {
+            Text = $"透明度另走 tween：淡入 {m.Fade.Ms:0}ms / 淡出 {m.FadeOut.Ms:0}ms（不跟弹簧）",
+            Foreground = new SolidColorBrush(p.Muted),
+            Margin = new Thickness(0, DesignTokens.Current.M3.Spacing.S, 0, 0),
+        }, M3TypeScale.BodySmall));
+
+        return Card(p, "动效档位（物理弹簧）", stack);
     }
 
     private static Control ComponentSection(Palette p)
     {
         var m3 = DesignTokens.Current.M3;
+        var stack = new StackPanel { Spacing = m3.Spacing.L };
+        stack.Children.Add(ComponentBlock("浅色", p, M3.Role(M3ColorRole.Surface)));
+        stack.Children.Add(ComponentBlock("深色", DarkPalette(p), M3.Role(M3ColorRole.Surface, dark: true)));
+        return Card(p, "组件样例（明暗对照）", stack);
+    }
+
+    private static Control ComponentBlock(string title, Palette block, Color background)
+    {
+        var m3 = DesignTokens.Current.M3;
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = m3.Spacing.S };
-        buttons.Children.Add(M3.Button("Filled", p, () => { }));
-        buttons.Children.Add(M3.Button("Tonal", p, () => { }, M3ButtonKind.Tonal));
-        buttons.Children.Add(M3.Button("Outlined", p, () => { }, M3ButtonKind.Outlined));
-        buttons.Children.Add(M3.Button("Text", p, () => { }, M3ButtonKind.Text));
+        buttons.Children.Add(M3.Button("Filled", block, () => { }));
+        buttons.Children.Add(M3.Button("Tonal", block, () => { }, M3ButtonKind.Tonal));
+        buttons.Children.Add(M3.Button("Outlined", block, () => { }, M3ButtonKind.Outlined));
+        buttons.Children.Add(M3.Button("Text", block, () => { }, M3ButtonKind.Text));
 
         var chips = new StackPanel { Orientation = Orientation.Horizontal, Spacing = m3.Spacing.S };
-        chips.Children.Add(M3.Chip("全部", p, selected: true));
-        chips.Children.Add(M3.Chip("截图", p));
-        chips.Children.Add(M3.Chip("录屏", p));
+        chips.Children.Add(M3.Chip("全部", block, selected: true));
+        chips.Children.Add(M3.Chip("截图", block));
+        chips.Children.Add(M3.Chip("录屏", block));
 
         var listRow = M3.ListRow(
             SvgIcons.Load("capture") is { } icon
@@ -189,28 +224,60 @@ internal static class DesignSpecPage
                 : null,
             "列表行标题",
             "副标题 · 双行高度 56",
-            M3.Type(new TextBlock { Text = "12:30", Foreground = new SolidColorBrush(p.Muted) }, M3TypeScale.LabelMedium),
-            p);
+            M3.Type(new TextBlock { Text = "12:30", Foreground = new SolidColorBrush(block.Muted) }, M3TypeScale.LabelMedium),
+            block);
 
-        var body = new StackPanel
+        return new Border
         {
-            Spacing = m3.Spacing.L,
-            Children =
+            Background = new SolidColorBrush(background),
+            CornerRadius = M3.CornerMedium,
+            Padding = new Thickness(m3.Spacing.L),
+            Child = new StackPanel
             {
-                buttons,
-                M3.TextField("MD3 输入框", p),
-                chips,
-                new Border
+                Spacing = m3.Spacing.L,
+                Children =
                 {
-                    Background = new SolidColorBrush(p.Inset),
-                    CornerRadius = M3.CornerMedium,
-                    Padding = new Thickness(m3.Spacing.L, m3.Spacing.S),
-                    Child = listRow,
+                    M3.Type(new TextBlock { Text = title, Foreground = new SolidColorBrush(block.Text) }, M3TypeScale.LabelLarge),
+                    buttons,
+                    M3.TextField("MD3 输入框", block),
+                    chips,
+                    new Border
+                    {
+                        Background = new SolidColorBrush(block.Inset),
+                        CornerRadius = M3.CornerMedium,
+                        Padding = new Thickness(m3.Spacing.L, m3.Spacing.S),
+                        Child = listRow,
+                    },
                 },
             },
         };
-        return Card(p, "组件样例", body);
     }
+
+    /// <summary>
+    /// 从 M3 深色语义角色派生一份 Palette（不硬编码颜色）。
+    /// 用于陈列页的深色对照块与深色组件预览。
+    /// </summary>
+    private static Palette DarkPalette(Palette light) => light with
+    {
+        Dark = true,
+        Glass = false,
+        PanelBg = M3.Role(M3ColorRole.Surface, dark: true),
+        Inset = M3.Role(M3ColorRole.SurfaceContainerLow, dark: true),
+        Card = M3.Role(M3ColorRole.SurfaceContainer, dark: true),
+        Text = M3.Role(M3ColorRole.OnSurface, dark: true),
+        Body = M3.Role(M3ColorRole.OnSurface, dark: true),
+        CardText = M3.Role(M3ColorRole.OnSurfaceVariant, dark: true),
+        Muted = M3.Role(M3ColorRole.OnSurfaceVariant, dark: true),
+        Divider = M3.Role(M3ColorRole.OutlineVariant, dark: true),
+        Hover = M3.Role(M3ColorRole.SurfaceContainerHigh, dark: true),
+        Accent = M3.Role(M3ColorRole.Primary, dark: true),
+        AccentSoft = M3.Role(M3ColorRole.PrimaryContainer, dark: true),
+        RailFrom = M3.Role(M3ColorRole.SurfaceContainer, dark: true),
+        RailTo = M3.Role(M3ColorRole.SurfaceContainerLow, dark: true),
+        RailGlow = M3.Role(M3ColorRole.SurfaceContainerHighest, dark: true),
+        RimFrom = M3.Role(M3ColorRole.OutlineVariant, dark: true),
+        RimTo = M3.Role(M3ColorRole.Outline, dark: true),
+    };
 
     private static Control Card(Palette p, string title, Control content)
     {

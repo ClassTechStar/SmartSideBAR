@@ -162,7 +162,7 @@
       "level5": "0 8 12 6 #1F000000, 0 4 6 0 #14000000"
     },
     "motion": {
-      "$comment": "对齐 mochi MochiMotionTokens：response(秒)+damping 为原始规格；ms/easing 是 Avalonia 无物理弹簧时的等效实现（damping<1 用过冲缓动近似）。",
+      "$comment": "对齐 mochi MochiMotionTokens：response(秒)+damping 为运行依据，由 Core/Design/SpringCurve 解二阶阻尼振子得到真实回弹；ms/easing 仅作降级参考值（非弹簧宿主或调试对照），不参与运行时计算。",
       "page": {
         "responseSec": 0.42,
         "damping": 1.0,

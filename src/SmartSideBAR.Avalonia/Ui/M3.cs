@@ -63,24 +63,39 @@ internal static class M3
         _ => Elevation5,
     };
 
-    // ---- 动效：duration + easing（Avalonia 无物理弹簧，用等效缓动近似）----
-    public static TimeSpan PageTime => Ms(T.Motion.Page);
-    public static TimeSpan PresentTime => Ms(T.Motion.Present);
-    public static TimeSpan PopTime => Ms(T.Motion.Pop);
-    public static TimeSpan ControlTime => Ms(T.Motion.Control);
-    public static TimeSpan SettleTime => Ms(T.Motion.Settle);
-    public static TimeSpan BounceTime => Ms(T.Motion.Bounce);
-    public static TimeSpan PressDownTime => Ms(T.Motion.PressDown);
-    public static TimeSpan PressReleaseTime => Ms(T.Motion.PressRelease);
+    // ---- 动效：物理弹簧（解析解，替代此前的 BackEase 近似）----
+    // duration 取包络衰减到 0.1% 的时间，easing 是归一化弹簧曲线；
+    // 欠阻尼档位会真实过冲（回弹），临界阻尼档位平稳落定。
+    public static (TimeSpan Duration, IEasing Easing) Spring(M3MotionSpec spec)
+    {
+        var curve = new SpringCurve(spec.ResponseSec, spec.Damping);
+        return (TimeSpan.FromSeconds(curve.SettleSeconds), new SpringEasingAdapter(curve));
+    }
+
+    /// <summary>档位对应的弹簧曲线（供陈列页展示 ω₀/ζ/过冲，也便于测试）。</summary>
+    public static SpringCurve Curve(M3MotionSpec spec) => new(spec.ResponseSec, spec.Damping);
+
+    public static TimeSpan PageTime => Spring(T.Motion.Page).Duration;
+    public static TimeSpan PresentTime => Spring(T.Motion.Present).Duration;
+    public static TimeSpan PopTime => Spring(T.Motion.Pop).Duration;
+    public static TimeSpan ControlTime => Spring(T.Motion.Control).Duration;
+    public static TimeSpan SettleTime => Spring(T.Motion.Settle).Duration;
+    public static TimeSpan BounceTime => Spring(T.Motion.Bounce).Duration;
+    public static TimeSpan PressDownTime => Spring(T.Motion.PressDown).Duration;
+    public static TimeSpan PressReleaseTime => Spring(T.Motion.PressRelease).Duration;
+
+    public static IEasing PageEase => Spring(T.Motion.Page).Easing;
+    public static IEasing PresentEase => Spring(T.Motion.Present).Easing;
+    public static IEasing PopEase => Spring(T.Motion.Pop).Easing;
+    public static IEasing ControlEase => Spring(T.Motion.Control).Easing;
+    public static IEasing SettleEase => Spring(T.Motion.Settle).Easing;
+    public static IEasing BounceEase => Spring(T.Motion.Bounce).Easing;
+    public static IEasing PressDownEase => Spring(T.Motion.PressDown).Easing;
+    public static IEasing PressReleaseEase => Spring(T.Motion.PressRelease).Easing;
+
+    // 透明度不跟弹簧走（mochi 规则：旧内容先让开，用短 tween）
     public static TimeSpan FadeTime => Ms(T.Motion.Fade);
     public static TimeSpan FadeOutTime => Ms(T.Motion.FadeOut);
-
-    public static IEasing PageEase => Ease(T.Motion.Page.Easing);
-    public static IEasing PresentEase => Ease(T.Motion.Present.Easing);
-    public static IEasing PopEase => Ease(T.Motion.Pop.Easing);
-    public static IEasing ControlEase => Ease(T.Motion.Control.Easing);
-    public static IEasing SettleEase => Ease(T.Motion.Settle.Easing);
-    public static IEasing BounceEase => Ease(T.Motion.Bounce.Easing);
     public static IEasing FadeEase => Ease(T.Motion.Fade.Easing);
     public static IEasing FadeOutEase => Ease(T.Motion.FadeOut.Easing);
 
@@ -227,7 +242,8 @@ internal static class M3
                 break;
             default: // Filled
                 bg = new SolidColorBrush(p.Accent);
-                fg = p.OnAccentBrush;
+                // MD3: primary 上的前景取 onPrimary；深色主题 primary 是浅蓝，白字对比不足
+                fg = new SolidColorBrush(Role(M3ColorRole.OnPrimary, p.Dark));
                 border = Brushes.Transparent;
                 break;
         }
@@ -384,6 +400,24 @@ internal enum M3TypeScale
 internal enum M3ButtonKind
 {
     Filled, Tonal, Outlined, Text,
+}
+
+/// <summary>
+/// 把物理弹簧曲线包装成 Avalonia 的 IEasing。
+/// Ease 的入参是归一化时间 0..1，映射到 [0, SettleSeconds] 的物理时间。
+/// </summary>
+internal sealed class SpringEasingAdapter : Easing
+{
+    public SpringEasingAdapter(SpringCurve curve) => Curve = curve;
+
+    public SpringCurve Curve { get; }
+
+    public override double Ease(double progress)
+    {
+        if (progress <= 0) return 0;
+        if (progress >= 1) return 1;
+        return Curve.ValueAt(progress * Curve.SettleSeconds);
+    }
 }
 
 /// <summary>M3 组件标记：UI 测试与自动化定位用（避免命中控件模板内部元素）。</summary>

@@ -5,6 +5,14 @@
 
 ## [未发布]
 
+### 设计规范页深色主题 + 物理弹簧动效（2026-11-22）
+- 设计规范页新增明暗双色板陈列与深色组件对照块（`DarkPalette()` 全部取自 M3 深色语义角色）
+- 新增 `Core/Design/SpringCurve`：二阶阻尼振子解析解（欠阻尼/临界/过阻尼三支），
+  替代此前的 BackEase 近似；过冲量为解析值，动画时长取 0.1% 包络收敛时间
+- `M3.Spring(spec)` 输出 (时长, IEasing)；`PageTime/SettleTime/...` 改由弹簧计算
+- Filled 按钮前景改用 `onPrimary`（深色主题下白字对比不足的修正）
+- 新增 `SpringCurveTests`（12 项物理正确性）+ 深色渲染测试
+
 ### Material Design 3 设计系统（2026-11）
 - `design-tokens.json` 新增 `m3` 段：九档形状 / MD3 十五档排版 / 十档动效（对齐 mochi-compose）/
   六级海拔 / 明暗两套语义色角色（seed #2B6EE0）

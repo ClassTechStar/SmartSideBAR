@@ -57,6 +57,16 @@ seed = 品牌色 `#2B6EE0`，标准 MD3 tonal 映射，**light / dark 两套都�
 
 **语义约束**：同屏最多 1 个 primary 强调；错误色只用于错误；不用颜色单独传达状态（须配文字/图标）。
 
+### 3.1 深色主题
+
+- 两套色板都必须在设计规范页可见（`设置 → 设计规范 → 语义色彩` 分「浅色 / 深色」两组陈列）。
+- 深色不是浅色反相：`primary` 取同色系**亮版**（`#B0C6FF`），上的前景必须用 `onPrimary`（`#002E6A`）——
+  深色下用白字会对比不足，这是 `M3.Button` 的 Filled 变体已内置的规则。
+- 容器层级用 `surfaceContainerLowest…Highest` 阶梯，不要用透明度叠出来（叠层在深色下会发灰）。
+- 描边用 `outline` / `outlineVariant`，不要用纯白低透明度描边。
+- `Palette` 的深色派生见 `DesignSpecPage.DarkPalette()`：全部取自 M3 深色语义角色，无硬编码。
+
+
 ## 4. 排版系统（Typography）
 
 MD3 15 档 type scale（单位 dip；字体族由 `MiSansFont.axaml` 全局提供）：
@@ -75,21 +85,59 @@ MD3 15 档 type scale（单位 dip；字体族由 `MiSansFont.axaml` 全局提�
 
 ## 5. 动效系统（Motion）
 
-对齐 `MochiMotionTokens`。原库用物理弹簧（`stiffness = (2π/response)²`），
-Avalonia 无内置弹簧，改用**等时长 + 近似缓动**；`damping < 1`（有回弹）用过冲缓动近似。
+对齐 `MochiMotionTokens`，**用物理弹簧的真实解析解**驱动，不是缓动近似曲线。
 
-| 档位 | response | damping | 本项目 ms / easing | 用途 |
+### 5.1 物理模型
+
+对阶跃输入求解二阶阻尼振子：
+
+```
+x'' + 2ζω₀x' + ω₀²x = 0 ,  x(0)=0, x'(0)=0
+ω₀ = 2π / response ,  ζ = damping
+```
+
+三支解析解（`Core/Design/SpringCurve.cs`）：
+
+| 区间 | 解 | 行为 |
+|---|---|---|
+| ζ < 1（欠阻尼） | `1 − e^(−ζω₀t)(cos ω_d t + (ζω₀/ω_d) sin ω_d t)`，`ω_d = ω₀√(1−ζ²)` | 真实过冲与回弹 |
+| ζ = 1（临界） | `1 − e^(−ω₀t)(1 + ω₀t)` | 平稳落定，不过冲 |
+| ζ > 1（过阻尼） | `1 − (r₂e^(r₁t) − r₁e^(r₂t))/(r₂−r₁)` | 慢根收敛，拖尾更长 |
+
+**过冲量**为解析值 `e^(−ζπ/√(1−ζ²))`，测试逐档核对。
+**动画时长**取包络衰减到 0.1% 的时间：`ln(1000)/(decay·ω₀)`，
+其中过阻尼用慢根 `decay = ζ − √(ζ²−1)`（直接用 ζω₀ 会低估收敛时间）。
+
+### 5.2 档位表
+
+| 档位 | response | damping | 理论过冲 | 用途 |
 |---|---|---|---|---|
-| `page` | 0.42s | 1.0 | 420 / CubicEaseOut | 页面切换、侧推 |
-| `present` | 0.42s | 0.86 | 420 / BackEaseOut | 浮层升起、Toast |
-| `pop` | 0.36s | 0.78 | 360 / BackEaseOut | 对话框、气泡 |
-| `control` | 0.34s | 0.86 | 340 / CubicEaseOut | 控件位移、拖动吸附 |
-| `settle` | 0.28s | 1.0 | 280 / CubicEaseOut | 收起、高度变化、箭头 |
-| `bounce` | 0.34s | 0.55 | 340 / BackEaseOut | 角标冒出、选中框 |
-| `pressDown` | 0.22s | 0.62 | 220 / CubicEaseOut | 按下 |
-| `pressRelease` | 0.38s | 0.62 | 380 / BackEaseOut | 松开回弹 |
-| `fade` | — | — | 150 / CubicEaseOut | 淡入 |
-| `fadeOut` | — | — | 120 / CubicEaseIn | 淡出（比淡入短） |
+| `page` | 0.42s | 1.00 | 0% | 页面切换、侧推 |
+| `present` | 0.42s | 0.86 | ≈1% | 浮层升起、Toast |
+| `pop` | 0.36s | 0.78 | ≈2% | 对话框、气泡 |
+| `control` | 0.34s | 0.86 | ≈1% | 控件位移、拖动吸附 |
+| `settle` | 0.28s | 1.00 | 0% | 收起、高度变化、箭头 |
+| `bounce` | 0.34s | 0.55 | ≈13% | 角标冒出、选中框 |
+| `pressDown` | 0.22s | 0.62 | ≈8% | 按下 |
+| `pressRelease` | 0.38s | 0.62 | ≈8% | 松开回弹 |
+| `fade` | — | — | — | 淡入 150ms（tween） |
+| `fadeOut` | — | — | — | 淡出 120ms（tween） |
+
+代码：
+
+```csharp
+var (duration, easing) = M3.Spring(M3.Settle);   // 任意档位
+transitions.Add(new DoubleTransition
+{
+    Property = OpacityProperty,
+    Duration = M3.FadeTime,                       // 透明度走 tween
+    Easing = M3.FadeEase,
+});
+// 位移/尺寸用 M3.SettleTime + M3.SettleEase
+```
+
+`design-tokens.json` 里的 `ms` / `easing` 保留为**降级参考值**（Avalonia 之外的宿主或调试对照），
+运行时以 `responseSec` / `damping` 计算弹簧为准。
 
 **编排规则（来自 mochi）**：同一次变化里的多个元素用**同一档**，才会同时起步、同时停；
 透明度单独走 fade，不与位移共用时长。系统开启"减少动效"时必须降级为直接切换。
@@ -147,7 +195,9 @@ Avalonia 无内置弹簧，改用**等时长 + 近似缓动**；`damping < 1`（
 | 令牌双向一致 | `DesignTokensTests.M3_*` | JSON ↔ C# 默认值逐项相等 |
 | 刻度完整性 | `M3DesignTests` | 形状严格递增、动效十档齐全、排版十五档齐全 |
 | 触控下限 | `M3DesignTests` | `MinTouchDip ≥ 44`、`MinTargetDip ≥ 48` |
-| 组件规格 | `M3DesignTests` | 按钮高 48、卡片圆角＝medium、输入框高 48 |
+| 组件规格 | `M3ComponentTests` | 按钮高 48、卡片圆角＝medium、输入框高 48 |
+| 弹簧物理 | `SpringCurveTests` | ω₀=2π/response、过冲与解析解一致、临界阻尼不过冲、过阻尼收敛更慢 |
+| 深色主题 | `DesignSpecPageTests` | 深色 palette 下可渲染、8+ 按钮达标、明暗两套色板同时在场 |
 | 硬编码扫描 | `M3DesignTests.新组件无硬编码` | 扫描 `M3.cs`，禁止出现十六进制颜色与裸圆角数字 |
 
 ## 10. 与 mochi-compose 的差异（有意为之）
@@ -155,7 +205,7 @@ Avalonia 无内置弹簧，改用**等时长 + 近似缓动**；`damping < 1`（
 | mochi | 本项目 | 原因 |
 |---|---|---|
 | G2 连续曲率圆角 | 标准圆角 | Avalonia 无等价 API；曲率不影响层级与可读性 |
-| 物理弹簧 | 等时长 + 近似缓动 | Avalonia 无 spring 动画；参数表保留 response/damping 供将来升级 |
+| 物理弹簧 | **同款解析解**（`SpringCurve`），经 `IEasing` 适配进 Avalonia | 无差异；Avalonia 原生无 spring，用自定义 easing 桥接 |
 | iOS 式侧滑返回、橡皮筋 | 不适用 | 桌面侧栏无手势导航语义 |
 | 玻璃材质（MochiGlass） | 保留本项目既有液态玻璃开关 | 已有成熟实现，不引入第二套材质系统 |
 | Ionicons 图标 | 保留现有 SVG 图标集 | 换图标集属破坏性视觉变更 |

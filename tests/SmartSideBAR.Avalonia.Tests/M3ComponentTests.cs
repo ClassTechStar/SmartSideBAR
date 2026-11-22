@@ -129,11 +129,46 @@ public class M3ComponentTests
     }
 
     [AvaloniaFact]
-    public void 动效时长与令牌一致()
+    public void 动效走物理弹簧而非固定时长()
     {
-        Assert.Equal(TimeSpan.FromMilliseconds(T.Motion.Page.Ms), M3.PageTime);
-        Assert.Equal(TimeSpan.FromMilliseconds(T.Motion.Settle.Ms), M3.SettleTime);
+        // 弹簧时长 = 包络收敛到 0.1% 的时间，必然大于 response
+        Assert.Equal(M3.Curve(T.Motion.Page).SettleSeconds, M3.PageTime.TotalSeconds, 3);
+        Assert.True(M3.PageTime.TotalSeconds > T.Motion.Page.ResponseSec);
+        Assert.True(M3.SettleTime.TotalSeconds > T.Motion.Settle.ResponseSec);
+
+        // 透明度仍是 tween，不跟弹簧
         Assert.Equal(TimeSpan.FromMilliseconds(T.Motion.FadeOut.Ms), M3.FadeOutTime);
+        Assert.Equal(TimeSpan.FromMilliseconds(T.Motion.Fade.Ms), M3.FadeTime);
+    }
+
+    [AvaloniaFact]
+    public void 弹簧缓动真实过冲且临界阻尼不过冲()
+    {
+        var bounce = M3.BounceEase;
+        var bounceMax = 0.0;
+        for (var i = 0; i <= 1000; i++) bounceMax = Math.Max(bounceMax, bounce.Ease(i / 1000.0));
+        Assert.True(bounceMax > 1.03, $"回弹档位应明显过冲，实测峰值 {bounceMax:0.000}");
+        Assert.Equal(0.0, bounce.Ease(0), 6);
+        Assert.Equal(1.0, bounce.Ease(1), 6);
+
+        var settle = M3.SettleEase;
+        var settleMax = 0.0;
+        for (var i = 0; i <= 1000; i++) settleMax = Math.Max(settleMax, settle.Ease(i / 1000.0));
+        Assert.True(settleMax <= 1.000001, $"临界阻尼不应过冲，实测峰值 {settleMax:0.000}");
+    }
+
+    [AvaloniaFact]
+    public void 深色下Filled按钮前景取onPrimary()
+    {
+        var dark = TestPalette() with
+        {
+            Dark = true,
+            Accent = Color.Parse("#B0C6FF"),
+        };
+        var button = M3.Button("确定", dark, () => { }, M3ButtonKind.Filled);
+        var fg = (ISolidColorBrush)button.Foreground!;
+        // 深色 primary 是浅蓝，前景必须是 onPrimary 深蓝，而不是白色
+        Assert.Equal(Color.Parse("#002E6A"), fg.Color);
     }
 
     [AvaloniaFact]

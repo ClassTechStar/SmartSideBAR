@@ -84,4 +84,57 @@ public class DesignSpecPageTests
         Assert.DoesNotContain("\"#", source);
         Assert.DoesNotMatch(@"new CornerRadius\(\s*\d", source);
     }
+
+    private static Palette DarkPalette() => Palette() with
+    {
+        Dark = true,
+        Glass = false,
+        PanelBg = M3.Role(M3ColorRole.Surface, dark: true),
+        Inset = M3.Role(M3ColorRole.SurfaceContainerLow, dark: true),
+        Card = M3.Role(M3ColorRole.SurfaceContainer, dark: true),
+        Text = M3.Role(M3ColorRole.OnSurface, dark: true),
+        Body = M3.Role(M3ColorRole.OnSurface, dark: true),
+        CardText = M3.Role(M3ColorRole.OnSurfaceVariant, dark: true),
+        Muted = M3.Role(M3ColorRole.OnSurfaceVariant, dark: true),
+        Divider = M3.Role(M3ColorRole.OutlineVariant, dark: true),
+        Hover = M3.Role(M3ColorRole.SurfaceContainerHigh, dark: true),
+        Accent = M3.Role(M3ColorRole.Primary, dark: true),
+        AccentSoft = M3.Role(M3ColorRole.PrimaryContainer, dark: true),
+    };
+
+    [AvaloniaFact]
+    public void 深色主题下页面可渲染且按钮达标()
+    {
+        var window = new Window { Content = DesignSpecPage.Build(DarkPalette()), Width = 900, Height = 700 };
+        window.Show();
+        global::Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+
+        var buttons = window.GetVisualDescendants().OfType<Button>()
+            .Where(b => Equals(b.Tag, M3Tags.Button)).ToArray();
+        // 明暗两块各四个变体
+        Assert.True(buttons.Length >= 8, $"深色对照应有 8 个以上 M3 按钮，实际 {buttons.Length}");
+        foreach (var b in buttons) Assert.True(b.MinHeight >= DesignTokens.Current.M3.Touch.MinTouchDip);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void 页面同时陈列明暗两套色板与组件()
+    {
+        var window = new Window { Content = DesignSpecPage.Build(Palette()), Width = 900, Height = 900 };
+        window.Show();
+        global::Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+
+        // 浅色块 + 深色块 → 至少 16 个色板 Border（8 角色 × 2 套）
+        var swatches = window.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Height is > 30 and < 40).ToArray();
+        Assert.True(swatches.Length >= 16, $"色板数量不足：{swatches.Length}");
+
+        // 深色组件块的背景应接近深色 surface，而不是白色
+        var darkSurface = M3.Role(M3ColorRole.Surface, dark: true);
+        Assert.Contains(window.GetVisualDescendants().OfType<Border>(), b =>
+            b.Background is SolidColorBrush s && s.Color == darkSurface);
+
+        window.Close();
+    }
 }
