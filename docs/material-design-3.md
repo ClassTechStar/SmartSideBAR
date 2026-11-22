@@ -64,7 +64,12 @@ seed = 品牌色 `#2B6EE0`，标准 MD3 tonal 映射，**light / dark 两套都�
   深色下用白字会对比不足，这是 `M3.Button` 的 Filled 变体已内置的规则。
 - 容器层级用 `surfaceContainerLowest…Highest` 阶梯，不要用透明度叠出来（叠层在深色下会发灰）。
 - 描边用 `outline` / `outlineVariant`，不要用纯白低透明度描边。
-- `Palette` 的深色派生见 `DesignSpecPage.DarkPalette()`：全部取自 M3 深色语义角色，无硬编码。
+- `Palette` 的深色派生见 `AppTheme.M3Palette(dark, accent)`：全部取自 M3 深色语义角色，无硬编码。
+- **所有窗口都要同时换 Palette 与 `RequestedThemeVariant`**：Fluent 控件模板（ComboBox/CheckBox/Button）
+  按主题变体取色，只换 Palette 不换变体会在深色页面留下白底控件。
+- 独立窗口（崩溃提示 / OOBE / 更新进度）用 `AppTheme.CurrentM3()`：按应用当前主题变体取 M3 深/浅语义色，
+  与设置页同源；构造时同样要设 `RequestedThemeVariant`。
+- 例外：`MiniBoardWindow`（白板）保持白底黑字，属功能语义，不做深色。
 
 
 ## 4. 排版系统（Typography）

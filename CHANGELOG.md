@@ -5,6 +5,16 @@
 
 ## [未发布]
 
+### 其他页面深色主题（2026-11-22）
+- 设置窗 9 个页签深色统一走 M3 不透明 surface 阶梯（`AppTheme.ForSettings`：
+  浅色保持既有玻璃/经典面，深色换 M3 语义色）
+- 修正深色下 Fluent 控件模板仍按浅色渲染的问题：设置窗 / 崩溃提示窗 / OOBE
+  均显式设置 `RequestedThemeVariant`（只换 Palette 不换变体会留白底控件）
+- 独立窗口（崩溃提示 / OOBE）改用 `AppTheme.CurrentM3()`，与设置页同源深色
+- 深色下自定义强调色过暗（亮度 < 0.55）时回退 M3 primary，保证可读
+- 新增 `SettingsThemeTests` / `IndependentWindowThemeTests`：不透明性、surface 层级、
+  无白块、文字可读（含像素级抽检验证）
+
 ### 设计规范页深色主题 + 物理弹簧动效（2026-11-22）
 - 设计规范页新增明暗双色板陈列与深色组件对照块（`DarkPalette()` 全部取自 M3 深色语义角色）
 - 新增 `Core/Design/SpringCurve`：二阶阻尼振子解析解（欠阻尼/临界/过阻尼三支），

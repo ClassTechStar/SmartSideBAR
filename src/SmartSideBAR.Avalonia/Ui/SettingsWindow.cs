@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Platform.Storage;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Scheduling;
@@ -66,7 +67,10 @@ public sealed class SettingsWindow : Window
         _config = config;
         _shell = shell;
         _diag = diag;
-        _p = AppTheme.From(config.Current.Appearance);
+        _p = AppTheme.ForSettings(config.Current.Appearance);
+        // 显式设变体：Fluent 控件模板（ComboBox/TextBox 等）按变体取色，
+        // 只换 Palette 不换变体会在深色页面上留下白底下拉框。
+        RequestedThemeVariant = _p.Dark ? ThemeVariant.Dark : ThemeVariant.Light;
         Title = "SmartSideBAR 设置";
         Width = 720;
         Height = 680;

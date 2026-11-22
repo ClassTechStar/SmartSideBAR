@@ -12,8 +12,14 @@ namespace SmartSideBAR.Avalonia.Ui;
 
 internal sealed class CrashReportWindow : Window
 {
-    public CrashReportWindow(string summary, string logPath)
+    /// <summary>palette 为 null 时按应用当前主题变体取 M3 语义色（深/浅自动）。</summary>
+    public CrashReportWindow(string summary, string logPath, Palette? palette = null)
     {
+        var p = palette ?? AppTheme.CurrentM3();
+        // Fluent 控件模板按变体取色：只换 Palette 不设变体，按钮/下拉框仍是浅色白块
+        RequestedThemeVariant = p.Dark
+            ? global::Avalonia.Styling.ThemeVariant.Dark
+            : global::Avalonia.Styling.ThemeVariant.Light;
         Title = "SmartSideBAR 上次运行异常";
         Width = 520;
         SizeToContent = SizeToContent.Height;
@@ -22,20 +28,12 @@ internal sealed class CrashReportWindow : Window
         ShowInTaskbar = false;
         Topmost = true;
 
-        var restartSafe = new Button
-        {
-            Content = "以安全模式重启",
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Padding = new Thickness(14, 8),
-        };
+        var restartSafe = M3.Button("以安全模式重启", p, () => RestartSafeMode(), M3ButtonKind.Filled);
+        restartSafe.HorizontalAlignment = HorizontalAlignment.Left;
         restartSafe.Click += (_, _) => RestartSafeMode();
 
-        var openLog = new Button
-        {
-            Content = "打开日志目录",
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Padding = new Thickness(14, 8),
-        };
+        var openLog = M3.Button("打开日志目录", p, () => { }, M3ButtonKind.Tonal);
+        openLog.HorizontalAlignment = HorizontalAlignment.Left;
         openLog.Click += (_, _) =>
         {
             try
@@ -46,42 +44,39 @@ internal sealed class CrashReportWindow : Window
             catch { /* 打开失败不影响 */ }
         };
 
-        var close = new Button
-        {
-            Content = "知道了",
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Padding = new Thickness(14, 8),
-        };
+        // 近景按钮：内容更新为实际动作（M3.Button 的 click 委托已设，这里追加原逻辑）
+
+        var close = M3.Button("知道了", p, () => Close(), M3ButtonKind.Text);
+        close.HorizontalAlignment = HorizontalAlignment.Right;
         close.Click += (_, _) => Close();
 
         Content = new Border
         {
             Padding = new Thickness(20),
-            Background = Brushes.White,
+            Background = new SolidColorBrush(p.PanelBg),
             Child = new StackPanel
             {
                 Spacing = 12,
                 Children =
                 {
-                    new TextBlock
+                    M3.Type(new TextBlock
                     {
                         Text = "上次运行时发生了异常",
-                        FontSize = 16,
-                        FontWeight = FontWeight.SemiBold,
-                    },
+                        Foreground = new SolidColorBrush(p.Text),
+                    }, M3TypeScale.TitleLarge),
                     new TextBlock
                     {
                         Text = summary,
                         TextWrapping = TextWrapping.Wrap,
                         FontSize = 13,
-                        Foreground = Brushes.DimGray,
+                        Foreground = new SolidColorBrush(p.Body),
                     },
                     new TextBlock
                     {
                         Text = "若反复出现, 可用安全模式启动（跳过应用栏与悬浮球）。",
                         TextWrapping = TextWrapping.Wrap,
                         FontSize = 12,
-                        Foreground = Brushes.Gray,
+                        Foreground = new SolidColorBrush(p.Muted),
                     },
                     new StackPanel
                     {

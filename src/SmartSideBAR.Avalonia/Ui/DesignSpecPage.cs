@@ -199,7 +199,7 @@ internal static class DesignSpecPage
         var m3 = DesignTokens.Current.M3;
         var stack = new StackPanel { Spacing = m3.Spacing.L };
         stack.Children.Add(ComponentBlock("浅色", p, M3.Role(M3ColorRole.Surface)));
-        stack.Children.Add(ComponentBlock("深色", DarkPalette(p), M3.Role(M3ColorRole.Surface, dark: true)));
+        stack.Children.Add(ComponentBlock("深色", AppTheme.M3Palette(dark: true), M3.Role(M3ColorRole.Surface, dark: true)));
         return Card(p, "组件样例（明暗对照）", stack);
     }
 
@@ -252,32 +252,6 @@ internal static class DesignSpecPage
             },
         };
     }
-
-    /// <summary>
-    /// 从 M3 深色语义角色派生一份 Palette（不硬编码颜色）。
-    /// 用于陈列页的深色对照块与深色组件预览。
-    /// </summary>
-    private static Palette DarkPalette(Palette light) => light with
-    {
-        Dark = true,
-        Glass = false,
-        PanelBg = M3.Role(M3ColorRole.Surface, dark: true),
-        Inset = M3.Role(M3ColorRole.SurfaceContainerLow, dark: true),
-        Card = M3.Role(M3ColorRole.SurfaceContainer, dark: true),
-        Text = M3.Role(M3ColorRole.OnSurface, dark: true),
-        Body = M3.Role(M3ColorRole.OnSurface, dark: true),
-        CardText = M3.Role(M3ColorRole.OnSurfaceVariant, dark: true),
-        Muted = M3.Role(M3ColorRole.OnSurfaceVariant, dark: true),
-        Divider = M3.Role(M3ColorRole.OutlineVariant, dark: true),
-        Hover = M3.Role(M3ColorRole.SurfaceContainerHigh, dark: true),
-        Accent = M3.Role(M3ColorRole.Primary, dark: true),
-        AccentSoft = M3.Role(M3ColorRole.PrimaryContainer, dark: true),
-        RailFrom = M3.Role(M3ColorRole.SurfaceContainer, dark: true),
-        RailTo = M3.Role(M3ColorRole.SurfaceContainerLow, dark: true),
-        RailGlow = M3.Role(M3ColorRole.SurfaceContainerHighest, dark: true),
-        RimFrom = M3.Role(M3ColorRole.OutlineVariant, dark: true),
-        RimTo = M3.Role(M3ColorRole.Outline, dark: true),
-    };
 
     private static Control Card(Palette p, string title, Control content)
     {

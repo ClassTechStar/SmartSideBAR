@@ -93,6 +93,71 @@ public static class AppTheme
         }
     }
 
+    /// <summary>
+    /// 设置页专用的 Palette。深色走 MD3 不透明 surface 阶梯
+    /// （玻璃面的半透明卡片叠在深底上会发灰，层级也压不开）；
+    /// 浅色保持既有玻璃面，不改已确认的视觉基线。
+    /// </summary>
+    public static Palette ForSettings(AppearanceConfig? appearance)
+    {
+        var a = AppearanceNormalize.Clamp(appearance);
+        if (!IsDark(a.Theme)) return From(appearance);
+
+        var accent = ToColor(a.Accent);
+        return M3Palette(dark: true, accent);
+    }
+
+    /// <summary>
+    /// 从 design-tokens.json 的 m3 语义色派生 Palette（全部不透明）。
+    /// 设计规范页与设置页共用这一份，避免两套深色定义漂移。
+    /// </summary>
+    public static Palette M3Palette(bool dark, Color? accent = null)
+    {
+        var primary = M3.Role(M3ColorRole.Primary, dark);
+        // 自定义强调色在深底上可能对比不足（默认品牌蓝亮度约 0.42），回退到 M3 primary
+        var resolved = accent is { } c && Readable(c, dark) ? c : primary;
+        return new Palette
+        {
+            Dark = dark,
+            Glass = false,
+            HighContrast = false,
+            PanelBg = M3.Role(M3ColorRole.Surface, dark),
+            Inset = M3.Role(M3ColorRole.Surface, dark),
+            Card = M3.Role(M3ColorRole.SurfaceContainer, dark),
+            Text = M3.Role(M3ColorRole.OnSurface, dark),
+            Body = M3.Role(M3ColorRole.OnSurface, dark),
+            CardText = M3.Role(M3ColorRole.OnSurfaceVariant, dark),
+            Muted = M3.Role(M3ColorRole.OnSurfaceVariant, dark),
+            Divider = M3.Role(M3ColorRole.OutlineVariant, dark),
+            Hover = M3.Role(M3ColorRole.SurfaceContainerHigh, dark),
+            Accent = resolved,
+            AccentSoft = M3.Role(M3ColorRole.PrimaryContainer, dark),
+            RailFrom = M3.Role(M3ColorRole.SurfaceContainer, dark),
+            RailTo = M3.Role(M3ColorRole.SurfaceContainerLow, dark),
+            RailGlow = M3.Role(M3ColorRole.SurfaceContainerHighest, dark),
+            RimFrom = M3.Role(M3ColorRole.OutlineVariant, dark),
+            RimTo = M3.Role(M3ColorRole.Outline, dark),
+        };
+    }
+
+    /// <summary>
+    /// 按应用当前主题变体返回 M3 深/浅 Palette。
+    /// 供未注入配置的独立窗口（崩溃提示 / OOBE / 更新进度）使用，
+    /// 保证它们和设置页的深色是同一套语义色。
+    /// </summary>
+    public static Palette CurrentM3()
+    {
+        var dark = global::Avalonia.Application.Current?.ActualThemeVariant == global::Avalonia.Styling.ThemeVariant.Dark;
+        return M3Palette(dark);
+    }
+
+    /// <summary>粗亮度判据：深色底上过暗的强调色不可读。</summary>
+    private static bool Readable(Color color, bool dark)
+    {
+        var luma = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
+        return dark ? luma >= 0.55 : luma <= 0.85;
+    }
+
     private static Color ToColor(string hex)
     {
         // "auto" = 跟随 Windows 系统强调色 (Seelen 同款; 由设置页/快捷磁贴写入)

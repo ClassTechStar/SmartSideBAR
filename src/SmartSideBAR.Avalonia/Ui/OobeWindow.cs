@@ -28,6 +28,9 @@ public sealed class OobeWindow : Window
 
     public OobeWindow(ConfigService config, IImeService ime, IPrinterMonitor printer)
     {
+        RequestedThemeVariant = AppTheme.CurrentM3().Dark
+            ? global::Avalonia.Styling.ThemeVariant.Dark
+            : global::Avalonia.Styling.ThemeVariant.Light;
         _config = config;
         _ime = ime;
         _printer = printer;
@@ -52,7 +55,7 @@ public sealed class OobeWindow : Window
         if (_step > 0) buttons.Children.Add(back);
         buttons.Children.Add(next);
 
-        _body.Children.Add(new TextBlock { Text = $"第 {_step + 1} / 6 步", Foreground = Brushes.Gray, FontSize = 12 });
+        _body.Children.Add(new TextBlock { Text = $"第 {_step + 1} / 6 步", Foreground = new SolidColorBrush(AppTheme.CurrentM3().Muted), FontSize = 12 });
         switch (_step)
         {
             case 0:
