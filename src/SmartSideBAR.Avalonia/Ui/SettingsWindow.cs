@@ -22,7 +22,7 @@ public sealed class SettingsWindow : Window
     private readonly IDiagnosticsService _diag;
     private readonly Palette _p;
 
-    private static readonly string[] NavItems = ["外观", "常规", "自动化", "截图", "录屏", "设备", "快捷键", "诊断", "关于"];
+    private static readonly string[] NavItems = ["外观", "常规", "自动化", "截图", "录屏", "设备", "快捷键", "诊断", "设计规范", "关于"];
 
     // P2-b「改哪迁哪」: 外观页迁 axaml (AppearancePage); 「自动化」为新面板, 全走 axaml (AutomationPage)
     private readonly AppearancePage _appearancePage = new();
@@ -144,6 +144,7 @@ public sealed class SettingsWindow : Window
         _pages.Add(("设备", BuildDevicesPage()));
         _pages.Add(("快捷键", BuildHotkeysPage()));
         _pages.Add(("诊断", BuildDiagnosticsPage()));
+        _pages.Add(("设计规范", DesignSpecPage.Build(_p)));
         _pages.Add(("关于", BuildAboutPage()));
 
         var save = new Button

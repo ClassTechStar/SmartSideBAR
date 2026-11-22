@@ -28,6 +28,20 @@
 9. **文档与代码同变更**：改动证明/威胁面/配置语义的行为，必须在同一次提交里更新 `THREAT_MODEL.md`（规则见该文件）。只改代码不改文档 = 未完成。
 10. **构建门禁全绿才能合并**：`dotnet build` 0 错误 0 警告、`dotnet test` 全过、`dotnet format --verify-no-changes` 通过、CI 覆盖率 ≥40%。
 
+### 新建页面与组件必须遵循 Material Design 3（2026-11 起）
+- 规格唯一真源：`design-tokens.json` 的 `m3` 段；C# 镜像在 `Core/Design/DesignTokens.cs`，
+  双向一致性由 `M3DesignTests` 校验。**禁止**在页面里写圆角/阴影/动画时长/字号字面量。
+- 组件优先用 `M3.Card` / `M3.Button` / `M3.TextField` / `M3.Chip` / `M3.ListRow`；
+  这些工厂已内置 MD3 形状刻度、48dip 触控目标与语义色，不要自己拼 Border。
+- 色彩用 `M3.Role(...)` 的语义角色（primary/surface/outline…），明暗两套都要能看；
+  不要用颜色单独传达状态，必须配文字或图标。
+- 排版用 `M3.Type(textBlock, M3TypeScale.XxxMedium)`，**行高与字号一起设**（中文行距）。
+- 动效用 `M3.PageTime/PresentTime/SettleTime...` 与对应 `*Ease`；同一次变化的多个元素用同一档，
+  透明度单独走 `FadeTime`；系统开启减少动效时降级为直接切换。
+- 既有 `PanelKit` 面板保持 v1.2 基线不动；新页面不得改旧面板数值（映射表见 `docs/material-design-3.md`）。
+- 一致性校验：`M3ComponentTests`（组件规格）+ `DesignSpecPageTests`（真实页面渲染）；
+  新增 M3 组件请同步加标记 `M3Tags.*`，便于 UI 测试定位。
+
 ## 怎么写才符合本项目
 
 ### 新增业务面板

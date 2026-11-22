@@ -126,5 +126,267 @@
   "touch": {
     "$comment": "触屏可达性：任意 UI 缩放下可交互元素的物理最小点击区（借鉴 CyreneCompass 的 32px 保底）",
     "minHitPx": 32
+  },
+  "m3": {
+    "$comment": "Material Design 3 + mochi-compose 设计规格（2026-11）。mochi 为 Android Compose 库，此处只移植规格数值，不复用其代码。形状/动效数值对齐 mochi-compose 的 MochiShapes 与 MochiMotionTokens；色彩为 MD3 seed #2B6EE0 的标准 tonal 映射。",
+    "shape": {
+      "extraSmall": 4,
+      "small": 8,
+      "medium": 12,
+      "large": 16,
+      "largeIncreased": 20,
+      "extraLarge": 28,
+      "extraLargeIncreased": 32,
+      "extraExtraLarge": 48,
+      "full": 999
+    },
+    "spacing": {
+      "xs": 4,
+      "s": 8,
+      "m": 12,
+      "l": 16,
+      "xl": 24,
+      "xxl": 32
+    },
+    "touch": {
+      "$comment": "MD3 最小触控目标 48dp；mochi 规范要求 >=44dp。取 44 作硬下限、48 作默认控件高。",
+      "minTargetDip": 48,
+      "minTouchDip": 44
+    },
+    "elevation": {
+      "level0": "0 0 0 0 #00000000",
+      "level1": "0 1 2 0 #1F000000, 0 1 3 1 #14000000",
+      "level2": "0 1 2 0 #1F000000, 0 2 6 2 #14000000",
+      "level3": "0 4 8 3 #1F000000, 0 1 3 0 #14000000",
+      "level4": "0 6 10 4 #1F000000, 0 2 3 0 #14000000",
+      "level5": "0 8 12 6 #1F000000, 0 4 6 0 #14000000"
+    },
+    "motion": {
+      "$comment": "对齐 mochi MochiMotionTokens：response(秒)+damping 为原始规格；ms/easing 是 Avalonia 无物理弹簧时的等效实现（damping<1 用过冲缓动近似）。",
+      "page": {
+        "responseSec": 0.42,
+        "damping": 1.0,
+        "ms": 420,
+        "easing": "CubicEaseOut"
+      },
+      "present": {
+        "responseSec": 0.42,
+        "damping": 0.86,
+        "ms": 420,
+        "easing": "BackEaseOut"
+      },
+      "pop": {
+        "responseSec": 0.36,
+        "damping": 0.78,
+        "ms": 360,
+        "easing": "BackEaseOut"
+      },
+      "control": {
+        "responseSec": 0.34,
+        "damping": 0.86,
+        "ms": 340,
+        "easing": "CubicEaseOut"
+      },
+      "settle": {
+        "responseSec": 0.28,
+        "damping": 1.0,
+        "ms": 280,
+        "easing": "CubicEaseOut"
+      },
+      "bounce": {
+        "responseSec": 0.34,
+        "damping": 0.55,
+        "ms": 340,
+        "easing": "BackEaseOut"
+      },
+      "pressDown": {
+        "responseSec": 0.22,
+        "damping": 0.62,
+        "ms": 220,
+        "easing": "CubicEaseOut"
+      },
+      "pressRelease": {
+        "responseSec": 0.38,
+        "damping": 0.62,
+        "ms": 380,
+        "easing": "BackEaseOut"
+      },
+      "fade": {
+        "responseSec": 0.15,
+        "damping": 1.0,
+        "ms": 150,
+        "easing": "CubicEaseOut"
+      },
+      "fadeOut": {
+        "responseSec": 0.12,
+        "damping": 1.0,
+        "ms": 120,
+        "easing": "CubicEaseIn"
+      }
+    },
+    "typography": {
+      "$comment": "MD3 type scale（size/lineHeight/weight/letterSpacing 单位 dip）。字体族由 MiSansFont.axaml 统一提供。",
+      "displayLarge": {
+        "size": 57,
+        "lineHeight": 64,
+        "weight": 400,
+        "letterSpacing": -0.25
+      },
+      "displayMedium": {
+        "size": 45,
+        "lineHeight": 52,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "displaySmall": {
+        "size": 36,
+        "lineHeight": 44,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "headlineLarge": {
+        "size": 32,
+        "lineHeight": 40,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "headlineMedium": {
+        "size": 28,
+        "lineHeight": 36,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "headlineSmall": {
+        "size": 24,
+        "lineHeight": 32,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "titleLarge": {
+        "size": 22,
+        "lineHeight": 28,
+        "weight": 400,
+        "letterSpacing": 0
+      },
+      "titleMedium": {
+        "size": 16,
+        "lineHeight": 24,
+        "weight": 500,
+        "letterSpacing": 0.15
+      },
+      "titleSmall": {
+        "size": 14,
+        "lineHeight": 20,
+        "weight": 500,
+        "letterSpacing": 0.1
+      },
+      "bodyLarge": {
+        "size": 16,
+        "lineHeight": 24,
+        "weight": 400,
+        "letterSpacing": 0.5
+      },
+      "bodyMedium": {
+        "size": 14,
+        "lineHeight": 20,
+        "weight": 400,
+        "letterSpacing": 0.25
+      },
+      "bodySmall": {
+        "size": 12,
+        "lineHeight": 16,
+        "weight": 400,
+        "letterSpacing": 0.4
+      },
+      "labelLarge": {
+        "size": 14,
+        "lineHeight": 20,
+        "weight": 500,
+        "letterSpacing": 0.1
+      },
+      "labelMedium": {
+        "size": 12,
+        "lineHeight": 16,
+        "weight": 500,
+        "letterSpacing": 0.5
+      },
+      "labelSmall": {
+        "size": 11,
+        "lineHeight": 16,
+        "weight": 500,
+        "letterSpacing": 0.5
+      }
+    },
+    "color": {
+      "$comment": "MD3 语义色彩角色（seed=#2B6EE0）。light/dark 两套都必须可用；surfaceContainer 阶梯用于分层卡片。",
+      "light": {
+        "primary": "#2B6EE0",
+        "onPrimary": "#FFFFFF",
+        "primaryContainer": "#D8E2FF",
+        "onPrimaryContainer": "#001945",
+        "secondary": "#565E71",
+        "onSecondary": "#FFFFFF",
+        "secondaryContainer": "#DAE2F9",
+        "onSecondaryContainer": "#131C2B",
+        "tertiary": "#6F5575",
+        "onTertiary": "#FFFFFF",
+        "tertiaryContainer": "#F8D8FE",
+        "onTertiaryContainer": "#28132E",
+        "error": "#BA1A1A",
+        "onError": "#FFFFFF",
+        "errorContainer": "#FFDAD6",
+        "onErrorContainer": "#410002",
+        "background": "#FEFBFF",
+        "onBackground": "#1B1B1F",
+        "surface": "#FEFBFF",
+        "onSurface": "#1B1B1F",
+        "surfaceVariant": "#E1E2EC",
+        "onSurfaceVariant": "#44474F",
+        "outline": "#74777F",
+        "outlineVariant": "#C4C6D0",
+        "surfaceContainerLowest": "#FFFFFF",
+        "surfaceContainerLow": "#F7F2FA",
+        "surfaceContainer": "#F1ECF4",
+        "surfaceContainerHigh": "#ECE6F0",
+        "surfaceContainerHighest": "#E6E0E9",
+        "inverseSurface": "#303034",
+        "inverseOnSurface": "#F3EFF4",
+        "scrim": "#000000"
+      },
+      "dark": {
+        "primary": "#B0C6FF",
+        "onPrimary": "#002E6A",
+        "primaryContainer": "#004494",
+        "onPrimaryContainer": "#D8E2FF",
+        "secondary": "#BEC6DC",
+        "onSecondary": "#283141",
+        "secondaryContainer": "#3E4759",
+        "onSecondaryContainer": "#DAE2F9",
+        "tertiary": "#DDBEE3",
+        "onTertiary": "#3E2844",
+        "tertiaryContainer": "#563E5C",
+        "onTertiaryContainer": "#F8D8FE",
+        "error": "#FFB4AB",
+        "onError": "#690005",
+        "errorContainer": "#93000A",
+        "onErrorContainer": "#FFDAD6",
+        "background": "#131316",
+        "onBackground": "#E5E1E6",
+        "surface": "#131316",
+        "onSurface": "#E5E1E6",
+        "surfaceVariant": "#44474F",
+        "onSurfaceVariant": "#C4C6D0",
+        "outline": "#8E9099",
+        "outlineVariant": "#44474F",
+        "surfaceContainerLowest": "#0D0D10",
+        "surfaceContainerLow": "#1B1B1F",
+        "surfaceContainer": "#1F1F23",
+        "surfaceContainerHigh": "#2A2A2E",
+        "surfaceContainerHighest": "#353539",
+        "inverseSurface": "#E5E1E6",
+        "inverseOnSurface": "#303034",
+        "scrim": "#000000"
+      }
+    }
   }
 }

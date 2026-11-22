@@ -5,6 +5,18 @@
 
 ## [未发布]
 
+### Material Design 3 设计系统（2026-11）
+- `design-tokens.json` 新增 `m3` 段：九档形状 / MD3 十五档排版 / 十档动效（对齐 mochi-compose）/
+  六级海拔 / 明暗两套语义色角色（seed #2B6EE0）
+- 新增 `Avalonia/Ui/M3.cs` 适配层：令牌 → CornerRadius/BoxShadows/TimeSpan/IEasing，
+  以及 Card/Button/TextField/Chip/ListRow 组件工厂（含 44dip 触控兜底）
+- 设置窗新增「设计规范」页（`DesignSpecPage`）：形状/色彩/排版/动效/组件五组可视化陈列
+- 新增 `docs/material-design-3.md` 规范文档（含与 mochi 的差异说明、PanelKit 映射表）
+- 校验：`M3DesignTests`（JSON↔C# 一致、刻度合法性）、`M3ComponentTests`（组件规格、硬编码扫描）、
+  `DesignSpecPageTests`（真实渲染、触控达标）
+
+
+
 ### 借鉴 Flow.Launcher 的迁移（2026-11-22）
 - 配置写盘加 `.bak` 备份：主文件损坏时自动回滚，不再丢用户全部配置
 - SVG 图标加载加缓存（`ConcurrentDictionary`）：面板频繁重建不再反复解析 SVG
