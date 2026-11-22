@@ -174,27 +174,23 @@ public static class AppTheme
 
     public static double CapsuleMarginRatio => DesignTokens.Current.Capsule.MarginRatio;
 
-    private static Palette Light(Color accent, AppearanceConfig a) => new()
+    /// <summary>
+    /// 侧栏/面板的浅色玻璃面。内容色统一走 M3 语义色（与深色对称、与设置页同源），
+    /// rail 胶囊的玻璃渐变是侧栏形态语言，保留 v1.2 参数。
+    /// </summary>
+    private static Palette Light(Color accent, AppearanceConfig a)
     {
-        Dark = false,
-        Glass = true,
-        PanelBg = Parse(Tokens.PanelBg, "#FFFFFF"),
-        Inset = Parse(Tokens.PanelBg, "#FFFFFF"),
-        Card = Color.FromArgb(0x08, 0x10, 0x20, 0x40),
-        Body = Color.Parse("#1B2230"),
-        CardText = Color.Parse("#2A3240"),
-        Text = Parse(Tokens.Text, "#2B6EE0"),
-        Muted = Parse(Tokens.TextMuted, "#5A6478"),
-        Divider = Color.FromArgb(0x12, 0, 0, 0),
-        Hover = Color.FromArgb(0x0D, 0x10, 0x20, 0x40),
-        Accent = accent,
-        AccentSoft = Color.FromArgb(0x14, accent.R, accent.G, accent.B),
-        RailFrom = WithAlpha(Color.Parse("#FFFFFF"), (byte)(170 + a.Opacity * 60)),
-        RailTo = WithAlpha(Color.Parse("#FFFFFF"), (byte)(100 + a.Opacity * 60)),
-        RailGlow = Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF),
-        RimFrom = Color.FromArgb(0xD9, 0xFF, 0xFF, 0xFF),
-        RimTo = Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF),
-    };
+        var m3 = M3Palette(dark: false, accent);
+        return m3 with
+        {
+            Glass = a.LiquidGlass,
+            RailFrom = WithAlpha(Color.Parse("#FFFFFF"), (byte)(170 + a.Opacity * 60)),
+            RailTo = WithAlpha(Color.Parse("#FFFFFF"), (byte)(100 + a.Opacity * 60)),
+            RailGlow = Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF),
+            RimFrom = Color.FromArgb(0xD9, 0xFF, 0xFF, 0xFF),
+            RimTo = Color.FromArgb(0x99, 0xFF, 0xFF, 0xFF),
+        };
+    }
 
     /// <summary>
     /// 侧栏/面板的深色面。内容色统一走 M3 语义色（与设置页 M3Palette 同源），
@@ -249,27 +245,19 @@ public static class AppTheme
         };
     }
 
-    /// <summary>1.0「经典快」浅色面：设计令牌 classic 段（纯白 / 发丝线 / 品牌浅蓝态色）。</summary>
+    /// <summary>
+    /// 1.0「经典快」浅色面：内容色同样走 M3 语义色（与深色对称），
+    /// rail 保持纯白不透明 + 发丝线描边（低配设备零模糊合成开销）。
+    /// </summary>
     private static Palette ClassicLight(Color accent)
     {
         var c = DesignTokens.Current.Classic;
         var bg = Parse(c.Bg, "#FFFFFF");
         var border = Parse(c.Border, "#E8E8E8");
-        return new Palette
+        var m3 = M3Palette(dark: false, accent);
+        return m3 with
         {
-            Dark = false,
             Glass = false,
-            PanelBg = bg,
-            Inset = Parse(c.BgHover, "#F5F7FA"),
-            Card = bg,
-            Body = Parse(c.Text, "#1A1A1A"),
-            CardText = Color.Parse("#2A3240"),
-            Text = Parse(c.Text, "#1A1A1A"),
-            Muted = Parse(c.TextSecondary, "#666666"),
-            Divider = border,
-            Hover = Parse(c.BgHover, "#F5F7FA"),
-            Accent = accent,
-            AccentSoft = Color.FromArgb(0x14, accent.R, accent.G, accent.B),
             RailFrom = bg,
             RailTo = bg,
             RailGlow = Color.FromArgb(0, 0xFF, 0xFF, 0xFF),
@@ -277,6 +265,7 @@ public static class AppTheme
             RimTo = border,
         };
     }
+
 
     private static Color WithAlpha(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);
 

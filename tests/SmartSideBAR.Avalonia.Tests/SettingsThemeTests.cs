@@ -67,21 +67,58 @@ public class SettingsThemeTests
     }
 
     [Fact]
-    public void 设置页深色走M3而浅色保持玻璃面()
+    public void 浅色与深色都走M3()
     {
         var dark = AppTheme.ForSettings(Dark());
         Assert.True(dark.Dark);
         Assert.False(dark.Glass);
         Assert.Equal(255, dark.Card.A);
 
-        // 浅色必须与全局 From() 完全一致（不引入第二套浅色规格）
-        var appearance = new AppearanceConfig { Theme = "light" };
-        var light = AppTheme.ForSettings(appearance);
-        var baseline = AppTheme.From(appearance);
+        // 浅色同样是 M3 不透明 surface 阶梯（2026-11-22 起浅深对称）
+        var light = AppTheme.ForSettings(new AppearanceConfig { Theme = "light" });
         Assert.False(light.Dark);
-        Assert.Equal(baseline.Card, light.Card);
-        Assert.Equal(baseline.Inset, light.Inset);
-        Assert.Equal(baseline.Glass, light.Glass);
+        Assert.Equal(255, light.Card.A);
+        Assert.Equal(255, light.Inset.A);
+        Assert.True(Luma(light.Card) < Luma(light.Inset), "M3 浅色：白底 + 稍暗卡片");
+        Assert.True(Luma(light.Text) < 0.3, "浅色文字应为深色");
+
+        // 设置页与全局 From() 仍完全一致（不引入第二套浅色规格）
+        var appearance = new AppearanceConfig { Theme = "light" };
+        var baseline = AppTheme.From(appearance);
+        Assert.Equal(baseline.Card, AppTheme.ForSettings(appearance).Card);
+    }
+
+    [Fact]
+    public void 侧栏浅色与设置页浅色同源()
+    {
+        var appearance = new AppearanceConfig { Theme = "light", Accent = "#2B6EE0" };
+        var sidebar = AppTheme.From(appearance);
+        var settings = AppTheme.M3Palette(dark: false, accent: Color.Parse("#2B6EE0"));
+
+        Assert.Equal(settings.PanelBg, sidebar.PanelBg);
+        Assert.Equal(settings.Inset, sidebar.Inset);
+        Assert.Equal(settings.Card, sidebar.Card);
+        Assert.Equal(settings.Text, sidebar.Text);
+        Assert.Equal(settings.Body, sidebar.Body);
+        Assert.Equal(settings.CardText, sidebar.CardText);
+        Assert.Equal(settings.Muted, sidebar.Muted);
+        Assert.Equal(settings.Divider, sidebar.Divider);
+        Assert.Equal(settings.Hover, sidebar.Hover);
+        Assert.Equal(settings.Accent, sidebar.Accent);
+        Assert.Equal(settings.AccentSoft, sidebar.AccentSoft);
+    }
+
+    [Fact]
+    public void 浅色卡片全不透明且层级有序()
+    {
+        foreach (var theme in new[] { "light" })
+        {
+            var p = AppTheme.From(new AppearanceConfig { Theme = theme });
+            Assert.Equal(255, p.Card.A);
+            Assert.Equal(255, p.Inset.A);
+            // M3 浅色：页面底 surface 最亮（近白），卡片 surfaceContainer 稍暗
+            Assert.True(Luma(p.Card) < Luma(p.Inset));
+        }
     }
 
     [Fact]

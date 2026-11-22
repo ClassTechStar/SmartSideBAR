@@ -5,6 +5,13 @@
 
 ## [未发布]
 
+### 浅色也统一 M3（2026-11-22）
+- `Light()`（玻璃浅色）与 `ClassicLight()`（经典快面）的内容色改走 `M3Palette(dark:false)`，
+  与深色对称、与设置页同源；rail 胶囊各自的形态语言保留
+- 浅色层级：页面底 surface 最亮（近白）、卡片 surfaceContainer 稍暗（与深色方向相反）
+- 像素验证：surface (254,251,255) / surfaceContainer (241,236,244) / onSurface (27,27,31)
+- 测试 +2（浅色同源 11 字段、卡片层级），共 446 项
+
 ### 侧栏深色与设置页统一（2026-11-22）
 - `AppTheme.From(dark)` 的内容色改走 M3 语义色，与设置页 `M3Palette(dark)` 同源，
   消除"侧栏发灰、设置页清晰"的双轨深色
