@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.DevicesPage"
+             x:DataType="vm:DevicesSettingsViewModel"
+             AutomationProperties.Name="设备设置">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="设备"/>
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="外设监控"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center"
+                       Text="插入/移除 U 盘时弹出提醒"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Content="启用 U 盘监控"
+                      IsChecked="{Binding UsbEnabled, Mode=TwoWay}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="打印机轮询间隔（秒）"/>
+              <TextBlock Classes="rowDesc" Text="越短发现缺纸/卡纸越及时, 代价是常驻开销"/>
+            </StackPanel>
+            <NumericUpDown Grid.Column="1" MinWidth="110" VerticalAlignment="Center"
+                           Minimum="3" Maximum="300" Increment="1"
+                           Value="{Binding PrinterIntervalSec, Mode=TwoWay}"
+                           AutomationProperties.Name="打印机轮询间隔"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

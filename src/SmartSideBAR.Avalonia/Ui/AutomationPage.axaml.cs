@@ -54,6 +54,8 @@ public sealed partial class AutomationPage : UserControl
         {
             Conditions = [new AutomationConditionConfig { Kind = RuleConditionKind.LessonState, Mode = RuleMatchMode.Equals, Value = "OnClass" }],
         });
+        // 独立构造（测试/设计器）时先套一份默认调色板，宿主随后会覆盖
+        ApplyPalette(AppTheme.From(null));
     }
 
     /// <summary>载入规则并刷新扩展状态 (设置窗 LoadFrom 时调用)。</summary>
@@ -80,22 +82,11 @@ public sealed partial class AutomationPage : UserControl
             }).ToList(),
         }).ToList();
 
-    /// <summary>主题/强调色变化时重刷卡片配色 (与设置窗共用同一 Palette)。</summary>
+    /// <summary>主题/强调色变化时重刷页面资源; 动态规则卡仍按 Palette 直接着色。</summary>
     public void ApplyPalette(Palette p)
     {
         _p = p;
-        TitleText.Foreground = p.BodyBrush;
-        RulesTitle.Foreground = p.MutedBrush;
-        RulesHint.Foreground = p.MutedBrush;
-        ExtTitle.Foreground = p.MutedBrush;
-        ExtApiText.Foreground = p.MutedBrush;
-        ExtLoadedText.Foreground = p.MutedBrush;
-        ExtFailuresText.Foreground = p.MutedBrush;
-        foreach (var card in new[] { RulesCard, ExtCard })
-        {
-            card.Background = new SolidColorBrush(p.Card);
-            card.BorderBrush = p.DividerBrush;
-        }
+        ThemeResources.Apply(Resources, p);
         foreach (var card in _cards) ApplyCardPalette(card);
     }
 

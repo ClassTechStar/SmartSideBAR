@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.UsbPanel"
+             x:DataType="vm:UsbPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+  </UserControl.Styles>
+  <StackPanel Spacing="12">
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <TextBlock Text="USB 监控状态" FontSize="13" VerticalAlignment="Center"
+                 Foreground="{DynamicResource BodyFg}"/>
+      <Border Grid.Column="1" CornerRadius="999" Padding="7,2" VerticalAlignment="Center"
+              Background="{Binding BadgeBackground}">
+        <TextBlock Text="{Binding BadgeText}" FontSize="11" FontWeight="SemiBold"
+                   Foreground="{Binding BadgeForeground}"/>
+      </Border>
+      <Button Grid.Column="2" Classes="flat" Content="刷新" Margin="8,0,0,0"
+              Command="{Binding RefreshCommand}"/>
+    </Grid>
+
+    <StackPanel Spacing="8" Margin="0,26" IsVisible="{Binding IsEmpty}">
+      <Image Width="30" Height="30" Opacity="0.45" HorizontalAlignment="Center"
+             Source="{Binding EmptyIcon}"/>
+      <TextBlock Classes="emptyTitle" Text="暂无 USB 设备连接"/>
+      <TextBlock Classes="emptyHint"
+                 Text="插入 U 盘后会自动出现在这里，也可点“刷新”手动检测。"/>
+    </StackPanel>
+
+    <StackPanel Spacing="8" IsVisible="{Binding !IsEmpty}">
+      <TextBlock Classes="section" Text="{Binding CountText}"/>
+      <ItemsControl ItemsSource="{Binding Drives}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="8"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:UsbRow">
+            <Border Classes="card" Padding="10">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Image Width="20" Height="20" Source="{Binding Icon}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Spacing="2" Margin="10,0,8,0">
+                  <TextBlock Text="{Binding Drive}" FontSize="14" FontWeight="SemiBold"
+                             Foreground="{DynamicResource AccentFg}"/>
+                  <TextBlock Classes="hint" Text="{Binding Label}"/>
+                  <TextBlock Classes="hint" Text="{Binding SizeText}"/>
+                </StackPanel>
+                <Button Grid.Column="2" Classes="flat" Content="打开"
+                        VerticalAlignment="Center" Command="{Binding OpenCommand}"/>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

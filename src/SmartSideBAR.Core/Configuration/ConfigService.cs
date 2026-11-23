@@ -30,6 +30,19 @@ public sealed record ConfigPaths(
 
 public sealed record ConfigChanged(SidekickConfig Snapshot);
 
+/// <summary>
+/// 一处配置变更 (ApplyMany 入参)。From&lt;T&gt; 走与 Set&lt;T&gt; 相同的源生成序列化。
+/// </summary>
+public readonly record struct ConfigChange(string Path, JsonNode? Value)
+{
+    public static ConfigChange From<T>(string path, T value) =>
+        new(path, value is null
+            ? null
+            : value is JsonNode n
+                ? n
+                : JsonSerializer.SerializeToNode(value, typeof(T), ConfigJsonContext.Default.Options));
+}
+
 public sealed class ConfigService(
     ConfigPaths paths,
     IEventBus? bus = null,
@@ -136,40 +149,8 @@ public sealed class ConfigService(
         ArgumentException.ThrowIfNullOrWhiteSpace(dotPath);
         lock (_gate)
         {
-            if (!IsKnownKey(dotPath))
-            {
-                log?.LogWarning("[Config] 拒绝写入未知配置键: {Key}", dotPath);
-                return false;
-            }
-            var segments = dotPath.Split('.');
-            // 锁定检查覆盖所有中间段 —— 手工构造的 {"policy":{}} 导入叶会产生精确键
-            // "policy", 前缀锁 "policy." 匹配不到它, 一旦写入即抹掉整个策略子树
-            for (var i = 1; i <= segments.Length; i++)
-            {
-                if (Subscriptions.IsLocked(string.Join('.', segments[..i])))
-                {
-                    // P1-4 文档承诺的「policy. 段用户层写入拒绝」此前只在 UI 调用点拦截
-                    log?.LogWarning("[Config] 键被锁定, 拒绝写入: {Key}", dotPath);
-                    return false;
-                }
-            }
-            var node = _root;
-            for (var i = 0; i < segments.Length - 1; i++)
-            {
-                node = node[segments[i]]!; // 白名单已保证存在
-            }
-            // JSON null 一律视为「恢复默认」: 移除该键, 反序列化时回落 schema 默认值。
-            // 直接写显式 null 会让非可空字段在 RefreshTyped 时 NRE —— 配置导出→导入
-            // 闭环 (Desensitize 写入 "dir":null) 必踩。
-            if (value is null || value.ToJsonString() == "null")
-            {
-                if (node is System.Text.Json.Nodes.JsonObject obj) obj.Remove(segments[^1]);
-                else log?.LogWarning("[Config] null 写入目标非对象容器, 跳过: {Key}", dotPath);
-            }
-            else
-            {
-                node[segments[^1]] = value.DeepClone();
-            }
+            if (!CanWriteNoLock(dotPath)) return false;
+            ApplyValueNoLock(dotPath, value);
 
             RefreshTypedNoLock();
             var ok = SaveUserConfigNoLock();
@@ -180,6 +161,80 @@ public sealed class ConfigService(
                 Subscriptions.Notify(dotPath);
             }
             return ok;
+        }
+    }
+
+    /// <summary>
+    /// 批量写入 (设置窗一次保存 20+ 键): 先按 SetIfChanged 语义过滤未变化项,
+    /// 再整文件落盘一次、广播一次。避免"每个键一次序列化 + 备份 + 替换"的写放大。
+    /// 未知键/锁定键逐键跳过 (与 Set 语义一致)。返回实际写入的键数。
+    /// </summary>
+    public int ApplyMany(IEnumerable<ConfigChange> changes)
+    {
+        lock (_gate)
+        {
+            var changed = new List<string>();
+            foreach (var (path, value) in changes)
+            {
+                if (string.IsNullOrWhiteSpace(path)) continue;
+                if (!CanWriteNoLock(path)) continue;
+                if (JsonNode.DeepEquals(FindNodeNoLock(path), value)) continue;
+                ApplyValueNoLock(path, value);
+                changed.Add(path);
+            }
+            if (changed.Count == 0) return 0;
+
+            RefreshTypedNoLock();
+            if (!SaveUserConfigNoLock()) return 0;
+            bus?.Publish(new ConfigChanged(_current));
+            foreach (var path in changed) Subscriptions.Notify(path);
+            return changed.Count;
+        }
+    }
+
+    /// <summary>白名单 + 锁定键检查 (Set 与 ApplyMany 共用)。调用方必须持有 _gate。</summary>
+    private bool CanWriteNoLock(string dotPath)
+    {
+        if (!IsKnownKey(dotPath))
+        {
+            log?.LogWarning("[Config] 拒绝写入未知配置键: {Key}", dotPath);
+            return false;
+        }
+        var segments = dotPath.Split('.');
+        // 锁定检查覆盖所有中间段 —— 手工构造的 {"policy":{}} 导入叶会产生精确键
+        // "policy", 前缀锁 "policy." 匹配不到它, 一旦写入即抹掉整个策略子树
+        for (var i = 1; i <= segments.Length; i++)
+        {
+            if (Subscriptions.IsLocked(string.Join('.', segments[..i])))
+            {
+                // P1-4 文档承诺的「policy. 段用户层写入拒绝」此前只在 UI 调用点拦截
+                log?.LogWarning("[Config] 键被锁定, 拒绝写入: {Key}", dotPath);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>把值写进 JSON 根 (白名单已保证路径存在)。调用方必须持有 _gate。</summary>
+    private void ApplyValueNoLock(string dotPath, JsonNode? value)
+    {
+        var segments = dotPath.Split('.');
+        var node = _root;
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            node = node[segments[i]]!; // 白名单已保证存在
+        }
+        // JSON null 一律视为「恢复默认」: 移除该键, 反序列化时回落 schema 默认值。
+        // 直接写显式 null 会让非可空字段在 RefreshTyped 时 NRE —— 配置导出→导入
+        // 闭环 (Desensitize 写入 "dir":null) 必踩。
+        if (value is null || value.ToJsonString() == "null")
+        {
+            if (node is System.Text.Json.Nodes.JsonObject obj) obj.Remove(segments[^1]);
+            else log?.LogWarning("[Config] null 写入目标非对象容器, 跳过: {Key}", dotPath);
+        }
+        else
+        {
+            node[segments[^1]] = value.DeepClone();
         }
     }
 
@@ -317,6 +372,8 @@ public sealed class ConfigService(
 
             // 借鉴 Flow.Launcher: 覆盖前留一份 .bak，主文件损坏时可回滚。
             // 只在主文件已存在且有效时备份，避免把损坏内容固化成"备份"。
+            // 写放大已由 ApplyMany 收敛为"每次保存一次写盘", 这里保持每写一备
+            // (单次拷贝 ~20KB, 代价可忽略), 换取同日崩溃也能恢复到上一次保存。
             if (File.Exists(paths.UserConfigPath) &&
                 TryReadFile(paths.UserConfigPath) is { } previous &&
                 TryParseNode(previous, out _))

@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.SettingsPanel"
+             x:DataType="vm:SettingsPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+  </UserControl.Styles>
+  <StackPanel Spacing="14">
+    <TextBlock Classes="section" Text="外观"/>
+    <ComboBox ItemsSource="{Binding Themes}"
+              SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}"
+              HorizontalAlignment="Stretch"/>
+
+    <TextBlock Classes="section" Text="启动"/>
+    <CheckBox Content="开机自动启动" FontSize="13"
+              IsChecked="{Binding AutoLaunch, Mode=TwoWay}"/>
+
+    <Border Height="1" Background="{DynamicResource DividerFg}" Margin="0,10,0,10"/>
+    <Button Classes="flat primary" Content="打开完整设置…"
+            Command="{Binding OpenSettingsCommand}"/>
+    <TextBlock Classes="hint" Text="{Binding AdvancedHint}"/>
+  </StackPanel>
+</UserControl>

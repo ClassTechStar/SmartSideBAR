@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:settings="using:SmartSideBAR.Avalonia.Ui.Settings"
+        x:Class="SmartSideBAR.Avalonia.Ui.Settings.SettingsWindow"
+        x:DataType="settings:SettingsWindowViewModel"
+        Title="SmartSideBAR 设置"
+        Width="720" Height="680" MinWidth="640" MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Height" Value="34"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="12,0"/>
+      <Setter Property="Margin" Value="0,1"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="{DynamicResource RailActive}"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="*,Auto" ColumnDefinitions="168,*">
+    <ScrollViewer Grid.Row="0" Grid.Column="0" Margin="8,0">
+      <ListBox x:Name="NavList" ItemsSource="{Binding Titles}"
+               SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
+               Background="Transparent" BorderThickness="0" Margin="0,12">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontSize="13" VerticalAlignment="Center"
+                       AutomationProperties.Name="{Binding}"/>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </ScrollViewer>
+
+    <ContentControl x:Name="PageHost" Grid.Row="0" Grid.Column="1"/>
+
+    <Border Grid.Row="1" Grid.ColumnSpan="2"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource CardBorder}"
+            Background="{DynamicResource CardBg}"
+            Padding="16,10">
+      <Button Content="保存" Command="{Binding SaveCommand}"
+              HorizontalAlignment="Right" Padding="24,8"
+              Background="{DynamicResource IndicatorBar}" Foreground="{DynamicResource OnAccentFg}"
+              BorderThickness="0" CornerRadius="8"
+              AutomationProperties.Name="保存设置"/>
+    </Border>
+  </Grid>
+</Window>

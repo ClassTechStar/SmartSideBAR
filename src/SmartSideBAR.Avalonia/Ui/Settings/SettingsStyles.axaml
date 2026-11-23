@@ -1,0 +1,46 @@
+<!-- 设置页共享样式 (M2): 卡片 + Option 行。页面各自 StyleInclude, 宿主样式不泄漏。 -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="TextBlock.pageTitle">
+    <Setter Property="FontSize" Value="17"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{DynamicResource BodyFg}"/>
+    <Setter Property="Margin" Value="0,0,0,2"/>
+  </Style>
+  <Style Selector="TextBlock.sectionTitle">
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+    <Setter Property="Margin" Value="0,2,0,6"/>
+  </Style>
+  <Style Selector="TextBlock.hint">
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+    <Setter Property="Opacity" Value="0.9"/>
+    <Setter Property="Margin" Value="0,0,0,4"/>
+  </Style>
+  <Style Selector="TextBlock.rowLabel">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource BodyFg}"/>
+  </Style>
+  <Style Selector="TextBlock.rowDesc">
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="MaxWidth" Value="320"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+  </Style>
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource CardBg}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="10"/>
+    <Setter Property="Padding" Value="14"/>
+  </Style>
+  <Style Selector="TextBox.field">
+    <Setter Property="MinWidth" Value="220"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+</Styles>

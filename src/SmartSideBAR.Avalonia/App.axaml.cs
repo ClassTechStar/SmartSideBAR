@@ -39,6 +39,15 @@ public partial class App : Application
             var bus = _sp.GetRequiredService<IEventBus>();
             var windowManager = _sp.GetRequiredService<WindowManager>();
 
+            // 插件契约 E2: 扫描内置/用户/策略动作包, 并把执行器接到现有动作路由
+            var hostVersion = typeof(App).Assembly
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion;
+            Actions.ActionHost.Initialize(hostVersion);
+            Actions.ActionHost.UseExecutor(
+                new Actions.ActionExecutor(new Actions.WindowActionSink(windowManager.Dispatch)));
+
             desktop.MainWindow = windowManager.CreateSidebar();
 
             // 提醒: 铃声 (winmm) + 进程内通知 (Wave C Toast)

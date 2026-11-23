@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.CapturePanel"
+             x:DataType="vm:CapturePanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+  </UserControl.Styles>
+  <StackPanel Spacing="12">
+    <!-- 录制中状态卡: 红点 + 计时 + 暂停/停止 -->
+    <Border IsVisible="{Binding IsRecording}"
+            Background="{DynamicResource RecSoftBg}"
+            BorderBrush="{DynamicResource RecBorderFg}"
+            BorderThickness="1" CornerRadius="12" Padding="14">
+      <StackPanel Spacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Center"
+                  Background="{DynamicResource RecFg}"/>
+          <TextBlock Text="{Binding ElapsedText}" FontSize="20" FontWeight="SemiBold"
+                     Foreground="{DynamicResource RecFg}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Classes="flat" Content="{Binding PauseText}" Command="{Binding PauseCommand}"/>
+          <Button Classes="flat primary" Content="停止录屏" Command="{Binding StopCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- 2 列动作磁贴 -->
+    <ItemsControl ItemsSource="{Binding Actions}" IsVisible="{Binding !IsRecording}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Columns="2"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:CaptureAction">
+          <Button Classes="tile" Margin="0,0,5,10" Command="{Binding Command}">
+            <StackPanel Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Image Width="22" Height="22" Source="{Binding Icon}" HorizontalAlignment="Center"/>
+              <TextBlock Classes="tileLabel" Text="{Binding Label}"/>
+            </StackPanel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <TextBlock Classes="hint" Text="{Binding FormatLine}"/>
+
+    <Border Height="1" Background="{DynamicResource DividerFg}" Margin="0,10"/>
+    <TextBlock Classes="section" Text="最近文件"/>
+
+    <TextBlock Classes="hint" Text="暂无截图记录，按上面任意按钮开始。"
+               IsVisible="{Binding IsRecentEmpty}"/>
+
+    <ItemsControl ItemsSource="{Binding RecentFiles}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:RecentFileRow">
+          <Button Classes="linkRow" Command="{Binding RevealCommand}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding Name}" FontSize="12.5"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                         Foreground="{DynamicResource BodyFg}"/>
+              <TextBlock Grid.Column="1" Text="{Binding TimeText}" FontSize="11.5"
+                         Margin="8,0,0,0" Foreground="{DynamicResource MutedFg}"/>
+            </Grid>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

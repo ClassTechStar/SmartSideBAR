@@ -66,11 +66,13 @@ public sealed class EdgeTriggerWindow : Window
         Content = root;
 
         // 悬停展开: 150ms 驻留, 移出即取消 (Seelen fancy-toolbar delay_to_show 同值)
+        // 触屏防误触: 手指划过边缘不等于"想展开", 触屏指针不触发 hover (2026-11 审计)
         DispatcherTimer? dwell = null;
         if (_hoverToExpand)
         {
-            PointerEntered += (_, _) =>
+            PointerEntered += (_, e) =>
             {
+                if (e.Pointer.Type == PointerType.Touch) return;
                 if (dwell is null)
                 {
                     dwell = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };

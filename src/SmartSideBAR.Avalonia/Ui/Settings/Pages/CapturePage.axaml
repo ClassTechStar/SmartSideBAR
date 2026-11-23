@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.CapturePage"
+             x:DataType="vm:CaptureSettingsViewModel"
+             AutomationProperties.Name="截图设置">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="截图"/>
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="区域截图"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="图片格式"/>
+              <TextBlock Classes="rowDesc" Text="PNG 无损 / JPG 体积小"/>
+            </StackPanel>
+            <ComboBox Grid.Column="1" MinWidth="140" VerticalAlignment="Center"
+                      ItemsSource="{Binding FormatOptionsSource}"
+                      SelectedIndex="{Binding FormatIndex, Mode=TwoWay}"
+                      AutomationProperties.Name="图片格式"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="保存目录"/>
+              <TextBlock Classes="rowDesc" Text="支持 {Pictures} 等路径占位符"/>
+            </StackPanel>
+            <TextBox Grid.Column="1" Classes="field" MinWidth="260"
+                     Text="{Binding CaptureDir, Mode=TwoWay}"
+                     Watermark="{}{Pictures}/Sidekick"
+                     AutomationProperties.Name="截图保存目录"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

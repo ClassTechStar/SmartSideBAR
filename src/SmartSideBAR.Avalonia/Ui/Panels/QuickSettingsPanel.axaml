@@ -1,0 +1,160 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.QuickSettingsPanel"
+             x:DataType="vm:QuickSettingsPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+    <Style Selector="Button.workspaceTile">
+      <Setter Property="MinHeight" Value="52"/>
+      <Setter Property="CornerRadius" Value="{DynamicResource PanelCardRadius}"/>
+      <Setter Property="Padding" Value="8"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.workspaceTile.active">
+      <Setter Property="Background" Value="{DynamicResource AccentFg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentFg}"/>
+    </Style>
+    <Style Selector="TextBlock.wsName">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{DynamicResource CardTextFg}"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.workspaceTile.active TextBlock.wsName">
+      <Setter Property="Foreground" Value="{DynamicResource OnAccentFg}"/>
+    </Style>
+    <Style Selector="TextBlock.wsSub">
+      <Setter Property="FontSize" Value="10.5"/>
+      <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.workspaceTile.active TextBlock.wsSub">
+      <Setter Property="Foreground" Value="{DynamicResource OnAccentSoftFg}"/>
+    </Style>
+    <Style Selector="Button.toggleTile">
+      <Setter Property="MinHeight" Value="80"/>
+      <Setter Property="CornerRadius" Value="{DynamicResource PanelCardRadius}"/>
+      <Setter Property="Padding" Value="8,10"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.toggleTile.on">
+      <Setter Property="Background" Value="{DynamicResource AccentFg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentFg}"/>
+    </Style>
+    <Style Selector="TextBlock.toggleLabel">
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="TextAlignment" Value="Center"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="{DynamicResource CardTextFg}"/>
+    </Style>
+    <Style Selector="Button.toggleTile.on TextBlock.toggleLabel">
+      <Setter Property="Foreground" Value="{DynamicResource OnAccentFg}"/>
+    </Style>
+    <Style Selector="Ellipse.toggleDot">
+      <Setter Property="Width" Value="10"/>
+      <Setter Property="Height" Value="10"/>
+      <Setter Property="Fill" Value="Transparent"/>
+      <Setter Property="Stroke" Value="{DynamicResource MutedFg}"/>
+      <Setter Property="StrokeThickness" Value="1.5"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.toggleTile.on Ellipse.toggleDot">
+      <Setter Property="Fill" Value="{DynamicResource OnAccentFg}"/>
+      <Setter Property="Stroke" Value="{DynamicResource OnAccentFg}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="12">
+    <Border Classes="card">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="cardTitle" Text="本节课"/>
+        <TextBlock Text="{Binding LessonStatsText}" FontSize="12.5" LineHeight="19"
+                   Foreground="{DynamicResource CardTextFg}"/>
+        <Button Classes="flat" Content="打包带走今日成果" Command="{Binding PackCommand}"/>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="card">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="cardTitle" Text="工作区"/>
+        <TextBlock Classes="hint" Text="尚无工作区预设。"
+                   IsVisible="{Binding WorkspacesEmpty}"/>
+        <ItemsControl ItemsSource="{Binding Workspaces}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:WorkspaceTile">
+              <Button Classes="workspaceTile" Classes.active="{Binding IsActive}"
+                      Command="{Binding Command}" Margin="0,0,5,5">
+                <StackPanel Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Classes="wsName" Text="{Binding Name}"/>
+                  <TextBlock Classes="wsSub" Text="{Binding Subtitle}"/>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="card" IsVisible="{Binding HasClassroom}">
+      <StackPanel Spacing="10">
+        <TextBlock Classes="cardTitle" Text="课堂常用"/>
+        <StackPanel Spacing="4" IsVisible="{Binding BrightnessVisible}">
+          <TextBlock Text="{Binding BrightnessText}" FontSize="12.5"
+                     Foreground="{DynamicResource TextFg}"/>
+          <Slider Minimum="0" Maximum="100" TickFrequency="5" MinHeight="28"
+                  Value="{Binding BrightnessValue, Mode=TwoWay}"/>
+        </StackPanel>
+        <StackPanel Spacing="4" IsVisible="{Binding VolumeVisible}">
+          <TextBlock Text="{Binding VolumeText}" FontSize="12.5"
+                     Foreground="{DynamicResource TextFg}"/>
+          <Slider Minimum="0" Maximum="100" TickFrequency="5" MinHeight="28"
+                  Value="{Binding VolumeValue, Mode=TwoWay}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="card">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="cardTitle" Text="快捷开关"/>
+        <ItemsControl ItemsSource="{Binding Toggles}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ToggleTile">
+              <Button Classes="toggleTile" Classes.on="{Binding On}"
+                      Command="{Binding Command}" Margin="0,0,5,5">
+                <StackPanel Spacing="6" VerticalAlignment="Center">
+                  <Ellipse Classes="toggleDot"/>
+                  <TextBlock Classes="toggleLabel" Text="{Binding Label}"/>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <Button Classes="flat primary" Content="更多设置" HorizontalAlignment="Stretch"
+            Command="{Binding MoreSettingsCommand}"/>
+    <TextBlock Classes="hint" Text="热键、保存目录、打印机轮询在完整设置里。"/>
+  </StackPanel>
+</UserControl>

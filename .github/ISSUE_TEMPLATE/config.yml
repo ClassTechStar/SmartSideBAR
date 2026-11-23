@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题与讨论
+    url: https://github.com/ClassTechStar/SmartSideBAR/discussions
+    about: 安装、配置、课堂使用问题请先到 Discussions
+  - name: 安全漏洞
+    url: https://github.com/ClassTechStar/SmartSideBAR/security/advisories/new
+    about: 请走私密渠道，不要公开贴利用细节

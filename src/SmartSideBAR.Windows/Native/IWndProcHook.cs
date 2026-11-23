@@ -8,8 +8,11 @@ public delegate nint WndProcCallback(nint hwnd, uint msg, nuint wParam, nint lPa
 
 public interface IWndProcHook
 {
-    /// <summary>对 hwnd 安装钩子; 必须在窗口所属 UI 线程调用。可对同一 hwnd 叠加多个回调。</summary>
-    void Add(nint hwnd, WndProcCallback callback);
+    /// <summary>
+    /// 对 hwnd 安装钩子; 必须在窗口所属 UI 线程调用。可对同一 hwnd 叠加多个回调。
+    /// 返回 false 表示子类化失败 (功能会静默失效, 调用方应记录/提示)。
+    /// </summary>
+    bool Add(nint hwnd, WndProcCallback callback);
 
     /// <summary>移除该 hwnd 上由 Add 安装的 callback; 最后一个移除时恢复原窗口过程。</summary>
     void Remove(nint hwnd, WndProcCallback callback);

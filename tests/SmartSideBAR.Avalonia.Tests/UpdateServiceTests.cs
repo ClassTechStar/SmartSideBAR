@@ -87,6 +87,18 @@ public sealed class UpdateServiceTests
         Assert.Equal("p/https://h/SHA256SUMS.txt", UpdateService.FindAssetUrl(doc.RootElement, "p/", "SHA256SUMS.txt", "SHA256SUMS"));
         Assert.Null(UpdateService.FindAssetUrl(doc.RootElement, null, "SHA256SUMS"));
     }
+
+    [Fact]
+    public void 只有作者自有通道可作哈希信任源()
+    {
+        // P0 安全回归钉: 镜像代理不得成为哈希来源 —— 它能同时替换安装包与其哈希清单。
+        Assert.True(UpdateService.IsTrustedHashChannel("GitHub"));
+        Assert.True(UpdateService.IsTrustedHashChannel("Gitee"));
+        Assert.False(UpdateService.IsTrustedHashChannel("GitHub镜像"));
+        Assert.False(UpdateService.IsTrustedHashChannel("GitHub镜像2"));
+        Assert.All(UpdateService.Channels, c =>
+            Assert.Equal(c.Name is "GitHub" or "Gitee", UpdateService.IsTrustedHashChannel(c.Name)));
+    }
 }
 
 // ---- 更新功能补齐回归 (digest 兜底 / Gitee 通道 / 自动检查门槛 / 静默安装) ----

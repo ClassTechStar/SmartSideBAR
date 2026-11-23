@@ -1,0 +1,91 @@
+<!-- M3 面板共享样式: 与 PanelKit 的视觉规格对齐 (13px 正文 / 12px 辅助 / 卡片 10 圆角)。
+     颜色一律走 DynamicResource, 由 PanelTheme 在面板构造时写入 Palette 对应值。 -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+    <Setter Property="Margin" Value="0,2,0,6"/>
+  </Style>
+  <Style Selector="TextBlock.body">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{DynamicResource BodyFg}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <Style Selector="TextBlock.hint">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="LineHeight" Value="18"/>
+  </Style>
+  <Style Selector="TextBlock.cardTitle">
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+  </Style>
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource PanelCardRadius}"/>
+    <Setter Property="Padding" Value="12"/>
+  </Style>
+  <Style Selector="Button.flat">
+    <Setter Property="Padding" Value="14,7"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource PanelSmallRadius}"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentFg}"/>
+    <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.flat.primary">
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentFg}"/>
+    <Setter Property="Background" Value="{DynamicResource AccentFg}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentFg}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="Button.tile">
+    <Setter Property="Padding" Value="8,14"/>
+    <Setter Property="MinHeight" Value="{DynamicResource PanelMinTile}"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource PanelCardRadius}"/>
+    <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="TextBlock.tileLabel">
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource CardTextFg}"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <Style Selector="TextBlock.emptyTitle">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="TextBlock.emptyHint">
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource MutedFg}"/>
+    <Setter Property="Opacity" Value="0.8"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="MaxWidth" Value="260"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.linkRow">
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource PanelSmallRadius}"/>
+  </Style>
+</Styles>

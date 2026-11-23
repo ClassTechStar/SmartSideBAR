@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.DiagnosticsPage"
+             x:DataType="vm:DiagnosticsSettingsViewModel"
+             AutomationProperties.Name="诊断设置">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="诊断"/>
+
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="自检与排障"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center"
+                       Text="检查系统信息/内存/显示器/各服务健康度"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button Content="运行诊断" Command="{Binding RunCommand}"/>
+              <Button Content="导出诊断包" Command="{Binding ExportPackCommand}"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="配置备份"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center"
+                       Text="导出当前配置（自动脱敏）；导入时只接受已知配置键"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button Content="导出配置" Command="{Binding ExportConfigCommand}"/>
+              <Button Content="导入配置" Command="{Binding ImportConfigCommand}"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <TextBlock Text="{Binding DiagnosticsText}" TextWrapping="Wrap" FontSize="12"
+                   Foreground="{DynamicResource MutedFg}"/>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

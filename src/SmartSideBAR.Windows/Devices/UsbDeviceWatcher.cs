@@ -49,7 +49,10 @@ public sealed class UsbDeviceWatcher(
         _running = true;
         _lastDrives = Snapshot();
         _callback = OnDeviceChange;
-        hook.Add(hostHwnd, _callback);
+        if (!hook.Add(hostHwnd, _callback))
+        {
+            log?.LogWarning("[USB] 消息钩子安装失败, U 盘插拔提醒不可用");
+        }
         StartWmiWatcher();
         log?.LogInformation("[USB] 已监听 WM_DEVICECHANGE + WMI VolumeChangeEvent (基线 {Count} 个可移动盘)", _lastDrives.Count);
     }

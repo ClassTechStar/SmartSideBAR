@@ -62,7 +62,10 @@ public sealed class AppBarService(
         _registered = true;
 
         // K1/K2/K3: 挂接 WndProc, v1.2.0 完全缺失的通知处理
-        hook.Add(hwnd, OnWndProc);
+        if (!hook.Add(hwnd, OnWndProc))
+        {
+            log?.LogWarning("[AppBar] 消息钩子安装失败, 工作区变更通知不可用");
+        }
         Reposition(CurrentWidthPx);
         log?.LogInformation("[AppBar] 已注册 edge={Edge} rail={Rail}px expanded={Expanded}px",
             edge, _railPx, _expandedPx);

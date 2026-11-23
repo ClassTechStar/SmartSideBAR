@@ -2,6 +2,7 @@
 
 给后来接手的人（包括过几个月忘了细节的自己）看的。当前版本 v1.6.0，只跑 Avalonia 单栈。
 技术选型的历史决策在 [adr-001-single-stack.md](adr-001-single-stack.md)（当时从 Electron 收敛到 Avalonia）。
+全部 ADR 索引见 [adr/README.md](adr/README.md)（代码注释里引用的 ADR-M4/M6/M8 都在那里）。
 
 ## 三层结构
 
@@ -41,11 +42,13 @@ src/
 | 崩溃处理 | `CrashLog` + `SSB_SAFE_MODE=1` | 结构化 crash-*.json；安全模式跳过 AppBar/悬浮球 |
 | 三种触发形态 | `DisplayConfig.RailTrigger` | always 常驻胶囊 / edge 触发条点击 / edge-hover 悬停滑出 |
 | 工作区 | `WorkspaceConfig` | presets 的 Modules 再过一遍 policy.disabledModules，得到 rail 实际项 |
+| UI 代码约定 | `scripts/check-ui-conventions.ps1` | 页面/面板禁止代码构造控件与 XAML 硬编码颜色；自绘层走允许清单 |
 
 ## 构建与发布
 
 ```
-dotnet test SmartSideBAR.slnx                       # 130 用例
+dotnet test SmartSideBAR.slnx                       # 496 用例
+pwsh -File scripts/check-ui-conventions.ps1         # UI 约定（代码构造控件 / 硬编码颜色）
 dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64
     --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true
     -p:TrimMode=partial -p:EnableCompressionInSingleFile=true -o artifacts/app

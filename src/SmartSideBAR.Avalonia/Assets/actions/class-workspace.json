@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "builtin.class-workspace",
+  "name": "上课工作区",
+  "version": "1.0.0",
+  "author": "SmartSideBAR",
+  "actions": [
+    {
+      "id": "workspace.class",
+      "title": "切到上课工作区",
+      "description": "把 rail 换成上课用的模块组合",
+      "icon": "builtin:grid",
+      "group": "教学",
+      "order": 20,
+      "command": { "type": "dispatch", "action": "workspace:上课" }
+    }
+  ]
+}

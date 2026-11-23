@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.GeneralPage"
+             x:DataType="vm:GeneralSettingsViewModel"
+             AutomationProperties.Name="常规设置">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="常规"/>
+
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="智能课堂"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="课表"/>
+              <TextBlock Classes="rowDesc"
+                         Text="分号分隔; 上课中自动切「上课」工作区并静默 info 提醒。示例: 8:00-8:45 语文; 8:55-9:40 数学"/>
+            </StackPanel>
+            <TextBox Grid.Column="1" Classes="field" MinWidth="260"
+                     Text="{Binding LessonText, Mode=TwoWay}"
+                     Watermark="8:00-8:45 语文; 8:55-9:40 数学"
+                     AutomationProperties.Name="课表"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="侧栏"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="侧栏位置"/>
+              <TextBlock Classes="rowDesc" Text="停靠在屏幕左缘或右缘"/>
+            </StackPanel>
+            <ComboBox Grid.Column="1" MinWidth="140" VerticalAlignment="Center"
+                      ItemsSource="{Binding SideOptionsSource}"
+                      SelectedIndex="{Binding SideIndex, Mode=TwoWay}"
+                      AutomationProperties.Name="侧栏位置"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="触发方式"/>
+              <TextBlock Classes="rowDesc" Text="触发条模式重启后生效; 常驻胶囊即时生效"/>
+            </StackPanel>
+            <ComboBox Grid.Column="1" MinWidth="220" VerticalAlignment="Center"
+                      ItemsSource="{Binding TriggerOptionsSource}"
+                      SelectedIndex="{Binding TriggerIndex, Mode=TwoWay}"
+                      AutomationProperties.Name="触发方式"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center"
+                       Text="演示/看片等全屏场景自动收起为底角方块"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Content="全屏应用时自动收起侧栏"
+                      IsChecked="{Binding AutoCollapse, Mode=TwoWay}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="随系统启动自动运行"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Content="开机自启动"
+                      IsChecked="{Binding AutoLaunch, Mode=TwoWay}"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

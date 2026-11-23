@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.LinksPanel"
+             x:DataType="vm:LinksPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+    <Style Selector="Button.linkTile">
+      <Setter Property="Width" Value="96"/>
+      <Setter Property="Height" Value="88"/>
+      <Setter Property="Padding" Value="4"/>
+      <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+      <Setter Property="CornerRadius" Value="{DynamicResource PanelCardRadius}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.linkTile.add">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="8">
+    <!-- 分类页签 -->
+    <ItemsControl ItemsSource="{Binding Tabs}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:LinkTab">
+          <Button Classes="flat" Classes.primary="{Binding IsActive}" Padding="13,5"
+                  Content="{Binding Name}" Command="{Binding Command}" Margin="0,0,6,6"/>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- 内联新增表单 -->
+    <Border IsVisible="{Binding Adding}" Padding="12"
+            Background="{DynamicResource HoverBg}"
+            BorderBrush="{DynamicResource AccentFg}" BorderThickness="1"
+            CornerRadius="{DynamicResource PanelCardRadius}">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="6">
+          <TextBox Watermark="名称（如: DeepSeek）" Text="{Binding NewName, Mode=TwoWay}"/>
+          <TextBox Name="UrlBox" Watermark="网址（https://…）" Text="{Binding NewUrl, Mode=TwoWay}"
+                   KeyDown="OnUrlKeyDown"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                    VerticalAlignment="Center" Margin="8,0,0,0">
+          <ComboBox ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}"
+                    MinWidth="110" VerticalAlignment="Center"/>
+          <Button Classes="flat primary" Content="添加" Command="{Binding SubmitCommand}"/>
+          <Button Classes="flat" Content="取消" Command="{Binding CancelCommand}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- 空态 -->
+    <StackPanel Spacing="8" Margin="0,26" IsVisible="{Binding IsEmpty}">
+      <Image Width="30" Height="30" Opacity="0.45" HorizontalAlignment="Center"
+             Source="{Binding EmptyIcon}"/>
+      <TextBlock Classes="emptyTitle" Text="还没有快捷入口"/>
+      <TextBlock Classes="emptyHint"
+                 Text="点「＋ 添加」放教学网站或网页版 AI（DeepSeek、GLM…），点卡片就能打开。"/>
+    </StackPanel>
+
+    <!-- 正方形卡片网格 (3 列) -->
+    <ItemsControl ItemsSource="{Binding Tiles}" IsVisible="{Binding !IsEmpty}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" ItemWidth="104" ItemHeight="96"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:LinkTile">
+          <Button Classes="linkTile" Classes.add="{Binding IsAdd}" Command="{Binding Command}">
+            <StackPanel Spacing="6" VerticalAlignment="Center">
+              <Border Width="30" Height="30" CornerRadius="15" IsVisible="{Binding !IsAdd}"
+                      HorizontalAlignment="Center" Background="{DynamicResource AccentSoftBg}">
+                <TextBlock Text="{Binding Letter}" FontSize="14" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{DynamicResource AccentFg}"/>
+              </Border>
+              <TextBlock Text="{Binding Name}" FontSize="11.5" MaxHeight="30"
+                         TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !IsAdd}"
+                         Foreground="{DynamicResource CardTextFg}"/>
+              <TextBlock Text="{Binding Name}" FontSize="12.5" IsVisible="{Binding IsAdd}"
+                         HorizontalAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+            </StackPanel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

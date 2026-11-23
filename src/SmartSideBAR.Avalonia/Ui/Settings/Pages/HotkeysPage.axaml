@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.HotkeysPage"
+             x:DataType="vm:HotkeysSettingsViewModel"
+             AutomationProperties.Name="快捷键设置">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="快捷键"/>
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="全局热键"/>
+          <TextBlock Classes="hint" Text="格式: Ctrl/Alt/Shift/Win + 键。冲突时会注册失败, 换一组即可"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="区域截图"/>
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Capture, Mode=TwoWay}" AutomationProperties.Name="区域截图热键"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="屏幕批注"/>
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Annotate, Mode=TwoWay}" AutomationProperties.Name="屏幕批注热键"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="长截图"/>
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Longshot, Mode=TwoWay}" AutomationProperties.Name="长截图热键"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="悬浮球"/>
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding FloatBall, Mode=TwoWay}" AutomationProperties.Name="悬浮球热键"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="输入法切换"/>
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Ime, Mode=TwoWay}" AutomationProperties.Name="输入法切换热键"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

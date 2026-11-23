@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "builtin.usb-reminder-quiet",
+  "name": "上课静默提示",
+  "version": "1.0.0",
+  "author": "SmartSideBAR",
+  "actions": [
+    {
+      "id": "quiet.usb",
+      "title": "上课时静默 U 盘提示",
+      "description": "仅在上课状态给出轻提示示例",
+      "icon": "builtin:bell",
+      "group": "课堂",
+      "order": 30,
+      "command": { "type": "toast", "text": "上课中：U 盘提醒已静默", "level": "info" },
+      "conditions": [
+        { "kind": "LessonState", "mode": "Equals", "value": "OnClass" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,203 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.ReminderPanel"
+             x:DataType="vm:ReminderPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+    <Style Selector="Button.soundHeader">
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="Margin" Value="0,2,0,0"/>
+      <Setter Property="Background" Value="{DynamicResource HoverBg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerFg}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="TextBlock.soundTitle">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Foreground" Value="{DynamicResource BodyFg}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.notificationDismiss">
+      <Setter Property="Width" Value="26"/>
+      <Setter Property="Height" Value="26"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.notificationCard">
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+        </Transitions>
+      </Setter>
+      <Setter Property="RenderTransform" Value="scale(1)"/>
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="10">
+    <!-- 页签 -->
+    <ItemsControl ItemsSource="{Binding Tabs}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" Spacing="6"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ReminderTab">
+          <Button Classes="flat" Classes.primary="{Binding IsActive}" Padding="16,6"
+                  Content="{Binding Name}" Command="{Binding Command}"/>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- 提醒页 -->
+    <StackPanel Spacing="10" IsVisible="{Binding ShowReminders}">
+      <Button Classes="flat primary" Content="＋ 新建提醒" Command="{Binding NewReminderCommand}"/>
+
+      <TextBlock Classes="section" Text="{Binding ReminderCountText}"
+                 IsVisible="{Binding !RemindersEmpty}"/>
+
+      <ItemsControl ItemsSource="{Binding Reminders}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="8"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ReminderRow">
+            <Border Classes="card" Padding="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="{Binding Note}" FontSize="12.5" FontWeight="SemiBold"
+                             TextWrapping="Wrap" Foreground="{DynamicResource BodyFg}"/>
+                  <TextBlock Classes="hint" Text="{Binding WhenText}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button Classes="flat" Content="+10分" Command="{Binding SnoozeCommand}"/>
+                  <Button Classes="flat" Content="删除" Margin="6,0,0,0"
+                          Command="{Binding DeleteCommand}"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <StackPanel Spacing="8" Margin="0,26" IsVisible="{Binding RemindersEmpty}">
+        <Image Width="30" Height="30" Opacity="0.45" HorizontalAlignment="Center"
+               Source="{Binding EmptyBellIcon}"/>
+        <TextBlock Classes="emptyTitle" Text="还没有提醒"/>
+        <TextBlock Classes="emptyHint"
+                   Text="可以设置一次性、间隔或整点提醒，到点会在右下角弹出提示。"/>
+      </StackPanel>
+
+      <Border Height="1" Background="{DynamicResource DividerFg}" Margin="0,10"/>
+
+      <!-- 铃声设置（自绘折叠区: 不用 Expander, 其展开动画与 AppBar 重排竞争布局） -->
+      <StackPanel Spacing="6">
+        <Button Classes="soundHeader" Command="{Binding ToggleSoundCommand}">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="soundTitle" Text="铃声设置"/>
+            <TextBlock Text="{Binding SoundChevron}" FontSize="12" Margin="8,0,0,0"
+                       VerticalAlignment="Center" Foreground="{DynamicResource MutedFg}"/>
+          </StackPanel>
+        </Button>
+        <Border IsVisible="{Binding SoundExpanded}" Padding="0,12,0,4">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="hint" Text="铃声类型"/>
+              <ItemsControl ItemsSource="{Binding Presets}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="6"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SoundPreset">
+                    <Button Classes="flat" Classes.primary="{Binding IsActive}" Padding="12,5"
+                            Content="{Binding Label}" Command="{Binding Command}"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+              <TextBlock Classes="hint" Text="{Binding VolumeText}"/>
+              <Slider Minimum="0" Maximum="100" Height="24" Value="{Binding Volume, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+              <TextBlock Classes="hint" Text="{Binding RepeatText}"/>
+              <Slider Minimum="1" Maximum="5" Height="24" TickFrequency="1"
+                      IsSnapToTickEnabled="True" Value="{Binding Repeat, Mode=TwoWay}"/>
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+              <TextBlock Classes="hint" Text="自定义铃声"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="flat" Content="{Binding PickMp3Text}" Click="OnPickMp3Click"/>
+                <Button Classes="flat" Content="清除" IsVisible="{Binding HasMp3}"
+                        Command="{Binding ClearMp3Command}"/>
+              </StackPanel>
+              <TextBlock Classes="hint" Text="{Binding Mp3FileName}" IsVisible="{Binding HasMp3}"/>
+            </StackPanel>
+
+            <Button Classes="flat" Content="试听铃声" Command="{Binding PreviewCommand}"/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- 通知中心页 -->
+    <StackPanel Spacing="8" IsVisible="{Binding ShowNotifications}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Classes="section" Text="{Binding NotificationCountText}"/>
+        <Button Grid.Column="1" Classes="flat" Content="全部清除" VerticalAlignment="Center"
+                Command="{Binding ClearNotificationsCommand}"/>
+      </Grid>
+
+      <StackPanel Spacing="8" Margin="0,26" IsVisible="{Binding NotificationsEmpty}">
+        <Image Width="30" Height="30" Opacity="0.45" HorizontalAlignment="Center"
+               Source="{Binding EmptyBellIcon}"/>
+        <TextBlock Classes="emptyTitle" Text="暂无通知"/>
+        <TextBlock Classes="emptyHint"
+                   Text="提醒到点、U 盘插拔、录屏完成等事件都会在这里留下一条动态。"/>
+      </StackPanel>
+
+      <ItemsControl ItemsSource="{Binding Notifications}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="8"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:NotificationRow">
+            <Border Classes="card notificationCard" Padding="10"
+                    PointerPressed="OnNotificationPressed" PointerReleased="OnNotificationReleased">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                        Background="{Binding DotBrush}"/>
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="{Binding Message}" FontSize="12.5" TextWrapping="Wrap"
+                             Foreground="{DynamicResource BodyFg}"/>
+                  <TextBlock Classes="hint" Text="{Binding TimeText}"/>
+                </StackPanel>
+                <Button Grid.Column="2" Classes="notificationDismiss" Content="×"
+                        Command="{Binding DismissCommand}"/>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <TextBlock Classes="hint" Text="最多保留 50 条，仅本机内存，不落盘。"
+                 IsVisible="{Binding !NotificationsEmpty}"/>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

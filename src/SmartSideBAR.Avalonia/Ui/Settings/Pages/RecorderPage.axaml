@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.RecorderPage"
+             x:DataType="vm:RecorderSettingsViewModel"
+             AutomationProperties.Name="录屏设置">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="录屏"/>
+      <Border Classes="card">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="sectionTitle" Text="MP4 录制"/>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center"
+                       Text="个别机型的媒体管道会在转码准备期崩溃, 可在此关闭"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Content="启用录屏（个别机型媒体管道会崩溃，可关闭）"
+                      IsChecked="{Binding Enabled, Mode=TwoWay}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="帧率"/>
+              <TextBlock Classes="rowDesc" Text="5–60 fps, 15 为课堂够用档"/>
+            </StackPanel>
+            <NumericUpDown Grid.Column="1" MinWidth="110" VerticalAlignment="Center"
+                           Minimum="5" Maximum="60" Increment="1"
+                           Value="{Binding Fps, Mode=TwoWay}"
+                           AutomationProperties.Name="录屏帧率"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="同时录制麦克风声音"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center" IsEnabled="False"
+                      Content="录制麦克风（暂未支持，敬请期待）"
+                      IsChecked="{Binding Mic, Mode=OneWay}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="rowLabel" Text="保存目录"/>
+              <TextBlock Classes="rowDesc" Text="支持 {Videos} 等路径占位符"/>
+            </StackPanel>
+            <TextBox Grid.Column="1" Classes="field" MinWidth="260"
+                     Text="{Binding RecorderDir, Mode=TwoWay}"
+                     Watermark="{}{Videos}/Sidekick"
+                     AutomationProperties.Name="录屏保存目录"/>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Settings.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Settings.Pages.AboutPage"
+             x:DataType="vm:AboutSettingsViewModel"
+             AutomationProperties.Name="关于">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Settings/SettingsStyles.axaml"/>
+  </UserControl.Styles>
+  <ScrollViewer Padding="16,14,16,16">
+    <StackPanel Spacing="12">
+      <TextBlock Classes="pageTitle" Text="关于"/>
+      <Border Classes="card">
+        <StackPanel Spacing="6">
+          <TextBlock Text="{Binding Version, StringFormat='SmartSideBAR v{0}'}"
+                     FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BodyFg}"/>
+          <TextBlock Classes="rowDesc"
+                     Text="常驻教学大屏侧边的快捷操作与设备提醒中心。&#10;Avalonia + .NET 单进程实现；配置与 Electron 版互认。"/>
+          <TextBlock Classes="rowDesc" Text="Apache-2.0 © 2026 ClassTechStar" Opacity="0.8"/>
+
+          <TextBlock Text="{Binding NotesVersion, StringFormat='v{0} 更新内容'}"
+                     FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource BodyFg}"
+                     Margin="0,10,0,2" IsVisible="{Binding HasNotes}"/>
+          <ItemsControl ItemsSource="{Binding Notes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Classes="rowDesc" Text="{Binding}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <CheckBox Content="每天自动检查更新" Margin="0,8,0,0"
+                    IsChecked="{Binding AutoCheck, Mode=TwoWay}"/>
+          <Button Content="检查更新" HorizontalAlignment="Left" Margin="0,4,0,0" Padding="14,8"
+                  Command="{Binding CheckUpdateCommand}"/>
+          <Button Content="{Binding InstallText}" HorizontalAlignment="Left" Margin="0,4,0,0" Padding="14,8"
+                  IsVisible="{Binding InstallVisible}"
+                  Command="{Binding InstallCommand}"/>
+          <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" FontSize="11.5"
+                     Foreground="{DynamicResource MutedFg}" Margin="0,6,0,0"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

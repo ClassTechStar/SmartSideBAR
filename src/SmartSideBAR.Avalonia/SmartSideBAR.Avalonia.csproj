@@ -11,6 +11,9 @@
     <ApplicationIcon Condition="Exists('$(MSBuildThisFileDirectory)../../build/icon.ico')">$(MSBuildThisFileDirectory)../../build/icon.ico</ApplicationIcon>
     <!-- D1: ReadyToRun 预编译 → 降低冷启动 JIT 开销 -->
     <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- AVLN3001: 设置窗/分页通过构造函数注入 VM, 不支持运行时 XAML 加载器按路径反射创建。
+         这些界面只由编译后的 InitializeComponent 或显式 new 使用, 不经过 avares 动态加载。 -->
+    <NoWarn>$(NoWarn);AVLN3001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,6 +34,8 @@
     <AvaloniaResource Include="Assets/icons/**/*.svg" />
     <AvaloniaResource Include="Assets/icons-white/**/*.svg" />
     <AvaloniaResource Include="Assets/floatball-icon.png" />
+    <!-- 插件契约 E2: 内置 JSON 动作包 -->
+    <AvaloniaResource Include="Assets/actions/*.json" />
     <!-- 全局字体: MiSans Normal 随程序集嵌入, 不依赖目标机器装没装字体 -->
     <AvaloniaResource Include="Assets/Fonts/*.ttf" />
     <AvaloniaResource Include="Assets/Fonts/*.axaml" />

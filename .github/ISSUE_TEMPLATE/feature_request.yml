@@ -1,0 +1,40 @@
+name: 功能建议
+description: 教学场景需求、交互改进、新能力提案
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这个项目的判断标准只有一条：**教室里用起来是否更顺**。请先描述场景，再描述方案。
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 教学场景
+      description: 谁、在什么设备上、上什么课、卡在哪一步
+      placeholder: 小学英语老师，86 寸触屏一体机，上课时频繁在 PPT 和实物展台之间切换……
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望怎么做
+      description: 可以只写期望结果，不必给实现方案
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 现在怎么绕过
+      description: 当前用的替代操作或其他软件，帮助我们判断优先级
+    validations:
+      required: false
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: 约束确认
+      options:
+        - label: 该需求不需要管理员权限或内核驱动
+          required: false
+        - label: 该需求可以在离线环境完成（不上传课堂数据）
+          required: false

@@ -21,7 +21,9 @@
 #ifndef AppSrcDir
   #define AppSrcDir "..\artifacts\app"
 #endif
-#define AppPublisher "Seewo Sidekick Team"
+; 发行者署名: 个人/社区项目, 不冒用任何厂商名义 (2026-11 审计修正)。
+; "希沃/Seewo" 仅为兼容性描述, 本项目与视源股份无隶属或授权关系。
+#define AppPublisher "ClassTechStar & Contributors"
 #define AppExe "SmartSideBAR.Avalonia.exe"
 #define SetupIconFile "..\build\icon.ico"
 

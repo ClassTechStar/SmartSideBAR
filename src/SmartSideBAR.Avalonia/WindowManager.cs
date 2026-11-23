@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Microsoft.Extensions.Logging;
 using SmartSideBAR.Avalonia.Ui;
+using SmartSideBAR.Avalonia.Ui.Settings;
 using SmartSideBAR.Avalonia.Views;
 using SmartSideBAR.Core.Configuration;
 using SmartSideBAR.Core.Diagnostics;
@@ -137,7 +138,11 @@ public sealed class WindowManager(
             }
 
             // ---- 常驻服务挂接 (同一 WndProcHook 基础设施) ----
-            hotkeys.Attach(hwnd);
+            if (!hotkeys.Attach(hwnd))
+            {
+                // 2026-11 审计: 钩子失败此前静默, 用户只感觉"热键坏了"
+                ToastService.Instance.Show("全局热键不可用（系统消息钩子安装失败），请改用侧栏按钮操作", "warn");
+            }
             RegisterConfiguredHotkeys();
             usb.Start(hwnd);
             printer.Start();

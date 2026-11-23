@@ -44,9 +44,8 @@ public sealed class ImeService(IEventBus bus, ILogger<ImeService>? log = null) :
     {
         var lang = (ushort)(hkl & 0xFFFF);
         var isZh = (lang & 0x3FF) == LangZh;
-        var locale = isZh
-            ? $"zh-{(lang >> 10) switch { 1 => "CN", 2 => "TW", 4 => "SG", 5 => "HK", _ => "CN" }}"
-            : $"{lang & 0x3FF:x2}";
+        // 角标文案统一在 Core 纯函数里 (中文 zh-区域, 其他语言三字母 ISO 码)
+        var locale = Core.Input.ImeBadge.Format(lang);
         return new ImeState(locale, isZh);
     }
 

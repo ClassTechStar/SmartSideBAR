@@ -39,15 +39,21 @@ public sealed class HotkeyService : IHotkeyService, IDisposable
         _log = log;
     }
 
-    /// <summary>宿主窗口就绪后调用 (所有热键挂在同一消息窗口上)。</summary>
-    public void Attach(nint hwnd)
+    /// <summary>宿主窗口就绪后调用 (所有热键挂在同一消息窗口上)。返回 false = 消息钩子安装失败。</summary>
+    public bool Attach(nint hwnd)
     {
         lock (_gate)
         {
-            if (_hwnd != 0) return;
-            _hwnd = hwnd;
+            if (_hwnd != 0) return true;
             _callback = OnWndProc;
-            _hook.Add(hwnd, _callback);
+            if (!_hook.Add(hwnd, _callback))
+            {
+                _callback = null;
+                _log?.LogWarning("[Hotkey] 消息钩子安装失败, 全局热键不可用");
+                return false;
+            }
+            _hwnd = hwnd;
+            return true;
         }
     }
 

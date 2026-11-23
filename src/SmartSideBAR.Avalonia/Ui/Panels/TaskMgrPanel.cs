@@ -1,26 +1,24 @@
-// TaskMgrPanel, v1.2 同名面板的 Avalonia 实现。
-// P2-1：由 697 行的 SidebarPanels.cs 拆出，一面板一文件（单文件 ≤600 行的拆分约定），
-// 便于单独单测、减少合并冲突。公共构件见 PanelKit.cs，基类见 SidebarPanel.cs。
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Layout;
-using Avalonia.Media;
-using Avalonia.Platform.Storage;
+// TaskMgrPanel 的 code-behind（M3: 内容移至 TaskMgrPanel.axaml, 这里只做 VM 接线）。
+using SmartSideBAR.Avalonia.Ui.Panels.ViewModels;
 using SmartSideBAR.Avalonia.ViewModels;
-using SmartSideBAR.Core.Configuration;
-using SmartSideBAR.Core.Devices;
-using SmartSideBAR.Core.Scheduling;
-using SmartSideBAR.Windows.Devices;
 
 namespace SmartSideBAR.Avalonia.Ui.Panels;
 
-internal sealed class TaskMgrPanel(SidebarServices s, Palette p) : SidebarPanel(s, p)
+internal sealed partial class TaskMgrPanel : SidebarPanel
 {
-    protected override Control Build()
+    public TaskMgrPanel(SidebarServices services, Palette palette) : base(services, palette)
     {
-        var root = Stack(12);
-        root.Children.Add(PanelKit.Hint("投屏卡顿或程序无响应时，从这里打开系统任务管理器。", Palette));
-        root.Children.Add(PanelKit.Flat("打开任务管理器", Palette, () => Services.Dispatch("taskmgr"), primary: true));
-        return root;
+        PanelTheme.Apply(Resources, palette);
+        InitializeComponent();
+        Vm = new TaskMgrPanelViewModel(services, palette) { RefreshRequested = Refresh };
+        DataContext = Vm;
+    }
+
+    internal TaskMgrPanelViewModel Vm { get; }
+
+    protected override void RefreshCore()
+    {
+        Vm.Reload();
+        OnBuilt();
     }
 }

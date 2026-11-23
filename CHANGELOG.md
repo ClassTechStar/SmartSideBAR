@@ -5,6 +5,74 @@
 
 ## [未发布]
 
+### M5 硬编码色清理与 UI 约定检查（2026-11-23）
+- 新增 `scripts/check-ui-conventions.ps1`：页面/面板 code-behind 禁止代码构造控件
+  （自绘窗口/批注/Toast/M3 工厂走允许清单），XAML 禁止 `Foreground/Background/BorderBrush/Fill/Stroke`
+  写死颜色；当前扫描 0 违规，可挂 CI
+- 首帧兜底资源集中到 `App.axaml`，删除 `SidebarWindow` / `SettingsWindow` 的重复资源字典
+- `QuickSettingsPanel` 的 `White`/`#D9FFFFFF` 改为 `OnAccentFg`/`OnAccentSoftFg`；
+  设置窗保存按钮同步改用 `OnAccentFg`（高对比主题下前景自动反色）
+- `ThemeResources` 新增 `OnAccentSoftFg`（强调色上的次级文字），主题契约测试扩到 28 个键
+
+### 面板级 MVVM 与主题隔离 / 主题重构启动（2026-11-23，M4 / M5）
+- 主题切换不再重建侧栏面板：新增 `SidebarPanel.ApplyPalette` 与 `PanelViewModel.ApplyPalette`，
+  就地重写面板级资源字典并刷新 VM 调色板快照（SVG 图标明暗、状态色画刷随 `Reload` 重建）
+- `SidebarWindow.ApplyTheme` 删除 `ShowPanel(vm.ActivePanel)` 重建；切换主题保留面板实例与滚动位置，
+  冒烟新增「面板实例不变 + `BodyFg` 切深色」断言
+- M5 主题重构启动：`ThemeResources.ApplyContent` 统一 13 个内容色键（文字/卡片/强调/状态/录制），
+  面板 XAML 的私有 `Panel*Fg/Bg` 键全部并入全局键；`PanelTheme` 只保留圆角与触控几何令牌
+- 主题资源契约测试扩展到 27 个键（含录制态半透明底/描边）
+
+### 侧栏面板 MVVM 化与动作宿主（2026-11-23，M3 / E2）
+- M3：8 个侧栏面板全部改为 `XxxPanel.axaml` + 薄 code-behind（24–100 行）+
+  `Ui/Panels/ViewModels/*` 面板 VM；`PanelCatalog` 工厂签名与 `RefreshNow()` 测试入口不变
+- 新增共享样式 `PanelStyles.axaml` 与 `PanelTheme`：面板构造时把 `Palette` 写入面板级资源字典，
+  XAML 统一走 `{DynamicResource}`；`PanelKit` 从控件工厂缩为 DPI 度量（`UiScale` / `MinHitDip`）
+- `SidebarPanel` 新增 `RefreshCore()` 钩子：XAML 面板刷新只更新 VM，不再重建可视树；
+  录制计时、通知中心订阅、MP3 选择等生命周期逻辑保留在 code-behind
+- 面板行为与文案保持不变（含录屏计时/暂停、链接页签与内联新增、提醒铃声折叠区、快捷开关）
+- E2：宿主扫描 `Assets/actions/*.json` 并接入 `ActionExecutor`（`IActionSink` / `WindowActionSink`），
+  内置动作包随程序集发布；新增 `ActionHostTests`（6 项）验证扫描/执行/失败上报
+
+### 设置窗 MVVM 化与插件契约 E1（2026-11-23，M2 / E1）
+- M2：设置窗改为 `SettingsWindow.axaml` + `SettingsWindowViewModel`，8 个分页全部 VM 化
+  （外观/常规/截图/录屏/设备/快捷键/诊断/关于）；`SettingsWindow.axaml.cs` 从 690 行降到 127 行、
+  零控件构造，保存仍是一次 `ApplyMany`、语义不变
+- 新增共享设置页样式 `SettingsStyles.axaml`；分页用 `x:DataType` 绑定，页面不再直接读 `ConfigService`
+- 自动化页为过渡态：动态规则编辑器仍在页面代码后置，保存时并入同一批写盘（后续转 ItemsControl + VM）
+- 新增 `SettingsPagesTests`：分页载入/收集映射 + 设置窗全分页 headless 加载
+- E1：新增插件动作契约 `Core/Actions`（清单模型 / 白名单校验 / 分层合并），
+  支持 `open-url / open-path / dispatch / workspace / copy-text / toast`，镜像外的未知命令只废单动作
+- 新增 `ActionCatalogTests`（12 项）：合法解析、schema/版本、保留前缀、命令白名单、路径穿越、
+  重复 id、策略层覆盖、超大文件
+
+### MVVM 基座与主题资源化（2026-11-23，M0 / M1）
+- M0：新增 `ObservableObject` / `AsyncRelayCommand` / `StateBase` 三个无依赖基座
+  （属性通知、异步命令防重入与异常兜底、事件订阅随 State 释放），并固化
+  `docs/plans/mvvm-baseline.md`（7 条冒烟链路 + 3 组像素基线）作为重构护栏
+- M1：新增 `ThemeResources` 作为 Palette → 资源字典的唯一出口；
+  侧栏面板宿主/标题/关闭钮、外观页、自动化页改走 `{DynamicResource}`，
+  `ApplyTheme` 中逐控件赋笔刷收敛为一次资源写入
+- 面板主题重建暂保留（面板仍为代码手绘），随 M3 面板迁移一并删除
+
+### 安全与信任加固（2026-11-23，深度优化第一轮）
+- **更新链哈希独立信道**：镜像代理不再提供安装包哈希（代理能同时替换安装包与其 SUMS），
+  只有 GitHub 直连 / Gitee 作者自有源参与校验；镜像通道无可信哈希时停止自动下载与「立即安装」
+- 直连 GitHub 拿到可信哈希后，安装包下载可回落 gh-proxy 镜像，校验仍用直连哈希
+- 发行者署名更正：安装包发布者改为「ClassTechStar & Contributors」；
+  README 明确与视源股份（希沃 / Seewo）无隶属关系，并新增安全承诺区（零遥测 / 不申请管理员 / 不装驱动不注入）
+- README 录屏功能口径对齐实现（麦克风录制暂未支持）
+- WndProc 子类化失败不再静默：写日志，全局热键失效时弹一次提示
+
+### 体验与工程（2026-11-23）
+- 设置保存改 `ConfigService.ApplyMany` 批量写入：20+ 键一次落盘、一次广播，消除逐键写放大
+- 输入法角标改三字母 ISO 码（JPN/KOR/ENG…），修正 zh-CN / zh-TW 子语言映射反转
+- 边缘触发条在触屏上禁用悬停展开（手指划过不再误触发），只保留点击
+- 设置页导航不再按 `Grid.Children[0]` 摸视觉树，改持导航容器引用
+- 设计规范页仅 Debug 构建可见，不再随正式产品发行
+- 新增 `docs/adr/` 决策记录（ADR-001 / M4 / M6 / M8）与 Issue 模板（bug / feature / 安全私密渠道）
+- 测试 +23（批量配置 / 输入法角标 / 更新链信任源），共 461 项
+
 ### 浅色也统一 M3（2026-11-22）
 - `Light()`（玻璃浅色）与 `ClassicLight()`（经典快面）的内容色改走 `M3Palette(dark:false)`，
   与深色对称、与设置页同源；rail 胶囊各自的形态语言保留
@@ -84,6 +152,13 @@
 - UI 迁 XAML（改哪迁哪）：外观设置页迁 axaml 作样板，新面板统一走 axaml
 - 可访问性：设置导航/保存按钮/rail 磁贴/面板关闭钮补 AutomationProperties 命名，导航支持键盘逐站停靠
 - 覆盖率门禁 40% → 55%（实测 58.8%）：补自动化规则引擎/扇形布局/热键解析/策略服务纯逻辑测试
+- 设置保存改为 `ApplyMany` 批量写入：20+ 键一次落盘、一次广播，消除逐键写放大
+- 输入法角标改三字母 ISO 码（JPN/KOR/ENG…），并修正 zh-CN / zh-TW 子语言映射反转
+- 边缘触发条在触屏上禁用悬停展开（手指划过不再误触发），只保留点击
+- 设置页导航不再按 `Grid.Children[0]` 摸视觉树，改持导航容器引用
+- 设计规范页仅 Debug 构建可见，不再随正式产品发行
+- WndProc 子类化失败不再静默：写日志并对全局热键失效弹一次提示
+- 新增 `docs/adr/` 决策记录目录（ADR-001 / M4 / M6 / M8）与 Issue 模板（bug / feature / 安全私密渠道）
 
 ### 修复
 - 配置键写入 null（配置导入脱敏路径）时 `ExpandPath` 空引用崩溃

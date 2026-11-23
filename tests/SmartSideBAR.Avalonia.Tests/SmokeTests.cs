@@ -339,6 +339,68 @@ public sealed class SmokeTests : IDisposable
         dark.Close();
     }
 
+    // ---- M1: 主题资源化端到端验证 (DynamicResource 真正更新到控件) ----
+
+    [AvaloniaFact]
+    public void Panel_chrome_follows_theme_resources()
+    {
+        var win = BuildWindow();
+        win.Width = 452;
+        win.Show();
+        Pump();
+        var vm = (SidebarViewModel)win.DataContext!;
+        vm.OpenPanel(PanelKind.Settings);
+        Pump();
+
+        _ = _config.Set("appearance.theme", "dark");
+        win.ApplyTheme();
+        Pump();
+
+        var dark = AppTheme.From(_config.Current.Appearance);
+        var host = win.FindControl<Border>("PanelHost");
+        var title = win.FindControl<TextBlock>("PanelTitleText");
+        var close = win.FindControl<TextBlock>("PanelCloseGlyph");
+        Assert.NotNull(host);
+        Assert.NotNull(title);
+        Assert.NotNull(close);
+        Assert.Equal(dark.PanelBg, Assert.IsType<SolidColorBrush>(host!.Background).Color);
+        // 深色玻璃/经典面标题取正文色, 关闭钮取弱化色 (ThemeResources 约定)
+        Assert.Equal(dark.Glass ? dark.Accent : dark.Text,
+            Assert.IsType<SolidColorBrush>(title!.Foreground).Color);
+        Assert.Equal(dark.Glass ? dark.Accent : dark.Muted,
+            Assert.IsType<SolidColorBrush>(close!.Foreground).Color);
+        win.Close();
+    }
+
+    // ---- M4: 面板级主题隔离 (主题切换原地更新, 不重建面板) ----
+
+    [AvaloniaFact]
+    public void Theme_switch_updates_open_panel_in_place()
+    {
+        _ = _config.Set("appearance.reduceMotion", true);
+        var win = BuildWindow();
+        win.Width = 452;
+        win.Show();
+        Pump();
+        var vm = (SidebarViewModel)win.DataContext!;
+        vm.OpenPanel(PanelKind.Settings);
+        Pump();
+
+        var panel = win.GetVisualDescendants().OfType<Ui.Panels.SidebarPanel>().Single();
+        var light = Assert.IsType<SolidColorBrush>(panel.Resources[ThemeResources.BodyFg]).Color;
+
+        _ = _config.Set("appearance.theme", "dark");
+        win.ApplyTheme();
+        Pump();
+
+        // 面板实例必须保留 (主题隔离), 但面板级资源字典已经换成深色值
+        var current = win.GetVisualDescendants().OfType<Ui.Panels.SidebarPanel>().Single();
+        Assert.Same(panel, current);
+        var dark = Assert.IsType<SolidColorBrush>(current.Resources[ThemeResources.BodyFg]).Color;
+        Assert.NotEqual(light, dark);
+        win.Close();
+    }
+
     // ---- 像素读取工具 ----
 
     private static (byte a, byte r, byte g, byte b)[] ReadColumn(Bitmap frame, int x)

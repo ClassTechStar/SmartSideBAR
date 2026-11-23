@@ -1,0 +1,57 @@
+name: Bug 报告
+description: 功能异常、崩溃、界面错位等可复现问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。教学现场问题优先处理，请尽量把环境写全，方便一次定位。
+  - type: input
+    id: version
+    attributes:
+      label: SmartSideBAR 版本
+      description: 关于页可看到，例如 v1.8.0
+      placeholder: v1.8.0
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: 系统与设备
+      description: Windows 版本、设备型号（如 希沃 F86EC / OPS i5-1135G7 / 骁龙 8cx）
+      placeholder: Windows 11 23H2 / 希沃 F86EC / 3840×2160 @200%
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 出问题的模块
+      options:
+        - 侧栏 / 悬浮球 / 触发条
+        - 截图 / 批注 / 长截图 / 录屏
+        - 输入法 / 热键
+        - U 盘 / 打印机提醒
+        - 设置页 / 主题
+        - 更新 / 安装
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 按顺序写清点击/按键路径；偶发问题请写出现频率
+      placeholder: |
+        1. 打开设置 → 录屏
+        2. 勾选 ...
+        3. 期望 ...，实际 ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: 设置 → 诊断 → 导出诊断包，把压缩包拖到这里；崩溃还会生成 crash-*.json
+    validations:
+      required: false

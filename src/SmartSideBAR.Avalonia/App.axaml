@@ -2,6 +2,37 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="SmartSideBAR.Avalonia.App"
              RequestedThemeVariant="Light">
+  <!-- 首帧/设计器兜底资源 (M5): 每个窗口不再各写一份, 运行时由 ThemeResources 覆盖同名键。 -->
+  <Application.Resources>
+    <SolidColorBrush x:Key="RailHover" Color="#140F172A"/>
+    <SolidColorBrush x:Key="RailPressed" Color="#210F172A"/>
+    <SolidColorBrush x:Key="RailActive" Color="#262B6EE0"/>
+    <SolidColorBrush x:Key="BadgeBg" Color="#D1FFFFFF"/>
+    <SolidColorBrush x:Key="BadgeFg" Color="#2A2F38"/>
+    <SolidColorBrush x:Key="IndicatorBar" Color="#2B6EE0"/>
+    <SolidColorBrush x:Key="PanelBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="PanelHeaderBorder" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="PanelTitleFg" Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="PanelCloseFg" Color="#666666"/>
+    <SolidColorBrush x:Key="BodyFg" Color="#1B1B1F"/>
+    <SolidColorBrush x:Key="MutedFg" Color="#5A5A66"/>
+    <SolidColorBrush x:Key="CardBg" Color="#F1ECF4"/>
+    <SolidColorBrush x:Key="CardBorder" Color="#D9D3DD"/>
+    <SolidColorBrush x:Key="TextFg" Color="#1B1B1F"/>
+    <SolidColorBrush x:Key="CardTextFg" Color="#2A3240"/>
+    <SolidColorBrush x:Key="HoverBg" Color="#F5F7FA"/>
+    <SolidColorBrush x:Key="AccentFg" Color="#2B6EE0"/>
+    <SolidColorBrush x:Key="AccentSoftBg" Color="#E8F1FC"/>
+    <SolidColorBrush x:Key="OnAccentFg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="OnAccentSoftFg" Color="#D9FFFFFF"/>
+    <SolidColorBrush x:Key="DividerFg" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="OkFg" Color="#2E9E5B"/>
+    <SolidColorBrush x:Key="WarnFg" Color="#D98324"/>
+    <SolidColorBrush x:Key="ErrFg" Color="#D64545"/>
+    <SolidColorBrush x:Key="RecFg" Color="#E74C3C"/>
+    <SolidColorBrush x:Key="RecSoftBg" Color="#14E74C3C"/>
+    <SolidColorBrush x:Key="RecBorderFg" Color="#33E74C3C"/>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
     <!-- 全局默认字体 (MiSans Normal)，样式定义在 Assets/Fonts/MiSansFont.axaml，

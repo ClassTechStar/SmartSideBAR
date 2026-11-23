@@ -65,6 +65,12 @@ public sealed class ExtensionRegistry
         lock (_gate) return _loaded.RemoveAll(e => e.Id == id) > 0;
     }
 
+    /// <summary>外部加载器 (如 JSON 动作包) 上报失败, 与注册失败一起在设置页展示。</summary>
+    public void ReportFailure(string id, string reason)
+    {
+        lock (_gate) _failures.Add(new ExtensionLoadFailure(id, reason));
+    }
+
     public void Reset()
     {
         lock (_gate)

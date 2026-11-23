@@ -36,7 +36,7 @@ internal sealed class RecordingBus : IEventBus
 
 internal sealed class FakeHook : IWndProcHook
 {
-    public void Add(nint hwnd, WndProcCallback callback) { }
+    public bool Add(nint hwnd, WndProcCallback callback) => true;
     public void Remove(nint hwnd, WndProcCallback callback) { }
 }
 

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "builtin.teaching-platform",
+  "name": "教学平台快捷入口",
+  "version": "1.0.0",
+  "author": "SmartSideBAR",
+  "actions": [
+    {
+      "id": "teaching.platform",
+      "title": "打开智慧教育平台",
+      "description": "国家中小学智慧教育平台",
+      "icon": "builtin:link",
+      "group": "教学",
+      "order": 10,
+      "command": { "type": "open-url", "url": "https://www.zxx.edu.cn" }
+    }
+  ]
+}

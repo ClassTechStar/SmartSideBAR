@@ -12,15 +12,6 @@
         TransparencyLevelHint="Transparent"
         Width="72" Height="800">
 
-  <Window.Resources>
-    <!-- 主题色由 Theme.cs 计算后写入, 样式用 DynamicResource 引用, 切换主题即时生效 -->
-    <SolidColorBrush x:Key="RailHover" Color="#140F172A"/>
-    <SolidColorBrush x:Key="RailPressed" Color="#210F172A"/>
-    <SolidColorBrush x:Key="RailActive" Color="#262B6EE0"/>
-    <SolidColorBrush x:Key="BadgeBg" Color="#D1FFFFFF"/>
-    <SolidColorBrush x:Key="BadgeFg" Color="#2A2F38"/>
-  </Window.Resources>
-
   <Window.Styles>
     <Style Selector="Button.railBtn">
       <Style.Setters>
@@ -173,19 +164,22 @@
 
     <!-- ====== 展开面板 ====== -->
     <Border x:Name="PanelHost" IsVisible="{Binding PanelOpen}" HorizontalAlignment="Left" Width="380"
-            CornerRadius="28" BoxShadow="0 12 40 #40000000">
+            CornerRadius="28" BoxShadow="0 12 40 #40000000"
+            Background="{DynamicResource PanelBg}">
       <Grid>
         <!-- 高光层置于内容之下，避免白色叠加冲淡文字 -->
         <Canvas x:Name="PanelSheen" IsHitTestVisible="False"/>
         <DockPanel>
         <Border x:Name="PanelHeader" DockPanel.Dock="Top" Height="52" Padding="16,0"
-                BorderThickness="0,0,0,1">
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource PanelHeaderBorder}">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock x:Name="PanelTitleText" Grid.Column="0" Text="{Binding PanelTitle}"
-                       FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                       FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{DynamicResource PanelTitleFg}"/>
             <Button Grid.Column="1" Classes="panelClose" Command="{Binding ClosePanelCommand}"
                     ToolTip.Tip="关闭面板" AutomationProperties.Name="关闭面板">
-              <TextBlock x:Name="PanelCloseGlyph" Text="×" FontSize="20"/>
+              <TextBlock x:Name="PanelCloseGlyph" Text="×" FontSize="20"
+                         Foreground="{DynamicResource PanelCloseFg}"/>
             </Button>
           </Grid>
         </Border>

@@ -6,27 +6,35 @@
              AutomationProperties.Name="自动化设置">
   <ScrollViewer Padding="16,14,16,16">
     <StackPanel Spacing="12">
-      <TextBlock x:Name="TitleText" Text="自动化" FontSize="17" FontWeight="Bold" Margin="0,0,0,2" />
+      <TextBlock x:Name="TitleText" Text="自动化" FontSize="17" FontWeight="Bold"
+                 Margin="0,0,0,2" Foreground="{DynamicResource BodyFg}" />
 
-      <Border x:Name="RulesCard" CornerRadius="10" Padding="14" BorderThickness="1">
+      <Border x:Name="RulesCard" CornerRadius="10" Padding="14" BorderThickness="1"
+              Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource CardBorder}">
         <StackPanel Spacing="4">
           <TextBlock x:Name="RulesTitle" Text="条件 → 动作规则"
-                     FontSize="12.5" FontWeight="SemiBold" Margin="0,2,0,6" />
+                     FontSize="12.5" FontWeight="SemiBold" Margin="0,2,0,6"
+                     Foreground="{DynamicResource MutedFg}" />
           <TextBlock x:Name="RulesHint"
                      Text="条件成立时自动执行动作（如「上课时自动切到上课工作区」）。动作 id 与快捷磁贴词表一致: workspace:工作区名 / ime / dock / sidebar-toggle / reminder 等。规则边沿触发, 持续成立不重复执行。"
-                     FontSize="11.5" TextWrapping="Wrap" Opacity="0.9" Margin="0,0,0,4" />
+                     FontSize="11.5" TextWrapping="Wrap" Opacity="0.9" Margin="0,0,0,4"
+                     Foreground="{DynamicResource MutedFg}" />
           <StackPanel x:Name="RulesHost" Spacing="8" />
           <Button x:Name="AddRuleBtn" Content="添加规则" HorizontalAlignment="Left" Margin="0,6,0,0" />
         </StackPanel>
       </Border>
 
-      <Border x:Name="ExtCard" CornerRadius="10" Padding="14" BorderThickness="1">
+      <Border x:Name="ExtCard" CornerRadius="10" Padding="14" BorderThickness="1"
+              Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource CardBorder}">
         <StackPanel Spacing="4">
           <TextBlock x:Name="ExtTitle" Text="扩展状态"
-                     FontSize="12.5" FontWeight="SemiBold" Margin="0,2,0,6" />
-          <TextBlock x:Name="ExtApiText" FontSize="11.5" />
-          <TextBlock x:Name="ExtLoadedText" FontSize="11.5" TextWrapping="Wrap" />
-          <TextBlock x:Name="ExtFailuresText" FontSize="11.5" TextWrapping="Wrap" />
+                     FontSize="12.5" FontWeight="SemiBold" Margin="0,2,0,6"
+                     Foreground="{DynamicResource MutedFg}" />
+          <TextBlock x:Name="ExtApiText" FontSize="11.5" Foreground="{DynamicResource MutedFg}" />
+          <TextBlock x:Name="ExtLoadedText" FontSize="11.5" TextWrapping="Wrap"
+                     Foreground="{DynamicResource MutedFg}" />
+          <TextBlock x:Name="ExtFailuresText" FontSize="11.5" TextWrapping="Wrap"
+                     Foreground="{DynamicResource MutedFg}" />
         </StackPanel>
       </Border>
     </StackPanel>

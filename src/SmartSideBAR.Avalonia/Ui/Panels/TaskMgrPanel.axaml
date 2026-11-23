@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.TaskMgrPanel"
+             x:DataType="vm:TaskMgrPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+  </UserControl.Styles>
+  <StackPanel Spacing="12">
+    <TextBlock Classes="hint" Text="{Binding Hint}"/>
+    <Button Classes="flat primary" Content="打开任务管理器"
+            Command="{Binding OpenTaskManagerCommand}"/>
+  </StackPanel>
+</UserControl>

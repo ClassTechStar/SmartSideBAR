@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SmartSideBAR.Avalonia.Ui.Panels.ViewModels"
+             x:Class="SmartSideBAR.Avalonia.Ui.Panels.PrinterPanel"
+             x:DataType="vm:PrinterPanelViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SmartSideBAR.Avalonia/Ui/Panels/PanelStyles.axaml"/>
+  </UserControl.Styles>
+  <StackPanel Spacing="12">
+    <Grid ColumnDefinitions="*,Auto">
+      <TextBlock Text="打印机状态" FontSize="13" VerticalAlignment="Center"
+                 Foreground="{DynamicResource BodyFg}"/>
+      <Button Grid.Column="1" Classes="flat" Content="刷新" Command="{Binding RefreshCommand}"/>
+    </Grid>
+
+    <StackPanel Spacing="8" Margin="0,26" IsVisible="{Binding IsEmpty}">
+      <Image Width="30" Height="30" Opacity="0.45" HorizontalAlignment="Center"
+             Source="{Binding EmptyIcon}"/>
+      <TextBlock Classes="emptyTitle" Text="未检测到打印机"/>
+      <TextBlock Classes="emptyHint" Text="连接打印机后点“刷新”重新检测。"/>
+    </StackPanel>
+
+    <ItemsControl ItemsSource="{Binding Printers}" IsVisible="{Binding !IsEmpty}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Spacing="8"/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:PrinterRow">
+          <Border Classes="card" Padding="10">
+            <Grid ColumnDefinitions="Auto,*">
+              <Image Width="20" Height="20" Source="{Binding Icon}" VerticalAlignment="Center"/>
+              <StackPanel Grid.Column="1" Spacing="3" Margin="10,0,0,0">
+                <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                           TextWrapping="Wrap" Foreground="{DynamicResource BodyFg}"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                          Background="{Binding StatusBrush}"/>
+                  <TextBlock Classes="hint" Text="{Binding Status}" VerticalAlignment="Center"/>
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

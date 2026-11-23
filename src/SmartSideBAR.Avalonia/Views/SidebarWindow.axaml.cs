@@ -291,30 +291,9 @@ public partial class SidebarWindow : Window
             RailCapsule.Classes.Remove("glassRail");
         }
 
-        PanelHost.Background = p.PanelBrush;
-        PanelHeader.BorderBrush = p.DividerBrush;
-        // v1.2 标题用强调色; 1.0 经典面标题用正文色 (App.vue --text 同源)
-        PanelTitleText.Foreground = p.Glass ? p.AccentBrush : p.TextBrush;
-        PanelCloseGlyph.Foreground = p.Glass ? p.AccentBrush : p.MutedBrush;
-
-        Resources["RailHover"] = p.Glass
-            ? (IBrush)new SolidColorBrush(p.Dark
-                ? Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF)
-                : Color.FromArgb(0x14, 0x0F, 0x17, 0x2A))
-            : new SolidColorBrush(ParseHex(DesignTokens.Current.Classic.BrandLight, "#E8F1FC"));
-        Resources["RailPressed"] = p.Glass
-            ? (IBrush)new SolidColorBrush(p.Dark
-                ? Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF)
-                : Color.FromArgb(0x21, 0x0F, 0x17, 0x2A))
-            : new SolidColorBrush(ParseHex(DesignTokens.Current.Classic.PressedHover, "#D9E8FB"));
-        Resources["RailActive"] = new SolidColorBrush(p.Glass
-            ? p.AccentSoft
-            : ParseHex(DesignTokens.Current.Classic.BrandLight, "#E8F1FC"));
-        // v1.2 .rail-badge: 品牌色底 + 白字（白底深字在玻璃胶囊上几乎看不见）
-        Resources["BadgeBg"] = new SolidColorBrush(p.Accent);
-        Resources["BadgeFg"] = new SolidColorBrush(Colors.White);
-        // KoBar 选中态指示条: 品牌色竖条
-        Resources["IndicatorBar"] = new SolidColorBrush(p.Accent);
+        // 内容色统一走资源字典 (M1): 控件用 DynamicResource 消费, 主题切换只重写字典。
+        // 胶囊渐变/边光/投影/高光层属于形态语言, 仍按玻璃/经典模式分别处理。
+        ThemeResources.Apply(Resources, p);
 
         // 深色主题下 rail 图标需要白色变体
         if (DataContext is SidebarViewModel vm)
@@ -325,8 +304,8 @@ public partial class SidebarWindow : Window
 
         _railSheen?.Apply(p);
         _panelSheen?.Apply(p);
-        // 面板在构造时持有调色板副本, 用新调色板重建当前面板, 主题切换立即生效
-        if (DataContext is SidebarViewModel vm2 && vm2.PanelOpen) ShowPanel(vm2.ActivePanel);
+        // M4 主题隔离: 面板就地更新资源字典 + VM 调色板快照, 不再重建可视树
+        if (DataContext is SidebarViewModel { PanelOpen: true }) _panel?.ApplyPalette(p);
     }
 
     private void OnSheenPointerMoved(object? sender, PointerEventArgs e)
@@ -446,12 +425,6 @@ public partial class SidebarWindow : Window
             PanelBody.Opacity = 1;
             PanelHost.HorizontalAlignment = original;
         }, TimeSpan.FromMilliseconds(tokens.Motion.PanelMs + 50));
-    }
-
-    private static Color ParseHex(string hex, string fallback)
-    {
-        try { return Color.Parse(hex); }
-        catch { return Color.Parse(fallback); }
     }
 
     /// <summary>

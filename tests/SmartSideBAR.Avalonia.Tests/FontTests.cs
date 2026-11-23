@@ -12,7 +12,9 @@ public class FontTests
 {
     private const string FontPath = "avares://SmartSideBAR.Avalonia/Assets/Fonts/MiSans-Normal.ttf";
 
-    [Fact]
+    // 注意: AssetLoader 依赖 Avalonia 平台定位器, 必须用 AvaloniaFact;
+    // 普通 Fact 在其他 [AvaloniaFact] 尚未初始化平台时会抛 "Unable to locate IAssetLoader"。
+    [AvaloniaFact]
     public void 字体资源随程序集嵌入且是有效TTF()
     {
         Assert.True(AssetLoader.Exists(new Uri(FontPath)), "MiSans 字体未嵌入程序集资源");
@@ -26,7 +28,7 @@ public class FontTests
             "字体资源不是有效的 TrueType 文件");
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void 字体资源族名与全局样式一致()
     {
         // 与 App.axaml 的 FontFamily URI 后缀对齐，防止族名写错导致静默回退
@@ -57,7 +59,7 @@ public class FontTests
         window.Close();
     }
 
-    [Fact]
+    [AvaloniaFact]
     public void 字体资源体积合理()
     {
         using var stream = AssetLoader.Open(new Uri(FontPath));

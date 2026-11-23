@@ -84,7 +84,7 @@ public sealed class FakeWndProcHook : IWndProcHook
 
     public bool HasHook(nint hwnd) => _callbacks.ContainsKey(hwnd);
 
-    public void Add(nint hwnd, WndProcCallback callback)
+    public bool Add(nint hwnd, WndProcCallback callback)
     {
         if (!_callbacks.TryGetValue(hwnd, out var list))
         {
@@ -92,6 +92,7 @@ public sealed class FakeWndProcHook : IWndProcHook
             _callbacks[hwnd] = list;
         }
         list.Add(callback);
+        return true;
     }
 
     public void Remove(nint hwnd, WndProcCallback callback)
