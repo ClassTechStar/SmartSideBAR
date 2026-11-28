@@ -91,7 +91,7 @@ dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 \
 
 # 打安装包（要装 Inno Setup；版本号只看 Directory.Build.props <Version>，
 # 发版时 CI 用 /DAppVersion=x.y.z 注入，本地手工编译可省略该参数走脚本内兜底值）
-iscc /DAppVersion=1.6.0 installer/SmartSideBAR.iss
+iscc /DAppVersion=1.8.0 installer/SmartSideBAR.iss
 ```
 
 平时开发直接跑就行：
@@ -142,6 +142,14 @@ dotnet run --project src/SmartSideBAR.Avalonia
 | `capture.inkToShape` | 墨迹转形 | `true` |
 | `lesson.periods` / `automation.lessonMode` | 课表与智能课堂开关 | `[]` / `true` |
 | `floatBall.idleOpacity/idleDelayMs` | 悬浮球闲时变暗 | `0.55` / `4000ms` |
+| `display.triggerWidthDip` | 触发条宽度 (8–40) | `14` |
+| `display.hoverExpandDelayMs` | 悬停展开延时 ms (0–800) | `150` |
+| `display.collapseDelaySec` | 移出收起延时秒 (0.5–30) | `5` |
+| `display.topmostPolicy` | 置顶 `never`/`normal`/`always` | `"normal"` |
+| `display.railWidthDip` / `panelWidthDip` | 图标轨/面板宽度 | `72` / `380` |
+| `display.iconDip` | rail 图标尺寸 (20–40) | `28` |
+| `display.sidebarHotkey` | 呼出/隐藏侧栏热键 (空=不注册) | `""` |
+| `display.collapseOnFocusLoss` | 窗口失活自动收起面板 | `false` |
 | `updates.enabled` / `updates.autoCheck` | 应用内检查更新与每日自动检查 | `true` / `true` |
 | `updates.autoDownload` | 发现新版后后台下载缓存（安装仍需点击） | `false` |
 
@@ -155,13 +163,13 @@ dotnet run --project src/SmartSideBAR.Avalonia
 | 运行时 | .NET 10，自包含单文件约 15MB | 开了 ReadyToRun 和裁剪 |
 | 核心逻辑 | `SmartSideBAR.Core` | 配置、调度、墨迹识别这些，不依赖 UI，能单测 |
 | 平台层 | `SmartSideBAR.Windows` | AppBar、热键、录屏、USB 监控，走 P/Invoke + WinRT |
-| 测试 | xUnit | 240 个用例：Core 204 + Windows 17 + Avalonia 19（含 headless 冒烟和像素基线） |
+| 测试 | xUnit | 527 个用例：Core 354 + Windows 20 + Avalonia 133（含 headless 冒烟 7 链路、像素基线 3 态、DI 图守卫、字体门禁） |
 
 ## 开发命令
 
 ```bash
 dotnet build SmartSideBAR.slnx -c Debug     # 构建
-dotnet test SmartSideBAR.slnx               # 全部测试（240 个）
+dotnet test SmartSideBAR.slnx               # 全部测试（527 个）
 dotnet run --project src/SmartSideBAR.Avalonia   # 跑起来
 dotnet format SmartSideBAR.slnx --verify-no-changes  # 格式检查，CI 会卡这个
 dotnet publish src/SmartSideBAR.Avalonia -c Release -r win-x64 ...  # 发布
