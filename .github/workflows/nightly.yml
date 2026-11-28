@@ -26,6 +26,23 @@ jobs:
           dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx;LogFileName=run1.trx" --results-directory TestResults
           dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx;LogFileName=run2.trx" --results-directory TestResults
           dotnet test SmartSideBAR.slnx -c Release --no-build --logger "trx;LogFileName=run3.trx" --results-directory TestResults
+      - name: 启动冒烟 (真实运行 5s 退出 + 退出残留断言, 方案 §4.2/§4.4)
+        shell: pwsh
+        run: |
+          $env:SSB_SMOKE_EXIT_MS = "5000"
+          $p = Start-Process "src/SmartSideBAR.Avalonia/bin/Release/net10.0-windows10.0.19041.0/SmartSideBAR.Avalonia.exe" -PassThru
+          $exited = Wait-Process -Id $p.Id -Timeout 60 -ErrorAction SilentlyContinue
+          if (-not $p.HasExited) {
+            taskkill /F /IM SmartSideBAR.Avalonia.exe 2>$null
+            throw "启动冒烟 60s 未自行退出 —— 启动路径存在致命异常"
+          }
+          if ($p.ExitCode -ne 0) { throw "启动冒烟退出码 $($p.ExitCode) (非 0 = 启动路径崩溃)" }
+          Start-Sleep -Seconds 2
+          if (Get-Process -Name SmartSideBAR.Avalonia -ErrorAction SilentlyContinue) {
+            throw "退出残留: SmartSideBAR 进程仍在运行"
+          }
+          Write-Host "启动冒烟通过 (exit 0, 无残留进程)"
+
       - name: Headless 冒烟 (标记筛选, 独立跑一遍留产物)
         run: >
           dotnet test tests/SmartSideBAR.Avalonia.Tests -c Release --no-build

@@ -34,6 +34,10 @@
             <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="输入法切换"/>
             <TextBox Grid.Column="1" Classes="field" Text="{Binding Ime, Mode=TwoWay}" AutomationProperties.Name="输入法切换热键"/>
           </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowLabel" VerticalAlignment="Center" Text="呼出/隐藏侧栏"/>
+            <TextBox Grid.Column="1" Classes="field" Text="{Binding Sidebar, Mode=TwoWay}" Watermark="留空 = 不注册" AutomationProperties.Name="呼出侧栏热键"/>
+          </Grid>
         </StackPanel>
       </Border>
     </StackPanel>

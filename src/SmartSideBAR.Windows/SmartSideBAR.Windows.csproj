@@ -19,4 +19,10 @@
     <ProjectReference Include="..\SmartSideBAR.Core\SmartSideBAR.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 发布包裁剪会把 System.Management 的 WbemDefPath 无参构造裁掉 (反射创建失败),
+         USB WMI / 打印机轮询在安装包里全灭而开发态正常 (2026-11 审计实测)。
+         根治: 整程序集保留。体积代价 ~1MB, 换回 USB/打印机功能。 -->
+    <TrimmerRootAssembly Include="System.Management" />
+  </ItemGroup>
 </Project>

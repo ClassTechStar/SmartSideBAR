@@ -98,11 +98,52 @@ public sealed record DisplayConfig
     /// 命中名单的窗口即使铺满屏幕也不触发自动收起, 避免资源管理器/无边框工具窗口导致误收缩。
     /// </summary>
     public List<string> ExcludedFullscreenWindows { get; init; } = ["explorer"];
+    /// <summary>触发条宽度 (DIP)。8-40: 太窄点不中, 太宽失去"防误触"意义。</summary>
+    public double TriggerWidthDip { get; init; } = 14;
+    /// <summary>触发条悬停展开延时 (ms)。0=即触即开; Seelen delay_to_show 同值 150。</summary>
+    public int HoverExpandDelayMs { get; init; } = 150;
+    /// <summary>鼠标移出自动收起延时 (秒)。SidebarWindow 5s 收起与 edge 模式 4s 回收同源此值。</summary>
+    public double CollapseDelaySec { get; init; } = 5;
+    /// <summary>本进程窗口失活后收起面板 (需 300ms 判定, 零钩子实现)。默认关。</summary>
+    public bool CollapseOnFocusLoss { get; init; }
+    /// <summary>置顶三档: never=正常 Z 序 (AppBar 已避让) / normal=Topmost 回退+keeper / always=强制置顶。</summary>
+    public string TopmostPolicy { get; init; } = "normal";
+    /// <summary>图标轨宽度 (DIP)。56-120。</summary>
+    public double RailWidthDip { get; init; } = 72;
+    /// <summary>面板宽度 (DIP)。280-520。</summary>
+    public double PanelWidthDip { get; init; } = 380;
+    /// <summary>rail 图标尺寸 (DIP)。20-40, 默认 28。</summary>
+    public double IconDip { get; init; } = 28;
+    /// <summary>呼出/隐藏侧栏热键 (空=不注册)。路由到 sidebar-toggle。</summary>
+    public string SidebarHotkey { get; init; } = "";
     /// <summary>
     /// 目标显示器索引（借鉴 ClassIsland 的 WindowDockingMonitorIndex）。
     /// null = 沿用现状（跟随侧栏所在屏）; 指定后按索引定位, 越界自动回落主屏。
     /// </summary>
     public int? MonitorIndex { get; init; }
+}
+
+/// <summary>Display 数值键钳制 —— 新参数化键的合法域在此单点维护。</summary>
+public static class DisplayNormalize
+{
+    public static DisplayConfig Clamp(DisplayConfig input)
+    {
+        var policy = new[] { "never", "normal", "always" };
+        return input with
+        {
+            TriggerWidthDip = ClampNum(input.TriggerWidthDip, 8, 40, 14),
+            HoverExpandDelayMs = (int)ClampNum(input.HoverExpandDelayMs, 0, 800, 150),
+            CollapseDelaySec = ClampNum(input.CollapseDelaySec, 0.5, 30, 5),
+            TopmostPolicy = policy.Contains(input.TopmostPolicy, StringComparer.OrdinalIgnoreCase)
+                ? input.TopmostPolicy.ToLowerInvariant() : "normal",
+            RailWidthDip = ClampNum(input.RailWidthDip, 56, 120, 72),
+            PanelWidthDip = ClampNum(input.PanelWidthDip, 280, 520, 380),
+            IconDip = ClampNum(input.IconDip, 20, 40, 28),
+        };
+    }
+
+    private static double ClampNum(double v, double min, double max, double fallback) =>
+        double.IsFinite(v) ? Math.Min(max, Math.Max(min, v)) : fallback;
 }
 
 public sealed record DiagnosticsConfig

@@ -60,6 +60,19 @@ public sealed class RailItem : INotifyPropertyChanged
 
     public ICommand? Command { get; init; }
 
+    private double _iconSize = 28;
+    /// <summary>图标边长 (DIP) —— display.iconDip 参数化 (20-40, 默认 28)。</summary>
+    public double IconSize
+    {
+        get => _iconSize;
+        set
+        {
+            if (_iconSize == value) return;
+            _iconSize = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IconSize)));
+        }
+    }
+
     public string? Badge
     {
         get => _badge;

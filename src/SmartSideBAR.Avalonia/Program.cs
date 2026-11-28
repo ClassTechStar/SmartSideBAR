@@ -120,6 +120,18 @@ internal static class Program
         // P2-6: 主循环退出后释放回环探测端口，保证下次能正常启动
         AppDomain.CurrentDomain.ProcessExit += (_, _) => SingleInstance.ReleaseProbe();
 
+        // CI 启动冒烟: SSB_SMOKE_EXIT_MS=4000 → 全路径真实运行 N ms 后干净退出 (exit 0)。
+        // 启动即崩的缺陷 (如 DI 注册丢失/STAThread 丢失) 会让退出码非 0, nightly 断言之。
+        if (int.TryParse(Environment.GetEnvironmentVariable("SSB_SMOKE_EXIT_MS"), out var smokeMs) && smokeMs > 0)
+        {
+            log.LogInformation("启动冒烟模式: {Ms}ms 后自动退出", smokeMs);
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(smokeMs).ConfigureAwait(false);
+                Environment.Exit(0);
+            });
+        }
+
         return AppBuilder.Configure(() => new App(sp))
             .UsePlatformDetect()
             .With(new Win32PlatformOptions())

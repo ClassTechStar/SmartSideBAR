@@ -52,6 +52,67 @@
                       AutomationProperties.Name="触发方式"/>
           </Grid>
           <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="置顶策略"/>
+            <ComboBox Grid.Column="1" MinWidth="200" VerticalAlignment="Center"
+                      ItemsSource="{Binding TopmostOptionsSource}"
+                      SelectedIndex="{Binding TopmostIndex, Mode=TwoWay}"
+                      AutomationProperties.Name="置顶策略"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="图标轨宽度 (DIP)"/>
+            <Slider Grid.Column="1" MinWidth="180" VerticalAlignment="Center"
+                    Minimum="56" Maximum="120" TickFrequency="4"
+                    Value="{Binding RailWidth, Mode=TwoWay}"
+                    AutomationProperties.Name="图标轨宽度"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="面板宽度 (DIP)"/>
+            <Slider Grid.Column="1" MinWidth="180" VerticalAlignment="Center"
+                    Minimum="280" Maximum="520" TickFrequency="20"
+                    Value="{Binding PanelWidth, Mode=TwoWay}"
+                    AutomationProperties.Name="面板宽度"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="图标尺寸"/>
+            <ComboBox Grid.Column="1" MinWidth="120" VerticalAlignment="Center"
+                      ItemsSource="{Binding IconSizeOptionsSource}"
+                      SelectedIndex="{Binding IconIndex, Mode=TwoWay}"
+                      AutomationProperties.Name="图标尺寸"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="触发条宽度 (DIP)"/>
+            <Slider Grid.Column="1" MinWidth="180" VerticalAlignment="Center"
+                    Minimum="8" Maximum="40" TickFrequency="2"
+                    Value="{Binding TriggerWidth, Mode=TwoWay}"
+                    AutomationProperties.Name="触发条宽度"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="悬停展开延时 (ms)"/>
+            <Slider Grid.Column="1" MinWidth="180" VerticalAlignment="Center"
+                    Minimum="0" Maximum="800" TickFrequency="50"
+                    Value="{Binding HoverDelayMs, Mode=TwoWay}"
+                    AutomationProperties.Name="悬停展开延时"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="移出收起延时 (秒)"/>
+            <Slider Grid.Column="1" MinWidth="180" VerticalAlignment="Center"
+                    Minimum="0.5" Maximum="30" TickFrequency="0.5"
+                    Value="{Binding CollapseDelaySec, Mode=TwoWay}"
+                    AutomationProperties.Name="移出收起延时"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="失焦时收起面板（零钩子实现）"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Content="窗口失活自动收起"
+                      IsChecked="{Binding CollapseOnFocusLoss, Mode=TwoWay}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
+            <TextBlock Classes="rowDesc" VerticalAlignment="Center" Text="质感"/>
+            <CheckBox Grid.Column="1" VerticalAlignment="Center"
+                      Content="液态玻璃质感"
+                      IsChecked="{Binding LiquidGlass, Mode=TwoWay}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" MinHeight="36" Margin="0,3">
             <TextBlock Classes="rowDesc" VerticalAlignment="Center"
                        Text="演示/看片等全屏场景自动收起为底角方块"/>
             <CheckBox Grid.Column="1" VerticalAlignment="Center"

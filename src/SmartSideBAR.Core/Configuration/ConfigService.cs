@@ -340,6 +340,7 @@ public sealed class ConfigService(
             Recorder = typed.Recorder with { Dir = ExpandPath(typed.Recorder.Dir ?? "{Videos}/Sidekick") },
             Appearance = AppearanceNormalize.Clamp(typed.Appearance),
             FloatBall = FloatBallNormalize.Clamp(typed.FloatBall),
+            Display = DisplayNormalize.Clamp(typed.Display),
         };
         _current = typed;
     }

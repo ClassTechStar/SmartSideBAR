@@ -45,9 +45,12 @@ public sealed class WindowManager(
     ILogger<WindowManager> log)
 {
     // v1.2 设计基准 (DIP): rail 72 + 面板 380, dock 收起方块 52×52; 物理像素 = DIP × 窗口 DPI 缩放
-    public const double RailWidthDip = 72;
-    public const double PanelWidthDip = 380;
+    public const double DefaultRailWidthDip = 72;
+    public const double DefaultPanelWidthDip = 380;
     public const double DockSizeDip = 52;
+    // §7.1 参数化: 从 display.railWidthDip/panelWidthDip 读取 (DisplayNormalize 已钳制)
+    public double RailWidthDip => config.Current.Display.RailWidthDip;
+    public double PanelWidthDip => config.Current.Display.PanelWidthDip;
 
     private SidebarWindow? _sidebar;
     private DockWindow? _dockWindow;
@@ -71,6 +74,9 @@ public sealed class WindowManager(
         _router ??= new WindowRouter(this, config, stats, capture, longshot, recorder, ime, shell, bus, log);
 
     internal bool IsDocked => _docked;
+
+    /// <summary>§3.2 置顶三档: never=正常 Z 序 (AppBar 已避让) / normal=回退置顶+keeper / always=永续置顶。</summary>
+    private string TopmostPolicy => config.Current.Display.TopmostPolicy;
 
     /// <summary>希沃式触发条模式（建议 #1）: edge=点击展开, edge-hover=悬停滑出。</summary>
     private bool IsEdgeTriggerMode
@@ -128,7 +134,8 @@ public sealed class WindowManager(
             }
             else if (appBar.Attach(hwnd, side, railPx, expandedPx))
             {
-                win.Topmost = false;
+                win.Topmost = TopmostPolicy == "always"; // always: AppBar 照挂, 永续置顶
+                if (win.Topmost) StartTopmostKeeper(win);
             }
             else
             {
@@ -169,7 +176,8 @@ public sealed class WindowManager(
             win.PointerExited += (_, _) =>
             {
                 if (!IsEdgeTriggerMode) return;
-                edgeAutoDock ??= new global::Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                edgeAutoDock ??= new global::Avalonia.Threading.DispatcherTimer
+                { Interval = TimeSpan.FromSeconds(Math.Clamp(config.Current.Display.CollapseDelaySec, 0.5, 30)) };
                 edgeAutoDock.Tick += (_, _) =>
                 {
                     edgeAutoDock.Stop();
@@ -310,8 +318,9 @@ public sealed class WindowManager(
         // P0-1: 交给统一时钟驱动, 不再单独起一个 30s 定时器
         ClockHost.Register("topmost-keeper", 30_000, () =>
         {
-            if (appBar.IsRegistered)
+            if (appBar.IsRegistered && TopmostPolicy != "always")
             {
+                // normal 档: AppBar 已注册则 keeper 退役; always 档永续重申
                 ClockHost.Unregister("topmost-keeper");
                 _topmostKeeperActive = false;
                 return;
@@ -340,6 +349,11 @@ public sealed class WindowManager(
         hotkeys.Register("floatball", cfg.FloatBall.Hotkey);
         hotkeys.Register("ime",
             string.IsNullOrWhiteSpace(cfg.Ime.Hotkey) ? "Ctrl+Shift+I" : cfg.Ime.Hotkey);
+        // §3.1 呼出/隐藏侧栏热键 (空=不注册); 路由 WindowRouter 已有 sidebar-toggle 分支
+        if (!string.IsNullOrWhiteSpace(cfg.Display.SidebarHotkey))
+        {
+            hotkeys.Register("sidebar-toggle", cfg.Display.SidebarHotkey);
+        }
     }
 
     /// <summary>动作总路由: rail 按钮 / 悬浮球 / 热键 / 托盘共用 (P1-9: 实现在 WindowRouter)。</summary>
@@ -413,6 +427,9 @@ public sealed class WindowManager(
     {
         if (docked == _docked) return;
         _docked = docked;
+        // §3.2 收起归还焦点: 记下当前前台窗口 (收起触发时多半已在触发条上=0, 跳过)
+        var prevFocus = docked && _sidebar is { IsVisible: true }
+            ? Windows.Native.Win32Focus.GetForeground() : 0;
         // 借鉴 SidebarDiagnostics 的 Pause/Resume：收起态没有周期任务需要跑，
         // 停表省 CPU；展开时恢复。放在最前面，保证下面的 early return 不漏。
         if (docked) Ui.ClockHost.Pause();
@@ -424,6 +441,7 @@ public sealed class WindowManager(
         {
             appBar.Detach();
             sidebar.Hide();
+            if (prevFocus != 0) Windows.Native.Win32Focus.ReturnTo(prevFocus);
             var wa = GetSidebarWorkArea();
             var scale = Windows.Native.Win32Display.GetScaling(_attachInfo.Hwnd);
             if (scale <= 0) scale = 1.0;
@@ -434,7 +452,9 @@ public sealed class WindowManager(
                 if (_edgeTrigger is null)
                 {
                     _edgeTrigger = new EdgeTriggerWindow(() => SetDocked(false),
-                        hoverToExpand: config.Current.Display.RailTrigger == "edge-hover", _side);
+                        hoverToExpand: config.Current.Display.RailTrigger == "edge-hover", _side,
+                        widthDip: (int)config.Current.Display.TriggerWidthDip,
+                        hoverDelayMs: config.Current.Display.HoverExpandDelayMs);
                 }
                 const int wDip = 14, hDip = 160;
                 var x = _side == AppBarEdge.Right ? wa.X + wa.W - (int)Math.Round(wDip * scale) : wa.X;
@@ -470,7 +490,7 @@ public sealed class WindowManager(
             {
                 log.LogError(ex, "[Window] AppBar 重新 Attach 失败");
             }
-            sidebar.Topmost = !appBar.IsRegistered; // Attach 失败回退置顶
+            sidebar.Topmost = TopmostPolicy == "always" || (!appBar.IsRegistered && TopmostPolicy != "never"); // 三档置顶
             if (!appBar.IsRegistered) StartTopmostKeeper(sidebar); // keeper 此前可能已自注销
             // B24: dock 期间 WorkArea 归还 / 窗口隐藏, undock 后 Avalonia 与系统几何会差一拍。
             // 事件循环空转后再协商一次, 把位置钉回显示器外缘 (否则栏位会内缩一个自身宽度)。

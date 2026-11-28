@@ -11,6 +11,7 @@ public sealed class HotkeysSettingsViewModel : SettingsPageViewModel
     private string _longshot = "";
     private string _floatBall = "";
     private string _ime = "";
+    private string _sidebar = "";
 
     public override string Title => "快捷键";
 
@@ -24,6 +25,9 @@ public sealed class HotkeysSettingsViewModel : SettingsPageViewModel
 
     public string Ime { get => _ime; set => SetProperty(ref _ime, value); }
 
+    /// <summary>呼出/隐藏侧栏 (空=不注册)。</summary>
+    public string Sidebar { get => _sidebar; set => SetProperty(ref _sidebar, value); }
+
     public override void LoadFrom(SidekickConfig config)
     {
         Capture = config.Capture.Hotkey;
@@ -31,6 +35,7 @@ public sealed class HotkeysSettingsViewModel : SettingsPageViewModel
         Longshot = config.Capture.LongshotHotkey;
         FloatBall = config.FloatBall.Hotkey;
         Ime = string.IsNullOrWhiteSpace(config.Ime.Hotkey) ? "Ctrl+Shift+I" : config.Ime.Hotkey;
+        Sidebar = config.Display.SidebarHotkey;
     }
 
     public override IEnumerable<ConfigChange> CollectChanges() =>
@@ -40,5 +45,6 @@ public sealed class HotkeysSettingsViewModel : SettingsPageViewModel
         ConfigChange.From("capture.longshotHotkey", Longshot?.Trim()),
         ConfigChange.From("floatBall.hotkey", FloatBall?.Trim()),
         ConfigChange.From("ime.hotkey", string.IsNullOrWhiteSpace(Ime) ? "Ctrl+Shift+I" : Ime.Trim()),
+        ConfigChange.From("display.sidebarHotkey", string.IsNullOrWhiteSpace(Sidebar) ? "" : Sidebar.Trim()),
     ];
 }

@@ -137,7 +137,7 @@
                             AutomationProperties.Name="{Binding Title}">
                       <Panel>
                         <!-- 投影由 Border.glassRail ItemsControl Image 样式控制 (玻璃/经典模式切换) -->
-                        <Image Width="28" Height="28" Source="{Binding Icon}"/>
+                        <Image Width="{Binding IconSize}" Height="{Binding IconSize}" Source="{Binding Icon}"/>
                         <!-- KoBar 选中态指示条: 贴屏侧 3px 圆角竖条, 教室远距离可辨 (左右侧由 ApplySide 切换) -->
                         <Border Classes="accentBar" IsVisible="{Binding IsActive}"
                                 Width="3" Height="18" CornerRadius="2"

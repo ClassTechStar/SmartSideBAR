@@ -37,6 +37,9 @@ public partial class SidebarWindow : Window
         _palette = AppTheme.From(services?.Config.Current.Appearance);
 
         InitializeComponent();
+        // §3.1 收起延时参数化 (display.collapseDelaySec, 0.5-30)
+        _collapseTimer.Interval = TimeSpan.FromSeconds(
+            Math.Clamp(_services.Config.Current.Display.CollapseDelaySec, 0.5, 30));
         ApplyDesignTokens();
         ApplySide();
 
@@ -119,6 +122,15 @@ public partial class SidebarWindow : Window
                 e.Handled = true;
             }
         };
+
+        // §7.2 失焦收起 (零钩子): 本进程窗口失活即收起面板; 开关 display.collapseOnFocusLoss 默认关
+        if (_services.Config.Current.Display.CollapseOnFocusLoss)
+        {
+            Deactivated += (_, _) =>
+            {
+                if (Vm.PanelOpen && !Vm.IsDocked) Vm.ClosePanel();
+            };
+        }
 
         // rail 长按重排序 (KoBar Sidebar 语义: 500ms 长按进入, 拖拽换位, 释放持久化 rail.order)
         AddHandler(PointerPressedEvent, OnRailPointerPressed, RoutingStrategies.Tunnel);
@@ -333,6 +345,11 @@ public partial class SidebarWindow : Window
     private void ApplyDesignTokens()
     {
         var tokens = DesignTokens.Current;
+        // §7.1 宽度参数化: display.railWidthDip/panelWidthDip 覆盖 XAML 字面量与令牌
+        // (DisplayNormalize 已钳制 56-120 / 280-520); AppBar 协商宽度由 WindowManager 同源传入
+        var display = _services.Config.Current.Display;
+        RailCapsule.Width = display.RailWidthDip;
+        PanelHost.Width = display.PanelWidthDip;
 
         PanelHost.Width = tokens.Panel.WidthDip;
         PanelHost.CornerRadius = new global::Avalonia.CornerRadius(tokens.Panel.Radius);

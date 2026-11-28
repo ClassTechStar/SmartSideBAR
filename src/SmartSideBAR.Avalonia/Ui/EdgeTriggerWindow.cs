@@ -14,20 +14,26 @@ namespace SmartSideBAR.Avalonia.Ui;
 
 public sealed class EdgeTriggerWindow : Window
 {
-    private const int WidthDip = 14;
+    private readonly int _widthDip;
+    private readonly int _hoverDelayMs;
     private const int HeightDip = 160;
     private readonly Action _expand;
     private readonly bool _hoverToExpand;
     private readonly AppBarEdge _side;
     private bool _fired;
 
-    public EdgeTriggerWindow(Action expand, bool hoverToExpand, AppBarEdge side = AppBarEdge.Right)
+    /// <param name="widthDip">触发条宽度 (display.triggerWidthDip, 8-40 钳制)。</param>
+    /// <param name="hoverDelayMs">悬停展开驻留 (display.hoverExpandDelayMs, 0-800)。</param>
+    public EdgeTriggerWindow(Action expand, bool hoverToExpand, AppBarEdge side = AppBarEdge.Right,
+        int widthDip = 14, int hoverDelayMs = 150)
     {
         _expand = expand;
         _hoverToExpand = hoverToExpand;
         _side = side;
+        _widthDip = Math.Clamp(widthDip, 8, 40);
+        _hoverDelayMs = Math.Clamp(hoverDelayMs, 0, 800);
 
-        Width = WidthDip;
+        Width = _widthDip;
         Height = HeightDip;
         SystemDecorations = SystemDecorations.None;
         ShowInTaskbar = false;
@@ -75,7 +81,7 @@ public sealed class EdgeTriggerWindow : Window
                 if (e.Pointer.Type == PointerType.Touch) return;
                 if (dwell is null)
                 {
-                    dwell = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+                    dwell = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_hoverDelayMs) };
                     dwell.Tick += (_, _) =>
                     {
                         dwell!.Stop();

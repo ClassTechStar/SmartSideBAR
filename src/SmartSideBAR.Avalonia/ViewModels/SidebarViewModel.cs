@@ -277,8 +277,14 @@ public sealed class SidebarViewModel : INotifyPropertyChanged
         if (On("bell")) items.Add(NewItem("bell", PanelKind.Reminder, "提醒与通知"));
         if (On("settings")) items.Add(NewItem("settings", PanelKind.QuickSettings, "快捷设置"));
 
-        // rail.order 持久化顺序（长按重排序写入）；未登记的保持内置相对顺序
-        foreach (var item in items.OrderBy(i => OrderOf(i.Module))) RailItems.Add(item);
+        // rail.order 持久化顺序（长按重排序写入）；未登记的保持内置相对顺序。
+        // §7.1 图标尺寸参数化 (display.iconDip)
+        var iconSize = _services.Config.Current.Display.IconDip;
+        foreach (var item in items.OrderBy(i => OrderOf(i.Module)))
+        {
+            item.IconSize = iconSize;
+            RailItems.Add(item);
+        }
     }
 
     /// <summary>重排序结束后回写 rail.order（SidebarWindow 拖拽逻辑调用）。</summary>
